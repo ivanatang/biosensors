@@ -1,6 +1,4 @@
 """
-Step 1 — Water-mediated contact R-scores
-=========================================
 Computes the R-score for every protein residue relative to the ligand,
 following Leonard et al., ACS Chem. Biol. 2024, 19, 1757-1772.
 
