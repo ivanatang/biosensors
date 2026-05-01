@@ -50,7 +50,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # ─────────────────────────────────────────────────────────────────────────────
 base   = "/scratch/alpine/ivta1597/LCA_boltz_models"
 seq_type = "binders"
-seq_id = "pair_XXXX"
+seq_id = "pair_3069_binder"
 prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 traj_path    = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
@@ -201,6 +201,16 @@ def find_controls(ref_resname, ref_res_idx, df_R,
 
     exposed_cands, pocket_cands = [], []
 
+    print(f"\n  SASA values for {ref_resname} candidates (I==0, excl. ref):")
+    for r in prot_res:
+        if r.name != ref_resname or r.index == ref_res_idx:
+            continue
+        I = I_by_res.get(r.index, 0.0)
+        sasa = sasa_by_res_idx.get(r.index, 0.0)
+        rel  = sasa / max_sasa if max_sasa > 0 else 0.0
+        print(f"    {r.name}{r.resSeq:<6} I={I:.4f}  SASA={sasa:.4f}  rel={rel:.3f}  "
+            f"{'PASS' if rel >= SASA_EXPOSED_FRAC and I == 0.0 else 'FAIL'}")
+        
     for r in prot_res:
         if r.name != ref_resname or r.index == ref_res_idx:
             continue
@@ -316,14 +326,23 @@ for ref_label, ctrls in controls.items():
 # ─────────────────────────────────────────────────────────────────────────────
 # 8. DERIVE THRESHOLDS FROM COMBINED CONTROL DISTRIBUTIONS
 # ─────────────────────────────────────────────────────────────────────────────
+HBOND_STD_MAX = 1.0
+
 all_means, all_stds = [], []
 
 for ref_label, kinds in ctrl_data.items():
     for kind in ('exposed', 'pocket'):
-        for arr in kinds[kind]:
-            if len(arr) >= 5:
-                all_means.append(arr.mean())
-                all_stds.append(arr.std())
+        for entry in zip(controls[ref_label][kind],
+                         ctrl_data[ref_label][kind]):
+            res, arr = entry
+            if len(arr) < 5:
+                continue
+            if arr.std() > HBOND_STD_MAX:
+                print(f"  Excluding {res.name}{res.resSeq} [{kind}]: "
+                      f"std={arr.std():.3f} Å — not a genuine H-bond")
+                continue
+            all_means.append(arr.mean())
+            all_stds.append(arr.std())
 
 if len(all_means) < 3:
     print("\nWARNING: Too few control residues found. "
@@ -371,7 +390,7 @@ else:
 
         for kind, color, zorder in [('exposed', COLOR_EXP, 2),
                                      ('pocket',  COLOR_PKT, 3)]:
-            arrays = [a for a in kinds[kind] if len(a) >= 10]
+            arrays = [a for a in kinds[kind] if len(a) >= 10 and a.std() <= HBOND_STD_MAX]
             if not arrays:
                 continue
 
@@ -403,7 +422,7 @@ else:
             ax.legend(fontsize=6, loc='upper right')
 
     fig.suptitle(
-        f'{seq_id} — Control H-bond distributions (Figure S4 style)\n'
+        f'{seq_id} — Control H-bond distributions\n'
         f'STRONG_MAX = {STRONG_MAX:.2f} Å  |  STABLE_STD = {STABLE_STD:.2f} Å  '
         f'({COVERAGE_PCT}th pctile, n={len(all_means)} controls)',
         fontsize=9)
