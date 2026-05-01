@@ -55,7 +55,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # CONFIG  ← edit these before running
 # ─────────────────────────────────────────────────────────────────────────────
 base   = "/scratch/alpine/ivta1597/LCA_boltz_models"
-seq_type = "binder"
+seq_type = "binders"
 seq_id = "pair_XXXX"
 prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
@@ -65,12 +65,12 @@ out_dir   = os.path.join(base, seq_type, seq_id, "water_contacts")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"
-WATER_RESNAMES = {"HOH", "WAT", "SOL"}
+WATER_RESNAMES = {"HOH", "SOL"}
 ION_RESNAMES   = {"NA", "CL", "NA+", "CL-"}
 
 HEAVY_CUT = 0.40   # nm (= 4.0 Å) — heavy-atom distance threshold
 R_DOM     = -0.70  # residues with R below this are "dominant" water-mediated
-STRIDE    = 10     # set to 1 for publication quality
+STRIDE    = 10     # start with 10 then go to 1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
