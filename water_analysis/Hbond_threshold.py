@@ -53,10 +53,10 @@ seq_type = "binders"
 seq_id = "pair_XXXX"
 prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
-traj_path    = os.path.join(base, seq_id, prod, "prod_md_500ns.xtc")
-top_path     = os.path.join(base, seq_id, prod, "prod_md_500ns.gro")
-rscores_csv  = os.path.join(base, seq_id, "water_contacts", f"{seq_id}_R_scores.csv")
-out_dir      = os.path.join(base, seq_id, "water_contacts")
+traj_path    = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
+top_path     = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.gro")
+rscores_csv  = os.path.join(base, seq_type, seq_id, "water_contacts", f"{seq_id}_R_scores.csv")
+out_dir      = os.path.join(base, seq_type, seq_id, "water_contacts")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"
