@@ -1,0 +1,44 @@
+# This file was created Sat Mar 14 09:23:55 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/seq4_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_LIG_peratom.xvg
+# gmx rmsf is part of G R O M A C S:
+#
+# GRowing Old MAkes el Chrono Sweat
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Atom"
+@    yaxis  label "(nm)"
+@TYPE xy
+ 2883   0.1285
+ 2884   0.1631
+ 2885   0.0611
+ 2886   0.0768
+ 2887   0.0711
+ 2888   0.0394
+ 2889   0.0754
+ 2890   0.0726
+ 2891   0.0207
+ 2892   0.0354
+ 2893   0.0223
+ 2894   0.0241
+ 2895   0.0475
+ 2896   0.0592
+ 2897   0.0321
+ 2898   0.0311
+ 2899   0.0443
+ 2900   0.0332
+ 2901   0.0456
+ 2902   0.0613
+ 2903   0.0243
+ 2904   0.0202
+ 2905   0.0148
+ 2906   0.0337
+ 2907   0.0515
+ 2908   0.0191
+ 2909   0.0378

@@ -1,0 +1,21 @@
+Covariance analysis log, written Thu Mar 26 14:16:25 2026
+
+Program: covar
+Working directory: /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/seq4_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+
+Read 12267 frames from PL_only_40_500ns.xtc (time 40012.5 to 499988 ps)
+Read reference structure for fit from medoid_PL.pdb
+Read index groups from index.ndx
+
+Analysis group is 'binding_site' (407 atoms)
+Fit group is 'binding_site' (407 atoms)
+Analysis is non-mass weighted
+Fit is non-mass weighted
+Diagonalized the 1221x1221 covariance matrix
+Trace of the covariance matrix before diagonalizing: 12.3583
+Trace of the covariance matrix after diagonalizing: 12.3583
+
+Wrote 1221 eigenvalues to eigenvalues.xvg
+Wrote reference structure to eigenvectors.trr
+Wrote average structure to avg.pdb and eigenvectors.trr
+Wrote eigenvectors 1 to 1221 to eigenvectors.trr

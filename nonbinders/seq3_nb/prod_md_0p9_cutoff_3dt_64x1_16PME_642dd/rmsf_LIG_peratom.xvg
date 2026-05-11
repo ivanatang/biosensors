@@ -1,0 +1,44 @@
+# This file was created Sat Mar 14 09:23:38 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/seq3_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_LIG_peratom.xvg
+# gmx rmsf is part of G R O M A C S:
+#
+# GROwing Monsters And Cloning Shrimps
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Atom"
+@    yaxis  label "(nm)"
+@TYPE xy
+ 2881   0.1396
+ 2882   0.1388
+ 2883   0.0593
+ 2884   0.0675
+ 2885   0.0709
+ 2886   0.0336
+ 2887   0.0605
+ 2888   0.0734
+ 2889   0.0221
+ 2890   0.0328
+ 2891   0.0212
+ 2892   0.0250
+ 2893   0.0385
+ 2894   0.0489
+ 2895   0.0285
+ 2896   0.0250
+ 2897   0.0393
+ 2898   0.0335
+ 2899   0.0417
+ 2900   0.0562
+ 2901   0.0230
+ 2902   0.0180
+ 2903   0.0143
+ 2904   0.0286
+ 2905   0.0453
+ 2906   0.0163
+ 2907   0.0338

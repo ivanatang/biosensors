@@ -1,0 +1,44 @@
+# This file was created Sat Mar 14 09:23:20 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/seq2_nb/HMR/dodecahedron/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_LIG_peratom.xvg
+# gmx rmsf is part of G R O M A C S:
+#
+# GROtesk MACabre and Sinister
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Atom"
+@    yaxis  label "(nm)"
+@TYPE xy
+ 2885   0.1177
+ 2886   0.1252
+ 2887   0.0522
+ 2888   0.0523
+ 2889   0.0532
+ 2890   0.0262
+ 2891   0.0433
+ 2892   0.0463
+ 2893   0.0184
+ 2894   0.0244
+ 2895   0.0206
+ 2896   0.0219
+ 2897   0.0290
+ 2898   0.0334
+ 2899   0.0230
+ 2900   0.0186
+ 2901   0.0267
+ 2902   0.0250
+ 2903   0.0330
+ 2904   0.0339
+ 2905   0.0161
+ 2906   0.0168
+ 2907   0.0136
+ 2908   0.0218
+ 2909   0.0287
+ 2910   0.0125
+ 2911   0.0226
