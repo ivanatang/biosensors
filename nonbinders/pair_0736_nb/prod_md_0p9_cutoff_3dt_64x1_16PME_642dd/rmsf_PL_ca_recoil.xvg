@@ -1,0 +1,30 @@
+# This file was created Sun May 10 17:04:38 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/pair_0736_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# GRoups of Organic Molecules in ACtion for Science
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  154   0.0448
+  155   0.0547
+  156   0.0500
+  157   0.0448
+  158   0.0552
+  159   0.0407
+  160   0.0354
+  161   0.0310
+  162   0.0389
+  163   0.0357
+  164   0.0310
+  165   0.0380
+  166   0.0493

@@ -1,0 +1,30 @@
+# This file was created Sun May 10 17:54:03 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/pair_1710_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# Gyas ROwers Mature At Cryogenic Speed
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  154   0.0693
+  155   0.0651
+  156   0.0709
+  157   0.0406
+  158   0.0912
+  159   0.0961
+  160   0.0655
+  161   0.0446
+  162   0.0927
+  163   0.0678
+  164   0.0363
+  165   0.0465
+  166   0.0698

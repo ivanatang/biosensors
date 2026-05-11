@@ -1,0 +1,30 @@
+# This file was created Sun May 10 16:58:54 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/nonbinders/pair_0602_nb/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# Great Red Oystrich Makes All Chemists Sane
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  154   0.0693
+  155   0.0745
+  156   0.0799
+  157   0.0453
+  158   0.0784
+  159   0.0874
+  160   0.0498
+  161   0.0371
+  162   0.0462
+  163   0.0424
+  164   0.0335
+  165   0.0441
+  166   0.0596
