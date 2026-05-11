@@ -1,0 +1,48 @@
+2026-03-26 13:17:57,424  INFO      Water-contact analysis — Leonard et al. 2024 method
+2026-03-26 13:17:57,425  INFO      Output directory: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results
+2026-03-26 13:17:57,425  INFO      Topology  : /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/medoid_system.pdb
+2026-03-26 13:17:57,425  INFO      Trajectory: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/prod_md_40_500ns.xtc
+2026-03-26 13:17:57,425  INFO      Loading trajectory (stride=10)…
+2026-03-26 13:18:22,989  INFO      Loaded 1227 frames in 25.6 s  (timestep = 375.000 ps)
+2026-03-26 13:18:23,053  INFO      Ligand (LIG) atoms   : 69 total, 27 heavy, 3 acceptors (O/N)
+2026-03-26 13:18:23,053  INFO      Water oxygen atoms  : 8866
+2026-03-26 13:18:23,053  INFO      Protein heavy atoms : 1438
+2026-03-26 13:18:23,053  INFO      Computing LCA–water contact mask (8866 waters × 27 LCA heavy atoms)…
+2026-03-26 13:20:45,565  INFO        Water–LCA contacts present in 1227 / 1227 frames (100.0%)
+2026-03-26 13:20:45,566  INFO      Step 2 — Computing R scores (this is the slow step)…
+2026-03-26 13:20:45,567  INFO      Pocket residue whitelist: [55, 58, 59, 61, 62, 79, 81, 83, 87, 88, 89, 92, 94, 108, 110, 115, 117, 120, 122, 124, 141, 143, 158, 159, 160, 161, 162, 163, 164, 167]
+2026-03-26 13:20:45,567  INFO      Computing R scores for 1438 protein residues…
+2026-03-26 13:20:45,568  INFO        Pocket filter applied — analysing 30 / 181 residue groups
+2026-03-26 13:20:45,568  INFO        Processing residue 0 / 30…
+2026-03-26 13:41:39,488  INFO      Residues with dominant water-mediated contacts (R < -0.70): 1
+2026-03-26 13:41:39,489  INFO      R-score calculation complete in 1253.9 s
+2026-03-26 13:41:39,489  INFO      Step 3 — Classifying H-bond strength and stability…
+2026-03-26 13:41:39,489  INFO      Classifying H-bond strength/stability for 1 dominant residues…
+2026-03-26 13:41:39,490  INFO        THR124        R=-0.773  bridging waters: 494 / 8866
+2026-03-26 13:42:44,210  INFO        THR124        R=-0.773  mechanistic bonds: 412
+2026-03-26 13:42:44,210  INFO      Step 4 — Computing water-bridge role occupancy…
+2026-03-26 13:42:44,441  INFO      Saving results…
+2026-03-26 13:42:51,930  INFO      R-score table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/r_scores_all_residues.csv
+2026-03-26 13:42:51,933  INFO      Dominant residues table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/r_scores_dominant.csv  (1 residues)
+2026-03-26 13:42:52,061  INFO      H-bond classification table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/hbond_classifications.csv
+2026-03-26 13:42:52,066  INFO      Mechanistic H-bonds table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/hbond_mechanistic_only.csv  (412 bonds)
+2026-03-26 13:42:52,069  INFO      Role occupancy table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/role_occupancy.csv
+2026-03-26 13:42:53,055  INFO      Plot saved → r_score_distribution.png
+2026-03-26 13:42:53,459  INFO      Plot saved → hbond_distances_mechanistic.png
+2026-03-26 13:42:53,808  INFO      Plot saved → role_occupancy_timeseries.png
+2026-03-26 13:42:53,808  INFO      
+2026-03-26 13:42:53,808  INFO      ======================================================================
+2026-03-26 13:42:53,808  INFO      SUMMARY — Mechanistically conserved water-mediated H-bonds
+2026-03-26 13:42:53,810  INFO        (dominant R < -0.70  AND  strong mean < 2.5 Å  AND  stable std < 0.45 Å)
+2026-03-26 13:42:53,810  INFO      ======================================================================
+2026-03-26 13:42:53,810  INFO        Residue             R       D       W    Occ%   UniqH2O    MRT(ns)   MechBonds
+2026-03-26 13:42:53,810  INFO        --------------------------------------------------------------------------------
+2026-03-26 13:42:53,810  INFO        THR124          -0.773   0.061   0.883   88.3%       494     0.7019         412
+2026-03-26 13:42:53,810  INFO      ======================================================================
+2026-03-26 13:42:53,810  INFO      
+2026-03-26 13:42:53,811  INFO      Interpretation guide:
+2026-03-26 13:42:53,811  INFO        R ≈ -1.0  → exclusively water-mediated (like ABA-W385 bridge)
+2026-03-26 13:42:53,811  INFO        R ≈ -0.7  → predominantly water-mediated (paper's threshold)
+2026-03-26 13:42:53,811  INFO        Occ > 30%% with many unique waters → dynamic relay mechanism
+2026-03-26 13:42:53,811  INFO        Short MRT (< 0.1 ns) → waters exchange rapidly but role persists
+2026-03-26 13:42:53,811  INFO      Analysis complete.  All output in: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results

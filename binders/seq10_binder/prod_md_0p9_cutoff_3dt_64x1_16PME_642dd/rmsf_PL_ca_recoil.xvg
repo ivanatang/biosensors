@@ -1,0 +1,25 @@
+# This file was created Sat May  9 22:00:58 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/binders/seq10_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# Good ROcking Metal Altar for Chronical Sinners
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  148   0.0480
+  149   0.0442
+  150   0.0506
+  151   0.0424
+  152   0.0551
+  153   0.0416
+  154   0.0417
+  155   0.0724

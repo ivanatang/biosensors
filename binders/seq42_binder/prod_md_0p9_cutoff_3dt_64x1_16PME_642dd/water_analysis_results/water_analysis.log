@@ -1,0 +1,34 @@
+2026-03-28 09:00:41,445  INFO      Water-contact analysis — Leonard et al. 2024 method
+2026-03-28 09:00:41,445  INFO      Output directory: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results
+2026-03-28 09:00:41,446  INFO      Topology  : /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/medoid_system.pdb
+2026-03-28 09:00:41,446  INFO      Trajectory: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/prod_md_40_500ns.xtc
+2026-03-28 09:00:41,446  INFO      Loading trajectory (stride=1)…
+2026-03-28 09:00:51,958  INFO      Loaded 12267 frames in 10.5 s  (timestep = 37.500 ps)
+2026-03-28 09:00:51,980  INFO      Ligand (LIG) atoms   : 69 total, 27 heavy, 3 acceptors (O/N)
+2026-03-28 09:00:51,980  INFO      Water oxygen atoms  : 8706
+2026-03-28 09:00:51,980  INFO      Protein heavy atoms : 1453
+2026-03-28 09:00:51,980  INFO      Computing LCA–water contact mask (8706 waters × 27 LCA heavy atoms)…
+2026-03-28 09:04:35,605  INFO        Water–LCA contacts present in 12267 / 12267 frames (100.0%)
+2026-03-28 09:04:35,609  INFO      Step 2 — Computing R scores (this is the slow step)…
+2026-03-28 09:04:35,609  INFO      Pocket residue whitelist: [58, 59, 61, 62, 81, 83, 84, 87, 88, 89, 91, 92, 94, 110, 115, 117, 120, 122, 124, 141, 143, 159, 160, 163, 164, 167]
+2026-03-28 09:04:35,609  INFO      Computing R scores for 1453 protein residues…
+2026-03-28 09:04:35,610  INFO        Pocket filter applied — analysing 26 / 181 residue groups
+2026-03-28 09:04:35,610  INFO        Processing residue 0 / 26…
+2026-03-28 09:36:07,345  INFO      Residues with dominant water-mediated contacts (R < -0.70): 0
+2026-03-28 09:36:07,358  INFO      R-score calculation complete in 1891.7 s
+2026-03-28 09:36:07,359  INFO      Step 3 — Classifying H-bond strength and stability…
+2026-03-28 09:36:07,359  INFO      Classifying H-bond strength/stability for 0 dominant residues…
+2026-03-28 09:36:07,359  INFO      Step 4 — Computing water-bridge role occupancy…
+2026-03-28 09:36:07,359  INFO      Saving results…
+2026-03-28 09:36:07,414  INFO      R-score table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/r_scores_all_residues.csv
+2026-03-28 09:36:07,416  INFO      Dominant residues table saved → /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results/r_scores_dominant.csv  (0 residues)
+2026-03-28 09:36:07,416  WARNING   No H-bond data to save (no dominant water-mediated bonds found).
+2026-03-28 09:36:07,648  INFO      Plot saved → r_score_distribution.png
+2026-03-28 09:36:07,648  INFO      
+2026-03-28 09:36:07,649  INFO      ======================================================================
+2026-03-28 09:36:07,649  INFO      SUMMARY — Mechanistically conserved water-mediated H-bonds
+2026-03-28 09:36:07,649  INFO        (dominant R < -0.70  AND  strong mean < 2.5 Å  AND  stable std < 0.45 Å)
+2026-03-28 09:36:07,649  INFO      ======================================================================
+2026-03-28 09:36:07,649  INFO        No mechanistically conserved water-mediated bonds found.
+2026-03-28 09:36:07,649  INFO        Consider relaxing --r-cutoff or checking residue naming.
+2026-03-28 09:36:07,649  INFO      Analysis complete.  All output in: /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/water_analysis_results

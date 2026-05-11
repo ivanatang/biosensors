@@ -1,0 +1,44 @@
+# This file was created Sat Mar 14 09:22:25 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/binders/seq42_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_LIG_peratom.xvg
+# gmx rmsf is part of G R O M A C S:
+#
+# Green Red Orange Magenta Azure Cyan Skyblue
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Atom"
+@    yaxis  label "(nm)"
+@TYPE xy
+ 2906   0.1143
+ 2907   0.0993
+ 2908   0.0454
+ 2909   0.0549
+ 2910   0.0591
+ 2911   0.0253
+ 2912   0.0938
+ 2913   0.0505
+ 2914   0.0192
+ 2915   0.0234
+ 2916   0.0197
+ 2917   0.0251
+ 2918   0.0320
+ 2919   0.0376
+ 2920   0.0247
+ 2921   0.0201
+ 2922   0.0344
+ 2923   0.0277
+ 2924   0.0301
+ 2925   0.0406
+ 2926   0.0163
+ 2927   0.0176
+ 2928   0.0141
+ 2929   0.0226
+ 2930   0.0321
+ 2931   0.0137
+ 2932   0.0260
