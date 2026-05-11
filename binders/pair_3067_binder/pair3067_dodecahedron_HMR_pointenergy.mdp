@@ -1,0 +1,19 @@
+; Single point energy
+nsteps                   = 0      ; Perform no MD steps
+nstenergy                = 1000   ; Write energies to .EDR file
+continuation             = yes    ; Do not apply constraints at start
+cutoff-scheme            = verlet ; Use a Verlet pair list for cutoffs
+
+; Force field configuration
+disp-corr                = Ener
+pbc                      = xyz
+constraints              = h-bonds
+coulombtype              = PME
+rcoulomb                 = 0.9
+coulomb-modifier         = None
+fourier-spacing          = 0.12
+ewald-rtol               = 1e-4
+vdwtype                  = cutoff
+rvdw                     = 0.9
+vdw-modifier             = Potential-switch
+rvdw-switch              = 0.8

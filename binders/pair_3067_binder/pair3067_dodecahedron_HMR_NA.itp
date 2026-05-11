@@ -1,0 +1,26 @@
+[ moleculetype ]
+NA	         3
+
+[ atoms ]
+;index, atom type, resnum, resname, name, cgnr, charge, mass
+     1 NA_0      9141 NA       Na         1      1.000000000000     22.989769282000
+
+[ pairs ]
+;ai    aj   funct
+
+[ bonds ]
+;ai    aj   funct r k
+
+[ angles ]
+;ai    aj   ak   funct theta  k
+
+[ dihedrals ]
+;ai    aj   ak   al   funct phi  k
+
+[ settles ]
+;i  funct   dOH  dHH
+
+
+[ exclusions ]
+;ai    aj
+
