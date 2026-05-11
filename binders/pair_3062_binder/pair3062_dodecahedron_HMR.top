@@ -1,0 +1,21 @@
+[ defaults ]
+; nbfunc	comb-rule	gen-pairs	fudgeLJ	fudgeQQ
+     1	     2	yes   	0.500000	0.833333
+
+#include "pair3062_dodecahedron_HMR_atomtypes.itp"
+#include "pair3062_dodecahedron_HMR_protein.itp"
+#include "pair3062_dodecahedron_HMR_LIG.itp"
+#include "pair3062_dodecahedron_HMR_SOL.itp"
+#include "pair3062_dodecahedron_HMR_NA.itp"
+
+[ system ]
+;name
+FOO
+
+[ molecules ]
+;name	number
+protein	1
+LIG	1
+SOL	9127
+NA	4
+

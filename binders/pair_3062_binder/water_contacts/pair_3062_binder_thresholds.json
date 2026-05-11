@@ -1,0 +1,8 @@
+{
+  "STRONG_MIN": 0.0,
+  "STRONG_MAX": 2.5,
+  "STABLE_STD": 0.45,
+  "coverage_pct": 95.0,
+  "n_controls": 0,
+  "seq_id": "pair_3062_binder"
+}
