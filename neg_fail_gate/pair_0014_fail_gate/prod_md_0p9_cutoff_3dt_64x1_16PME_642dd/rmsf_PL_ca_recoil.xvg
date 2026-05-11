@@ -1,0 +1,30 @@
+# This file was created Sat May  9 22:10:39 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/neg_fail_gate/pair_0014_fail_gate/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# Gromacs Runs On Most of All Computer Systems
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  154   0.0450
+  155   0.0607
+  156   0.0427
+  157   0.0378
+  158   0.0648
+  159   0.0676
+  160   0.0651
+  161   0.0467
+  162   0.0699
+  163   0.0595
+  164   0.0487
+  165   0.0563
+  166   0.0933

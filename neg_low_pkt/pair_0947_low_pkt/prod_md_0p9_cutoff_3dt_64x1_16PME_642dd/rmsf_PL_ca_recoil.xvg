@@ -1,0 +1,30 @@
+# This file was created Sat May  9 22:05:49 2026
+# Created by:
+#                       :-) GROMACS - gmx rmsf, 2025.3 (-:
+# 
+# Executable:   /projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx
+# Data prefix:  /projects/ivta1597/pkgs/gromacs-2025.3
+# Working dir:  /gpfs/alpine1/scratch/ivta1597/LCA_boltz_models/neg_low_pkt/pair_0947_low_pkt/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd
+# Command line:
+#   gmx rmsf -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n index.ndx -o rmsf_PL_ca_recoil.xvg -res
+# gmx rmsf is part of G R O M A C S:
+#
+# Gnomes, ROck Monsters And Chili Sauce
+#
+@    title "RMS fluctuation"
+@    xaxis  label "Residue"
+@    yaxis  label "(nm)"
+@TYPE xy
+  154   0.0572
+  155   0.0459
+  156   0.0402
+  157   0.0363
+  158   0.0584
+  159   0.0599
+  160   0.0482
+  161   0.0561
+  162   0.0911
+  163   0.0505
+  164   0.0438
+  165   0.0546
+  166   0.0719

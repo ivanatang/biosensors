@@ -1,0 +1,8 @@
+selection: protein and name CA
+stride: 1
+n_frames_used: 12267
+n_atoms: 181
+medoid_index_in_strided_traj: 6100
+medoid_time_ps: 228750.000
+medoid_time_ns: 228.750000
+avg_sq_dist_per_atom (nm^2, aligned): 2.251665e+00
