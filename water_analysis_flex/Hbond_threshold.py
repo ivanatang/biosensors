@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 H-bond threshold calibration — Figure S4 reproduction
 ======================================================
@@ -42,21 +43,39 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import mdtraj as md
 from scipy.stats import gaussian_kde
+import argparse
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--seq_id',    required=True)
+parser.add_argument('--seq_type',  required=True)
+parser.add_argument('--start-ns',  type=float, default=40.0,
+                    help='Start of analysis window in ns (default: 40)')
+parser.add_argument('--end-ns',    type=float, default=500.0,
+                    help='End of analysis window in ns (default: 500)')
+args = parser.parse_args()
+seq_id   = args.seq_id
+seq_type = args.seq_type
+
+# ── Analysis window ────────────────────────────────────────────────
+START_NS = args.start_ns
+END_NS   = args.end_ns
+START_PS = int(START_NS * 1000)
+END_PS   = int(END_NS   * 1000)
+TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG  (match settings in water_hbond_stability.py)
 # ─────────────────────────────────────────────────────────────────────────────
 base   = "/scratch/alpine/ivta1597/LCA_boltz_models"
-seq_type = "binders"
-seq_id = "pair_3069_binder"
+ext    = "HMR/dodecahedron"
 prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 traj_path    = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
 top_path     = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.gro")
-rscores_csv  = os.path.join(base, seq_type, seq_id, "water_contacts", f"{seq_id}_R_scores.csv")
-out_dir      = os.path.join(base, seq_type, seq_id, "water_contacts")
+rscores_csv  = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}", f"{seq_id}_R_scores_{TAG}.csv")
+out_dir      = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"
@@ -89,6 +108,14 @@ def acceptors(indices, top):
 # ─────────────────────────────────────────────────────────────────────────────
 print(f"Loading trajectory (stride={STRIDE})…")
 traj = md.load(traj_path, top=top_path, stride=STRIDE)
+
+# ── Restrict to analysis window ────────────────────────────────────
+mask = (traj.time >= START_PS) & (traj.time <= END_PS)
+traj = traj[mask]
+print(f"  Time window: {START_NS:.0f}–{END_NS:.0f} ns  "
+      f"({mask.sum()} of {mask.shape[0]} frames retained after striding)")
+# ──────────────────────────────────────────────────────────────────
+
 top  = traj.topology
 nf   = traj.n_frames
 print(f"  {nf} frames | {traj.n_atoms} atoms")
@@ -427,7 +454,7 @@ else:
         f'({COVERAGE_PCT}th pctile, n={len(all_means)} controls)',
         fontsize=9)
 
-    out = os.path.join(out_dir, f"{seq_id}_hbond_calibration_S4.png")
+    out = os.path.join(out_dir, f"{seq_id}_hbond_calibration_S4_{TAG}.png")
     fig.savefig(out, dpi=150)
     plt.show()
     print(f"\nFigure saved → {out}")
@@ -473,7 +500,7 @@ thresholds = {
     "n_controls":   int(len(all_means)),
     "seq_id":       seq_id,
 }
-thresh_path = os.path.join(out_dir, f"{seq_id}_thresholds.json")
+thresh_path = os.path.join(out_dir, f"{seq_id}_thresholds_{TAG}.json")
 with open(thresh_path, 'w') as fh:
     json.dump(thresholds, fh, indent=2)
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Computes the R-score for every protein residue relative to the ligand,
 following Leonard et al., ACS Chem. Biol. 2024, 19, 1757-1772.
@@ -21,7 +22,7 @@ types are recorded using a 4 Å heavy-atom distance threshold:
 
 These per-frame booleans are averaged to scalar occupancies, then combined:
 
-  R = D - W/(D+W) * I          (Leonard et al., Methods)
+  R = (D - W) * I          (Leonard et al., Methods)
 
   R = +1 : purely direct contact
   R =  0 : equal direct/water-mediated, or no contact at all
@@ -48,35 +49,61 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import mdtraj as md
+import argparse
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--seq_id',    required=True)
+parser.add_argument('--seq_type',  required=True)
+parser.add_argument('--start-ns',  type=float, default=40.0,
+                    help='Start of analysis window in ns (default: 40)')
+parser.add_argument('--end-ns',    type=float, default=500.0,
+                    help='End of analysis window in ns (default: 500)')
+args = parser.parse_args()
+seq_id   = args.seq_id
+seq_type = args.seq_type
+
+# ── Analysis window ────────────────────────────────────────────────
+START_NS = args.start_ns
+END_NS   = args.end_ns
+START_PS = int(START_NS * 1000)
+END_PS   = int(END_NS   * 1000)
+TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG  ← edit these before running
 # ─────────────────────────────────────────────────────────────────────────────
 base   = "/scratch/alpine/ivta1597/LCA_boltz_models"
-seq_type = "binders"
-seq_id = "pair_XXXX"
+ext    = "HMR/dodecahedron"
 prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 traj_path = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
 top_path  = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.gro")
-out_dir   = os.path.join(base, seq_type, seq_id, "water_contacts")
+out_dir   = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"
-WATER_RESNAMES = {"HOH", "SOL"}
+WATER_RESNAMES = {"HOH", "WAT", "SOL"}
 ION_RESNAMES   = {"NA", "CL", "NA+", "CL-"}
 
 HEAVY_CUT = 0.40   # nm (= 4.0 Å) — heavy-atom distance threshold
 R_DOM     = -0.70  # residues with R below this are "dominant" water-mediated
-STRIDE    = 10     # start with 10 then go to 1
+STRIDE    = 10     # set to 1 for publication quality
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. LOAD TRAJECTORY
 # ─────────────────────────────────────────────────────────────────────────────
 traj = md.load(traj_path, top=top_path, stride=STRIDE)
+
+# ── Restrict to analysis window ────────────────────────────────────
+mask = (traj.time >= START_PS) & (traj.time <= END_PS)
+traj = traj[mask]
+print(f"  Time window: {START_NS:.0f}–{END_NS:.0f} ns  "
+      f"({mask.sum()} of {mask.shape[0]} frames retained after striding)")
+# ──────────────────────────────────────────────────────────────────
+
 top  = traj.topology
 nf   = traj.n_frames
 print(f"  {nf} frames  |  {traj.n_atoms} atoms")
@@ -167,8 +194,8 @@ for f in range(nf):
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. COMPUTE R-SCORES
 #
-# R = D - W/(D+W) * I       (Leonard et al. 2024, Methods)
-#
+#   R = (D - W) * I
+
 # All three terms are scalar occupancies (mean of per-frame booleans):
 #   D   = mean(direct_occ)
 #   W   = mean(wmed_occ)
@@ -185,9 +212,8 @@ for r in prot_res:
     D = direct_occ[ri].astype(float).mean()
     W = wmed_occ[ri].astype(float).mean()
     I = (direct_occ[ri] | wmed_occ[ri]).astype(float).mean()
-
-    denom = D + W
-    R = D - (W / denom) * I if denom > 1e-9 else np.nan
+    
+    R = (D - W) * I if (D + W) > 1e-9 else np.nan
 
     records.append(dict(
         res_index = ri,
@@ -205,7 +231,7 @@ df = pd.DataFrame(records)
 # ─────────────────────────────────────────────────────────────────────────────
 # 5. SAVE CSV
 # ─────────────────────────────────────────────────────────────────────────────
-csv_path = os.path.join(out_dir, f"{seq_id}_R_scores.csv")
+csv_path = os.path.join(out_dir, f"{seq_id}_R_scores_{TAG}.csv")
 df.to_csv(csv_path, index=False)
 print(f"R-score table saved → {csv_path}")
 
@@ -264,6 +290,6 @@ else:
                     ha='center', va='top', fontsize=6, rotation=90,
                     color='#8B0000')
 
-    png_path = os.path.join(out_dir, f"{seq_id}_R_scores.png")
-    fig.savefig(png_path, dpi=150)
+    png_path = os.path.join(out_dir, f"{seq_id}_R_scores_{TAG}.png")
+    fig.savefig(png_path, dpi=300)
     plt.show()
