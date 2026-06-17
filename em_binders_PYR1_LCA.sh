@@ -3,7 +3,7 @@
 #SBATCH --job-name=em_b_PYR1_LCA
 #SBATCH --output=output_%j.out                  # Output file
 #SBATCH --error=error_%j.err                    # Error file
-#SBATCH --account=ucb351_asc3
+#SBATCH --account=ucb351_asc4
 #SBATCH --partition=amilan
 #SBATCH --time=00:30:00
 #SBATCH --nodes=1
@@ -25,7 +25,7 @@ module load openmpi
 module load anaconda
 module load gromacs
 
-conda activate IS_env
+conda activate biosensors
 
 # Set some environment variables 
 DIR=`pwd`
@@ -35,12 +35,8 @@ MDP=$DIR/MDP
 ID=$1
 
 # Energy minimization - binders
-#cd $DIR/binders/seq${ID}_binder
-cd $DIR/binders/pair_${ID}_open_binder
+cd $DIR/binders/bind_${ID}_binder
 mkdir EM
 cd EM
-#gmx grompp -f $MDP/em.mdp -c $DIR/binders/seq${ID}_binder/HMR/dodecahedron/seq${ID}_b_dodecahedron_HMR.gro -p $DIR/binders/seq${ID}_binder/HMR/dodecahedron/seq${ID}_b_dodecahedron_HMR.top -o em.tpr
-#gmx grompp -f $MDP/em.mdp -c $DIR/binders/pair_${ID}_binder/pair${ID}_dodecahedron_HMR.gro -p $DIR/binders/pair_${ID}_binder/pair${ID}_dodecahedron_HMR.top -o em.tpr
-gmx grompp -f $MDP/em.mdp -c $DIR/binders/pair_${ID}_open_binder/pair${ID}_open_dodecahedron_HMR.gro -p $DIR/binders/pair_${ID}_open_binder/pair${ID}_open_dodecahedron_HMR.top -o em.tpr
+gmx grompp -f $MDP/em.mdp -c $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.gro -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -o em.tpr
 gmx mdrun -deffnm em
-

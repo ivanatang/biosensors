@@ -3,7 +3,7 @@
 #SBATCH --job-name=eq_b_PYR1_LCA
 #SBATCH --output=output_%j.out                  # Output file
 #SBATCH --error=error_%j.err                    # Error file
-#SBATCH --account=ucb351_asc3
+#SBATCH --account=ucb351_asc4
 #SBATCH --partition=amilan
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
@@ -35,24 +35,17 @@ ID=$1
 ### Binders - HMR
 # dodecahedron unit cell
 # NVT
-#cd $DIR/binders/seq${ID}_binder # this is for seqID
-#cd $DIR/binders/pair_${ID}_binder # pair_ID
-cd $DIR/binders/pair_${ID}_open_binder
+cd $DIR/binders/bind_${ID}_binder
 mkdir NVT
 cd NVT
-#gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/seq${ID}_binder/EM/em.gro -r $DIR/binders/seq${ID}_binder/EM/em.gro -p $DIR/binders/seq${ID}_binder/seq${ID}_b_dodecahedron_HMR.top -o nvt.tpr
-#gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/pair_${ID}_binder/EM/em.gro -r $DIR/binders/pair_${ID}_binder/EM/em.gro -p $DIR/binders/pair_${ID}_binder/pair${ID}_dodecahedron_HMR.top -o nvt.tpr
-gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/pair_${ID}_open_binder/EM/em.gro -r $DIR/binders/pair_${ID}_open_binder/EM/em.gro -p $DIR/binders/pair_${ID}_open_binder/pair${ID}_open_dodecahedron_HMR.top -o nvt.tpr
+gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/bind_${ID}_binder/EM/em.gro -r $DIR/binders/bind_${ID}_binder/EM/em.gro -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -o nvt.tpr
 gmx mdrun -deffnm nvt
 
 # NPT
-#cd $DIR/binders/seq${ID}_binder
-#cd $DIR/binders/pair_${ID}_binder
-cd $DIR/binders/pair_${ID}_open_binder
+cd $DIR/binders/bind_${ID}_binder
 mkdir NPT
 cd NPT
-#gmx grompp -f $MDP/npt.mdp -c $DIR/binders/seq${ID}_binder/NVT/nvt.gro -t $DIR/binders/seq${ID}_binder/NVT/nvt.cpt -p $DIR/binders/seq${ID}_binder/seq${ID}_b_dodecahedron_HMR.top -r $DIR/binders/seq${ID}_binder/NVT/nvt.gro -o npt.tpr
-#gmx grompp -f $MDP/npt.mdp -c $DIR/binders/pair_${ID}_binder/NVT/nvt.gro -t $DIR/binders/pair_${ID}_binder/NVT/nvt.cpt -p $DIR/binders/pair_${ID}_binder/pair${ID}_dodecahedron_HMR.top -r $DIR/binders/pair_${ID}_binder/NVT/nvt.gro -o npt.tpr
-gmx grompp -f $MDP/npt.mdp -c $DIR/binders/pair_${ID}_open_binder/NVT/nvt.gro -t $DIR/binders/pair_${ID}_open_binder/NVT/nvt.cpt -p $DIR/binders/pair_${ID}_open_binder/pair${ID}_open_dodecahedron_HMR.top -r $DIR/binders/pair_${ID}_open_binder/NVT/nvt.gro -o npt.tpr
+gmx grompp -f $MDP/npt.mdp -c $DIR/binders/bind_${ID}_binder/NVT/nvt.gro -t $DIR/binders/bind_${ID}_binder/NVT/nvt.cpt -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -r $DIR/binders/bind_${ID}_binder/NVT/nvt.gro -o npt.tpr
 gmx mdrun -deffnm npt
+
 
