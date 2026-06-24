@@ -1,0 +1,37 @@
+# GROMACS trajectory and simulation output
+*.xtc
+*.trr
+*.edr
+*.cpt
+*.tpr
+*.gro
+*.top
+*.itp
+*.mdp
+*.xtc
+*.dcd
+
+# Large data outputs
+*.dx
+*.pdb
+*.mol2
+*.sdf
+
+# Results and data directories — edit these to match your actual folder names
+data/
+results/
+trajectories/
+outputs/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VS Code settings (optional — some people commit these)
+.vscode/
