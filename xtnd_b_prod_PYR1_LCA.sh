@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=3092_open
+#SBATCH --job-name=020xt_b
 #SBATCH --output=output_xtnd_prod_md_b_%j.out                  # Output file
 #SBATCH --error=error_xtnd_prod_md_b_%j.err                    # Error file
-#SBATCH --account=ucb351_asc3
+#SBATCH --account=ucb351_asc4
 #SBATCH --partition=amilan
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1
@@ -23,9 +23,9 @@ module load openmpi
 module load anaconda
 module load gromacs
 
-conda activate IS_env
+conda activate biosensors
 
-# Set some environment variables 
+# Set some environment variables
 DIR=`pwd`
 MDP=$DIR/MDP
 
@@ -40,9 +40,7 @@ D3=2
 
 # Production simulation
 # dodecahedron
-#cd $DIR/binders/${ID}_binder
-#cd $DIR/binders/pair_${ID}_binder
-cd $DIR/binders/pair_${ID}_open_binder
+cd $DIR/binders/bind_${ID}_binder
 cd prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${D1}${D2}${D3}dd
 #cd prod_md_0p9_cutoff_3dt_64x1
 #mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -s prod_md_500ns.tpr -cpi prod_md_500ns.cpt -append -ntomp $SLURM_CPUS_PER_TASK #-rdd $RDD -npme $PME
@@ -52,3 +50,4 @@ mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -s prod_md_500ns.tp
 #cd $DIR/binders/${SEQ}_binder/HMR
 #cd prod_md_0p9_cutoff_3dt_64x1
 #mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -s prod_md_500ns.tpr -cpi prod_md_500ns.cpt -append -ntomp $SLURM_CPUS_PER_TASK #-rdd $RDD -npme $PME
+

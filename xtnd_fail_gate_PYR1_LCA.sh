@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=1941_fg_open
+#SBATCH --job-name=0014_fg
 #SBATCH --output=output_xtnd_prod_md_b_%j.out
 #SBATCH --error=error_xtnd_prod_md_b_%j.err
 #SBATCH --account=ucb351_asc3
@@ -25,7 +25,7 @@ module load gromacs
 
 conda activate IS_env
 
-# Set some environment variables 
+# Set some environment variables
 DIR=`pwd`
 MDP=$DIR/MDP
 
@@ -39,7 +39,7 @@ D2=4
 D3=2
 
 # Production simulation - neg fail gate
-#cd $DIR/neg_fail_gate/pair_${ID}_fail_gate
-cd $DIR/neg_fail_gate/pair_${ID}_open_fail_gate
+cd $DIR/neg_fail_gate/pair_${ID}_fail_gate
 cd prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${D1}${D2}${D3}dd
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -s prod_md_500ns.tpr -cpi prod_md_500ns.cpt -append -ntomp $SLURM_CPUS_PER_TASK -npme $PME -dd $D1 $D2 $D3
+
