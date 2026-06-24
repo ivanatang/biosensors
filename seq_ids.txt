@@ -1,0 +1,19 @@
+bind_076	Binder
+bind_083	Binder
+bind_099	Binder
+bind_110	Binder
+pair_3061_binder        Binder
+pair_3078_binder        Binder
+pair_3080_binder        Binder
+nonb_029	False Positive
+nonb_085	False Positive
+pair_0091_nb    False Positive
+pair_0272_nb    False Positive
+pair_0482_nb    False Positive
+pair_0506_nb    False Positive
+pair_0567_nb    False Positive
+pair_0736_nb    False Positive
+pair_0782_nb    False Positive
+pair_0811_nb    False Positive
+pair_0822_nb    False Positive
+pair_1654_nb    False Positive
