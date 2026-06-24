@@ -23,8 +23,8 @@ module load openmpi
 module load anaconda
 module load gromacs
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
 
 # Get sequence value from command line
@@ -45,5 +45,4 @@ mkdir NPT
 cd NPT
 gmx grompp -f $MDP/npt.mdp -c $DIR/neg_fail_gate/pair_${ID}_fail_gate/NVT/nvt.gro -t $DIR/neg_fail_gate/pair_${ID}_fail_gate/NVT/nvt.cpt -p $DIR/neg_fail_gate/pair_${ID}_fail_gate/pair${ID}_dodecahedron_HMR.top -r $DIR/neg_fail_gate/pair_${ID}_fail_gate/NVT/nvt.gro -o npt.tpr
 gmx mdrun -deffnm npt
-
 

@@ -24,26 +24,27 @@ module load anaconda
 module load gromacs
 
 # Set some environment variables 
-DIR=`pwd`
+DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
 
 # Get sequence value from command line
 ID=$1
+PREFIX=$2
 
 ### Nonbinders
 # dodecahedron
 # NVT
-cd $DIR/nonbinders/nonb_${ID}_nb
+cd $DIR/nonbinders/${PREFIX}_${ID}_nb
 mkdir NVT
 cd NVT
-gmx grompp -f $MDP/nvt.mdp -c $DIR/nonbinders/nonb_${ID}_nb/EM/em.gro -r $DIR/nonbinders/nonb_${ID}_nb/EM/em.gro -p $DIR/nonbinders/nonb_${ID}_nb/nonb_${ID}_dodecahedron_HMR.top -o nvt.tpr
+gmx grompp -f $MDP/nvt.mdp -c $DIR/nonbinders/${PREFIX}_${ID}_nb/EM/em.gro -r $DIR/nonbinders/${PREFIX}_${ID}_nb/EM/em.gro -p $DIR/nonbinders/${PREFIX}_${ID}_nb/${PREFIX}_${ID}_dodecahedron_HMR.top -o nvt.tpr
 gmx mdrun -deffnm nvt
 
 # NPT
-cd $DIR/nonbinders/nonb_${ID}_nb
+cd $DIR/nonbinders/${PREFIX}_${ID}_nb
 mkdir NPT
 cd NPT
-gmx grompp -f $MDP/npt.mdp -c $DIR/nonbinders/nonb_${ID}_nb/NVT/nvt.gro -t $DIR/nonbinders/nonb_${ID}_nb/NVT/nvt.cpt -p $DIR/nonbinders/nonb_${ID}_nb/nonb_${ID}_dodecahedron_HMR.top -r $DIR/nonbinders/nonb_${ID}_nb/NVT/nvt.gro -o npt.tpr
+gmx grompp -f $MDP/npt.mdp -c $DIR/nonbinders/${PREFIX}_${ID}_nb/NVT/nvt.gro -t $DIR/nonbinders/${PREFIX}_${ID}_nb/NVT/nvt.cpt -p $DIR/nonbinders/${PREFIX}_${ID}_nb/${PREFIX}_${ID}_dodecahedron_HMR.top -r $DIR/nonbinders/${PREFIX}_${ID}_nb/NVT/nvt.gro -o npt.tpr
 gmx mdrun -deffnm npt
 
 # cube

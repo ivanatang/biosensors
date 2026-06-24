@@ -23,8 +23,8 @@ module load openmpi
 module load anaconda
 module load gromacs
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
 
 # Get sequence value from command line

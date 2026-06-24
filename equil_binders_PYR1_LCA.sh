@@ -25,27 +25,27 @@ module load openmpi
 module load anaconda
 module load gromacs
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
 
 # Get sequence value from command line
 ID=$1
+PREFIX=$2
 
 ### Binders - HMR
 # dodecahedron unit cell
 # NVT
-cd $DIR/binders/bind_${ID}_binder
+cd $DIR/binders/${PREFIX}_${ID}_binder
 mkdir NVT
 cd NVT
-gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/bind_${ID}_binder/EM/em.gro -r $DIR/binders/bind_${ID}_binder/EM/em.gro -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -o nvt.tpr
+gmx grompp -f $MDP/nvt.mdp -c $DIR/binders/${PREFIX}_${ID}_binder/EM/em.gro -r $DIR/binders/${PREFIX}_${ID}_binder/EM/em.gro -p $DIR/binders/${PREFIX}_${ID}_binder/${PREFIX}_${ID}_dodecahedron_HMR.top -o nvt.tpr
 gmx mdrun -deffnm nvt
 
 # NPT
-cd $DIR/binders/bind_${ID}_binder
+cd $DIR/binders/${PREFIX}_${ID}_binder
 mkdir NPT
 cd NPT
-gmx grompp -f $MDP/npt.mdp -c $DIR/binders/bind_${ID}_binder/NVT/nvt.gro -t $DIR/binders/bind_${ID}_binder/NVT/nvt.cpt -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -r $DIR/binders/bind_${ID}_binder/NVT/nvt.gro -o npt.tpr
+gmx grompp -f $MDP/npt.mdp -c $DIR/binders/${PREFIX}_${ID}_binder/NVT/nvt.gro -t $DIR/binders/${PREFIX}_${ID}_binder/NVT/nvt.cpt -p $DIR/binders/${PREFIX}_${ID}_binder/${PREFIX}_${ID}_dodecahedron_HMR.top -r $DIR/binders/${PREFIX}_${ID}_binder/NVT/nvt.gro -o npt.tpr
 gmx mdrun -deffnm npt
-
 
