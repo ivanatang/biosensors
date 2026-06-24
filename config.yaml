@@ -1,0 +1,47 @@
+# ── Paths ──────────────────────────────────────────────────────────────────────
+paths:
+  base: "/scratch/alpine/ivta1597/LCA_boltz_models"   # Alpine: scratch; local: OneDrive mirror
+  runrel: "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
+  type_subdir:
+    binder: "binders"
+    nb: "nonbinders"
+    low_pkt: "neg_low_pkt"
+    fail_gate: "neg_fail_gate"
+
+# ── Trajectory files ───────────────────────────────────────────────────────────
+trajectory:
+  tpr: "prod_md_500ns.tpr"
+  xtc: "prod_md_500ns.xtc"
+  frame_spacing_ps: 37.5
+
+# ── LCA ligand atom names (confirmed via .itp partial charges) ────────────────
+ligand:
+  resname: "LIG"
+  carboxylate_indices: [0, 1]    # residue-local atom indices (not names)
+  hydroxyl_index: 2
+
+# ── Salt bridge analysis parameters ────────────────────────────────────────────
+salt_bridge:
+  cutoff_angstrom: 4.0
+  min_occupancy_pct: 1.0       # drop residues below this occupancy from output
+  output_subdir: "salt_bridge"
+  output_files:
+    occupancy: "saltbridge_occupancy_full.csv"
+    timeseries: "saltbridge_timeseries_top.csv"
+  n_top_for_timeseries: 5      # save full distance time series for top-N residues
+  basic_residues:              # residue/atom selections considered "chargeable"
+    - {resname: "LYS", atoms: ["NZ"]}
+    - {resname: "ARG", atoms: ["NH1", "NH2", "NE"]}
+    - {resname: "HIP", atoms: ["ND1", "NE2"]}   # protonated/charged His only
+
+#  ── Medoid parameters for determining structural medoid ───────────────────────
+medoid:
+  # Full DMS pocket set (PYR1mandi library, Leonard et al. 2024) — 27 positions
+  pocket_resids: "59 60 61 62 79 81 83 87 88 89 91 92 94 108 109 110 115 117 120 122 141 158 159 160 163 164 167"
+  equil_ns: 40            # start of production window
+  stride: 25              # frame stride for the medoid search (controls memory/runtime)
+  output_subdir: "medoid"
+  output_pdb: "medoid.pdb"
+  binder_motif: {81: "D", 83: "L", 92: "M"}
+  aggregate_outdir: "analysis/structural_medoid"   # relative to base; Stage 2 outputs
+
