@@ -25,7 +25,7 @@ module load gromacs
 
 conda activate IS_env
 
-# Set some environment variables 
+# Set some environment variables
 DIR=`pwd`
 MDP=$DIR/MDP
 

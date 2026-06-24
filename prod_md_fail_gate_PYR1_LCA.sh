@@ -25,7 +25,7 @@ module load gromacs
 
 conda activate IS_env
 
-# Set some environment variables 
+# Set some environment variables
 DIR=`pwd`
 MDP=$DIR/MDP
 
@@ -44,4 +44,3 @@ mkdir prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${
 cd prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${D1}${D2}${D3}dd
 gmx_mpi grompp -f $MDP/prod_md_HMR_3dt.mdp -c $DIR/neg_fail_gate/pair_${ID}_fail_gate/NPT/npt.gro -t $DIR/neg_fail_gate/pair_${ID}_fail_gate/NPT/npt.cpt -p $DIR/neg_fail_gate/pair_${ID}_fail_gate/pair${ID}_dodecahedron_HMR.top -o prod_md_500ns.tpr
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -ntomp $SLURM_CPUS_PER_TASK -npme $PME -dd $D1 $D2 $D3
-

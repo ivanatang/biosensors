@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=nb_prod
+#SBATCH --job-name=1654nb_prod
 #SBATCH --output=output_%j.out                  # Output file
 #SBATCH --error=error_%j.err                    # Error file
 #SBATCH --account=ucb351_asc4
@@ -31,6 +31,7 @@ MDP=$DIR/MDP
 
 # Get sequence value from command line
 ID=$1
+PREFIX=$2
 PME=16
 RDD=1.2
 
@@ -39,11 +40,10 @@ D2=4
 D3=2
 
 # Production simulation - nonbinder
-# pair_ file name
-cd $DIR/nonbinders/nonb_${ID}_nb
+cd $DIR/nonbinders/${PREFIX}_${ID}_nb
 mkdir prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${D1}${D2}${D3}dd
 cd prod_md_0p9_cutoff_3dt_${SLURM_NTASKS}x${SLURM_CPUS_PER_TASK}_${PME}PME_${D1}${D2}${D3}dd
-gmx_mpi grompp -f $MDP/prod_md_HMR_3dt.mdp -c $DIR/nonbinders/nonb_${ID}_nb/NPT/npt.gro -t $DIR/nonbinders/nonb_${ID}_nb/NPT/npt.cpt -p $DIR/nonbinders/nonb_${ID}_nb/nonb_${ID}_dodecahedron_HMR.top -o prod_md_500ns.tpr
+gmx_mpi grompp -f $MDP/prod_md_HMR_3dt.mdp -c $DIR/nonbinders/${PREFIX}_${ID}_nb/NPT/npt.gro -t $DIR/nonbinders/${PREFIX}_${ID}_nb/NPT/npt.cpt -p $DIR/nonbinders/${PREFIX}_${ID}_nb/${PREFIX}_${ID}_dodecahedron_HMR.top -o prod_md_500ns.tpr
 mpirun -np $SLURM_NTASKS gmx_mpi mdrun -deffnm prod_md_500ns -ntomp $SLURM_CPUS_PER_TASK -npme $PME -dd $D1 $D2 $D3
 
 # seq_ file name
