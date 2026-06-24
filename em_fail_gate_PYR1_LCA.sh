@@ -25,8 +25,8 @@ module load gromacs
 
 conda activate biosensors
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/scratch/alpine/ivta1597/LCA_boltz_models
 MDP=$DIR/MDP
 
 # Get sequence value from command line

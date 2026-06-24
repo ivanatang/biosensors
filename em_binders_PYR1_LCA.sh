@@ -27,16 +27,17 @@ module load gromacs
 
 conda activate biosensors
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/scratch/alpine/ivta1597/LCA_boltz_models
 MDP=$DIR/MDP
 
 # Get sequence value from command line
 ID=$1
 
 # Energy minimization - binders
-cd $DIR/binders/bind_${ID}_binder
+cd $DIR/binders/pair_${ID}_binder
 mkdir EM
 cd EM
-gmx grompp -f $MDP/em.mdp -c $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.gro -p $DIR/binders/bind_${ID}_binder/bind_${ID}_dodecahedron_HMR.top -o em.tpr
+gmx grompp -f $MDP/em.mdp -c $DIR/binders/pair_${ID}_binder/pair_${ID}_dodecahedron_HMR.gro -p $DIR/binders/pair_${ID}_binder/pair_${ID}_dodecahedron_HMR.top -o em.tpr
 gmx mdrun -deffnm em
+

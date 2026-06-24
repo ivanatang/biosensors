@@ -25,8 +25,8 @@ module load gromacs
 
 conda activate biosensors
 
-# Set some environment variables 
-DIR=`pwd`
+# Set some environment variables
+DIR=/scratch/alpine/ivta1597/LCA_boltz_models
 MDP=$DIR/MDP
 
 # Get sequence value from command line
@@ -38,4 +38,3 @@ mkdir EM
 cd EM
 gmx grompp -f $MDP/em.mdp -c $DIR/neg_low_pkt/pair_${ID}_low_pkt/pair${ID}_dodecahedron_HMR.gro -p $DIR/neg_low_pkt/pair_${ID}_low_pkt/pair${ID}_dodecahedron_HMR.top -o em.tpr
 gmx mdrun -deffnm em
-
