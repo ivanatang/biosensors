@@ -18,12 +18,6 @@
 *.mol2
 *.sdf
 
-# Results and data directories — edit these to match your actual folder names
-data/
-results/
-trajectories/
-outputs/
-
 # Python artifacts
 __pycache__/
 *.pyc
@@ -34,5 +28,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# VS Code settings (optional — some people commit these)
+# VS Code settings
 .vscode/
+
+# Claude code memory
+CLAUDE.md
