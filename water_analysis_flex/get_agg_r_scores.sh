@@ -38,7 +38,7 @@ END_NS=${2:-500}
 
 module purge
 module load anaconda
-conda activate IT_env
+conda activate biosensors
 
 OUT_DIR=/scratch/alpine/ivta1597/LCA_boltz_models/water_analysis_flex
 

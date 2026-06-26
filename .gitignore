@@ -10,6 +10,8 @@
 *.mdp
 *.xtc
 *.dcd
+*.err
+*.out
 
 # Large data outputs
 *.dx

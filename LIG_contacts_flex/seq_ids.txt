@@ -1,0 +1,130 @@
+pair_3059_binder	Binder
+pair_3062_binder	Binder
+pair_3063_binder	Binder
+pair_3066_binder	Binder
+pair_3067_binder	Binder
+pair_3068_binder	Binder
+pair_3069_binder	Binder
+pair_3070_binder	Binder
+pair_3071_binder	Binder
+pair_3072_binder	Binder
+pair_3073_binder	Binder
+pair_3074_binder	Binder
+pair_3075_binder	Binder
+pair_3076_binder	Binder
+pair_3077_binder	Binder
+pair_3078_binder	Binder
+pair_3079_binder	Binder
+pair_3080_binder	Binder
+pair_3085_binder	Binder
+pair_3086_binder	Binder
+pair_3087_binder	Binder
+pair_3088_binder	Binder
+pair_3091_binder	Binder
+pair_3092_binder	Binder
+pair_3098_binder	Binder
+pair_3099_binder	Binder
+pair_3100_binder	Binder
+pair_3101_binder	Binder
+pair_3103_binder	Binder
+pair_3104_binder	Binder
+pair_3108_binder	Binder
+seq10_binder	Binder
+seq14_binder	Binder
+seq16_binder	Binder
+seq17_binder	Binder
+seq39_binder	Binder
+seq42_binder	Binder
+seq1_nb	False Positive
+seq2_nb	False Positive
+seq3_nb	False Positive
+seq4_nb	False Positive
+seq5_nb	False Positive
+seq6_nb	False Positive
+seq7_nb	False Positive
+pair_0008_low_pkt	Low Confidence
+pair_0065_low_pkt	Low Confidence
+pair_0393_low_pkt	Low Confidence
+pair_0482_low_pkt	Low Confidence
+pair_0947_low_pkt	Low Confidence
+pair_0948_low_pkt	Low Confidence
+pair_1331_low_pkt	Low Confidence
+pair_1413_low_pkt	Low Confidence
+pair_1931_low_pkt	Low Confidence
+pair_0014_fail_gate	Fail Geometry
+pair_0263_fail_gate	Fail Geometry
+pair_0540_fail_gate	Fail Geometry
+pair_0715_fail_gate	Fail Geometry
+pair_0997_fail_gate	Fail Geometry
+pair_1094_fail_gate	Fail Geometry
+pair_1682_fail_gate	Fail Geometry
+pair_1739_fail_gate	Fail Geometry
+pair_1745_fail_gate	Fail Geometry
+pair_1941_fail_gate	Fail Geometry
+pair_0052_nb	False Positive
+pair_0091_nb	False Positive
+pair_0246_nb	False Positive
+pair_0269_nb	False Positive
+pair_0272_nb	False Positive
+pair_0276_nb	False Positive
+pair_0288_nb	False Positive
+pair_0351_nb	False Positive
+pair_0502_nb	False Positive
+pair_0506_nb	False Positive
+pair_0647_nb	False Positive
+pair_0664_nb	False Positive
+pair_0776_nb	False Positive
+pair_0777_nb	False Positive
+pair_0782_nb	False Positive
+pair_0822_nb	False Positive
+pair_0827_nb	False Positive
+pair_0865_nb	False Positive
+pair_0867_nb	False Positive
+pair_1824_nb	False Positive
+pair_1860_nb	False Positive
+pair_1939_nb	False Positive
+pair_1965_nb	False Positive
+pair_0341_nb	False Positive
+pair_0450_nb	False Positive
+pair_0549_nb	False Positive
+pair_0567_nb	False Positive
+pair_0584_nb	False Positive
+pair_0602_nb	False Positive
+pair_0684_nb	False Positive
+pair_0736_nb	False Positive
+pair_0748_nb	False Positive
+pair_0765_nb	False Positive
+pair_0811_nb	False Positive
+pair_0868_nb	False Positive
+pair_0876_nb	False Positive
+pair_0878_nb	False Positive
+pair_0883_nb	False Positive
+pair_0891_nb	False Positive
+pair_0908_nb	False Positive
+pair_0932_nb	False Positive
+pair_0940_nb	False Positive
+pair_0974_nb	False Positive
+pair_0977_nb	False Positive
+pair_1011_nb	False Positive
+pair_1023_nb	False Positive
+pair_1102_nb	False Positive
+pair_1313_nb	False Positive
+pair_1397_nb	False Positive
+pair_1654_nb	False Positive
+pair_1656_nb	False Positive
+pair_1658_nb	False Positive
+pair_1671_nb	False Positive
+pair_1679_nb	False Positive
+pair_1709_nb	False Positive
+pair_1710_nb	False Positive
+pair_1737_nb	False Positive
+pair_1758_nb	False Positive
+pair_1784_nb	False Positive
+pair_1785_nb	False Positive
+pair_1792_nb	False Positive
+pair_1835_nb	False Positive
+pair_1847_nb	False Positive
+pair_1914_nb	False Positive
+pair_1922_nb	False Positive
+pair_1938_nb	False Positive
+pair_1961_nb	False Positive
