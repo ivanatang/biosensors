@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=032xt_nb
+#SBATCH --job-name=076xt_b
 #SBATCH --output=out_xt_nb_%j.out                  # Output file
 #SBATCH --error=err_xt_nb_%j.err                    # Error file
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=amilan
-#SBATCH --time=03:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=64
 #SBATCH --cpus-per-task=1

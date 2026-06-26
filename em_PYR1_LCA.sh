@@ -14,6 +14,9 @@
 #SBATCH --mail-user=ivana.tang@colorado.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
+# Usage:
+#   sbatch em_PYR1_LCA.sh <ID> <SEQ_TYPE> <PREFIX>
+
 export TMPDIR=$SLURM_SCRATCH
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
@@ -28,6 +31,7 @@ conda activate biosensors
 # Set some environment variables
 DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
+BASE=/scratch/alpine/ivta1597/LCA_boltz_models
 
 # Get sequence value from command line
 ID=$1
@@ -47,9 +51,16 @@ else
     exit 1
 fi
 
-cd $DIR/${SEQ_TYPE}/${PREFIX}_${ID}_${SUFFIX}
+# Navigate to the sequence's scratch directory for trajectory files
+SEQ_DIR=$BASE/${SEQ_TYPE}/${PREFIX}_${ID}_${SUFFIX}
+if [ ! -d "$SEQ_DIR" ]; then
+    echo "ERROR: Sequence directory not found: $SEQ_DIR" >&2
+    exit 1
+fi
+
+cd "$SEQ_DIR"
 mkdir EM
 cd EM
-gmx grompp -f $MDP/em.mdp -c $DIR/${SEQ_TYPE}/${PREFIX}_${ID}_${SUFFIX}/${PREFIX}_${ID}_dodecahedron_HMR.gro -p $DIR/${SEQ_TYPE}/${PREFIX}_${ID}_${SUFFIX}/${PREFIX}_${ID}_dodecahedron_HMR.top -o em.tpr
+gmx grompp -f $MDP/em.mdp -c $SEQ_DIR/${PREFIX}_${ID}_dodecahedron_HMR.gro -p $SEQ_DIR/${PREFIX}_${ID}_dodecahedron_HMR.top -o em.tpr
 gmx mdrun -deffnm em
 
