@@ -1,0 +1,16 @@
+Boltz2-predicted structures with flipped ligand orientation in the binding pocket.
+
+Flipped binders:
+Seq6
+pair_3061
+pair_3064
+bind_033
+bind_109
+
+Flipped neg low pkt:
+pair_1708
+
+Flipped nonbinders:
+nonb_012
+nonb_020
+nonb_055
