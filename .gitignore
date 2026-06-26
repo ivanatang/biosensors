@@ -15,7 +15,6 @@
 
 # Large data outputs
 *.dx
-*.pdb
 *.mol2
 *.sdf
 
