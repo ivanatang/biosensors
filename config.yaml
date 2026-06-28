@@ -45,3 +45,23 @@ medoid:
   binder_motif: {81: "D", 83: "L", 92: "M"}
   aggregate_outdir: "analysis/structural_medoid"   # relative to base; Stage 2 outputs
 
+# ── Post-processing pipeline ────────────────────────────────────────────────────
+postproc:
+  gmx: "/projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx"
+  hinge_resids: "84 85 86 87 88 89 90"   # gate loop CA selection in make_ndx
+  equil_start_ps: 40000                  # -b flag: discard first 40 ns
+  equil_end_ps:   500000                 # -e flag: 500 ns end
+  outputs:
+    index:       "index.ndx"
+    pbc_xtc:     "prod_md_500ns_pbc.xtc"
+    fit_xtc:     "prod_md_500ns_fit.xtc"
+    rmsd_ca:     "rmsd_CA.xvg"
+    trimmed_xtc: "prod_md_40_500ns.xtc"
+
+# ── seq_ids.txt label → filesystem subdirectory mapping ────────────────────────
+seq_labels:
+  Binder:          "binders"
+  False Positive:  "nonbinders"
+  Low Confidence:  "neg_low_pkt"
+  Fail Geometry:   "neg_fail_gate"
+
