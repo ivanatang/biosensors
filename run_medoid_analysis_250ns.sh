@@ -20,7 +20,7 @@
 #
 # Arguments:
 #   workdir      - path to prod_md_0p9_cutoff_3dt_64x1_16PME_642dd directory
-#   dump_time    - medoid frame time in ps from find_medoid_250ns.py
+#   dump_time    - medoid frame time in ps from get_medoid.py
 #                  (e.g. 187612.500)
 #   end_time_ps  - end of analysis window in ps (default: 250000)
 #

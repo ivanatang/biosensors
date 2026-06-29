@@ -52,7 +52,7 @@ XTC="nonbinders/seq${ID}_nb/HMR/dodecahedron/prod_md_0p9_cutoff_3dt_64x1_16PME_6
 #TPR="neg_fail_gate/pair_${ID}_fail_gate/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/prod_md_500ns.tpr"
 #XTC="neg_fail_gate/pair_${ID}_fail_gate/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/prod_md_40_500ns.xtc"
 
-SCRIPT="find_medoid_250ns.py"
+SCRIPT="get_medoid.py"
 
 # ----------------------------
 # Medoid parameters
