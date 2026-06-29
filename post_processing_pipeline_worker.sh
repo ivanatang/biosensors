@@ -21,19 +21,17 @@
 #
 # Phase 1 (Steps  1-5) always processes the full trajectory for QC/preprocessing.
 # Phases 2-3 honour END_TIME_PS: the medoid is found within that window and all
-# RMSD/RMSF/distance outputs are computed up to that time point.
-# If you re-run with a different END_TIME_PS, delete the existing Phase 3 outputs
-# first so the skip-if-exists checks do not reuse stale files.
+# RMSD/RMSF/distance outputs are written to WORKDIR/<END_NS>ns/.
+# Re-running with a different END_TIME_PS produces a separate output directory
+# so results from different windows never overwrite each other.
 #
-# Runs the full post-processing pipeline for one sequence in three phases:
 #   Phase 1 (Steps  1-5):  PBC correction, fitting, C-alpha RMSD, trajectory trim
 #   Phase 2 (Step   6):    Find structural medoid of the production ensemble
 #   Phase 3 (Steps 7-20):  Medoid-referenced RMSD, RMSF, gate-latch distance
 #
 # NOTE: Step 19 (RMSF for gate/latch/Lb7a5/recoil loop subgroups) requires
 #       groups 30-33 to be present in index.ndx. Run run_gate_latch.sh first
-#       to define these groups; the step is skipped with a warning if they
-#       are absent.
+#       to define these groups; the step is skipped with a warning if absent.
 
 set -euo pipefail
 
@@ -69,36 +67,55 @@ pp  = d['postproc']
 tr  = d['trajectory']
 med = d['medoid']
 o   = pp['outputs']
-print('GMX='        + repr(pp['gmx']))
-print('TPR='        + repr(tr['tpr']))
-print('XTC='        + repr(tr['xtc']))
-print('HINGE='      + repr(pp['hinge_resids']))
-print('GATE_RES='   + str(pp['gate_res']))
-print('LATCH_RES='  + str(pp['latch_res']))
-print('B='          + str(pp['equil_start_ps']))
-print('E='          + str(pp['equil_end_ps']))
-print('NDX='        + repr(o['index']))
-print('PBC_XTC='    + repr(o['pbc_xtc']))
-print('FIT_XTC='    + repr(o['fit_xtc']))
-print('RMSD='       + repr(o['rmsd_ca']))
-print('TRIM_XTC='   + repr(o['trimmed_xtc']))
-print('MED_STRIDE=' + str(med['stride']))
-print('MEDOID_TXT=' + repr(med['medoid_txt']))
+print('GMX='            + repr(pp['gmx']))
+print('TPR='            + repr(tr['tpr']))
+print('XTC='            + repr(tr['xtc']))
+print('HINGE='          + repr(pp['hinge_resids']))
+print('GATE_RES='       + str(pp['gate_res']))
+print('LATCH_RES='      + str(pp['latch_res']))
+print('B='              + str(pp['equil_start_ps']))
+print('E='              + str(pp['equil_end_ps']))
+print('NDX='            + repr(o['index']))
+print('PBC_XTC='        + repr(o['pbc_xtc']))
+print('FIT_XTC='        + repr(o['fit_xtc']))
+print('RMSD='           + repr(o['rmsd_ca']))
+print('TRIM_XTC='       + repr(o['trimmed_xtc']))
+print('MED_STRIDE='     + str(med['stride']))
+print('MEDOID_TXT_FNAME=' + repr(med['medoid_txt']))
 PYEOF
 )"
 
+# ── Derive analysis window and output directory ──────────────────────────────────
 END_TIME_PS="${3:-$E}"
 END_NS=$(( END_TIME_PS / 1000 ))
+START_NS=$(( B / 1000 ))
+
+# All Phase 3 outputs live in a subdirectory named after the analysis end time.
+# Phase 1 preprocessing outputs (index, pbc/fit/trim XTC, RMSD) remain in WORKDIR.
+OUT_DIR="${WORKDIR}/${END_NS}ns"
+
+# Phase 3 file paths — all inside OUT_DIR
+MEDOID_TXT="${OUT_DIR}/${MEDOID_TXT_FNAME}"
+MEDOID_PL="${OUT_DIR}/medoid_PL.pdb"
+MEDOID_SYS="${OUT_DIR}/medoid_system.pdb"
+PL_ONLY="${OUT_DIR}/PL_only_40_${END_NS}ns.xtc"
+CA_NDX="${OUT_DIR}/CA_near_LIG_5A.ndx"
+OUT_NDX="${OUT_DIR}/index.ndx"   # copy of NDX with CA_near_LIG_5A patched in
+GL_NDX="${OUT_DIR}/gate_latch.ndx"
 
 cd "$WORKDIR"
+mkdir -p "$OUT_DIR"
+
 echo "════════════════════════════════════════════════════════════════"
 echo "  Post-processing pipeline: $WORKDIR"
-echo "  Analysis window: $(( B / 1000 ))–${END_NS} ns"
-echo "  Start time: $(date)"
+echo "  Analysis window : ${START_NS}–${END_NS} ns"
+echo "  Output directory: $OUT_DIR"
+echo "  Start time      : $(date)"
 echo "════════════════════════════════════════════════════════════════"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # PHASE 1: PBC correction, rotational/translational fitting, and trajectory trim
+# These outputs are shared across all analysis windows and stay in WORKDIR.
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Step 1: Generate atom index groups
@@ -181,7 +198,7 @@ fi
 # ensemble. Used as the reference for all subsequent RMSD and RMSF calculations
 # to avoid introducing crystal-structure or first-frame bias.
 if [[ ! -f "$MEDOID_TXT" ]]; then
-    echo "[6/20] get_medoid.py (stride=${MED_STRIDE}, end=${END_NS} ns) → $MEDOID_TXT"
+    echo "[6/20] get_medoid.py (stride=${MED_STRIDE}, window=${START_NS}–${END_NS} ns) → $MEDOID_TXT"
     python3 "$FIND_MEDOID" \
         -s "$TPR" -f "$TRIM_XTC" \
         --select "protein and name CA" \
@@ -199,42 +216,42 @@ fi
 echo "  Medoid time: ${DUMP_TIME} ps"
 
 # ──────────────────────────────────────────────────────────────────────────────
-# PHASE 3: Medoid-referenced structural analysis
+# PHASE 3: Medoid-referenced structural analysis  →  all outputs in $OUT_DIR
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Step 7: Extract medoid frame — Protein+Ligand
 # Dump only protein and ligand atoms at the medoid time point; used as the
 # reference topology for RMSF calculations to avoid solvent-inflated file size.
-if [[ ! -f "medoid_PL.pdb" ]]; then
-    echo "[7/20] Extract medoid (Protein+LIG, group 23) → medoid_PL.pdb"
+if [[ ! -f "$MEDOID_PL" ]]; then
+    echo "[7/20] Extract medoid (Protein+LIG, group 23) → $MEDOID_PL"
     echo 23 | "$GMX" trjconv \
         -s "$TPR" -f "$FIT_XTC" -n "$NDX" \
-        -o medoid_PL.pdb -dump "$DUMP_TIME"
+        -o "$MEDOID_PL" -dump "$DUMP_TIME"
 else
-    echo "[7/20] SKIP medoid_PL.pdb (exists)"
+    echo "[7/20] SKIP $MEDOID_PL (exists)"
 fi
 
 # Step 8: Extract medoid frame — full system
 # Dump the complete system (including solvent) at the medoid time point;
 # used as the reference topology for distance and RMSD calculations.
-if [[ ! -f "medoid_system.pdb" ]]; then
-    echo "[8/20] Extract medoid (System, group 0) → medoid_system.pdb"
+if [[ ! -f "$MEDOID_SYS" ]]; then
+    echo "[8/20] Extract medoid (System, group 0) → $MEDOID_SYS"
     echo 0 | "$GMX" trjconv \
         -s "$TPR" -f "$FIT_XTC" -n "$NDX" \
-        -o medoid_system.pdb -dump "$DUMP_TIME"
+        -o "$MEDOID_SYS" -dump "$DUMP_TIME"
 else
-    echo "[8/20] SKIP medoid_system.pdb (exists)"
+    echo "[8/20] SKIP $MEDOID_SYS (exists)"
 fi
 
 # Step 9: C-alpha RMSD vs medoid
 # Quantify per-frame structural deviation from the representative medoid
 # structure over the production trajectory; used for conformational clustering
 # and to distinguish open/closed states.
-if [[ ! -f "rmsd_CA_to_medoid.xvg" ]]; then
-    echo "[9/20] rms (CA vs medoid, up to ${END_NS} ns) → rmsd_CA_to_medoid.xvg"
+if [[ ! -f "${OUT_DIR}/rmsd_CA_to_medoid.xvg" ]]; then
+    echo "[9/20] rms (CA vs medoid, ${START_NS}–${END_NS} ns) → ${OUT_DIR}/rmsd_CA_to_medoid.xvg"
     echo "3 3" | "$GMX" rms \
-        -s medoid_system.pdb -f "$TRIM_XTC" -n "$NDX" \
-        -o rmsd_CA_to_medoid.xvg -e "$END_TIME_PS"
+        -s "$MEDOID_SYS" -f "$TRIM_XTC" -n "$NDX" \
+        -o "${OUT_DIR}/rmsd_CA_to_medoid.xvg" -e "$END_TIME_PS"
 else
     echo "[9/20] SKIP rmsd_CA_to_medoid.xvg (exists)"
 fi
@@ -243,41 +260,43 @@ fi
 # Strip solvent and ions from the trimmed trajectory, keeping only protein and
 # ligand atoms to reduce file size and accelerate MDAnalysis-based analyses
 # (R-score, water contacts, etc.).
-if [[ ! -f "PL_only_40_500ns.xtc" ]]; then
-    echo "[10/20] Extract Protein+LIG trajectory (up to ${END_NS} ns) → PL_only_40_500ns.xtc"
+if [[ ! -f "$PL_ONLY" ]]; then
+    echo "[10/20] Extract Protein+LIG trajectory (${START_NS}–${END_NS} ns) → $PL_ONLY"
     echo 23 | "$GMX" trjconv \
-        -s medoid_system.pdb -f "$TRIM_XTC" -n "$NDX" \
-        -o PL_only_40_500ns.xtc -e "$END_TIME_PS"
+        -s "$MEDOID_SYS" -f "$TRIM_XTC" -n "$NDX" \
+        -o "$PL_ONLY" -e "$END_TIME_PS"
 else
-    echo "[10/20] SKIP PL_only_40_500ns.xtc (exists)"
+    echo "[10/20] SKIP $PL_ONLY (exists)"
 fi
 
 # Step 11: Select pocket-proximal C-alpha atoms
 # Identify CA atoms within 5 Å of the ligand heavy atoms in the medoid
 # structure; these pocket-lining residues capture local flexibility around
 # the binding site independent of global backbone motion.
-if [[ ! -f "CA_near_LIG_5A.ndx" ]]; then
-    echo "[11/20] Select CA within 5 Å of LIG_heavy → CA_near_LIG_5A.ndx"
+if [[ ! -f "$CA_NDX" ]]; then
+    echo "[11/20] Select CA within 5 Å of LIG_heavy → $CA_NDX"
     "$GMX" select \
-        -s medoid_system.pdb -n "$NDX" \
+        -s "$MEDOID_SYS" -n "$NDX" \
         -select 'name CA and group "Protein" and within 0.5 of group "LIG_heavy"' \
-        -on CA_near_LIG_5A.ndx
+        -on "$CA_NDX"
 else
-    echo "[11/20] SKIP CA_near_LIG_5A.ndx (exists)"
+    echo "[11/20] SKIP $CA_NDX (exists)"
 fi
 
-# Step 12: Add pocket CA group to main index
-# gmx select writes the group header as the raw selection string (long and
-# unwieldy), so rename it to CA_near_LIG_5A, then patch that block into the
-# main index.ndx in-place so group 25 is available to downstream gmx commands.
-echo "[12/20] Patch CA_near_LIG_5A into $NDX"
-sed -i 's/^\[.*\]/[ CA_near_LIG_5A ]/' CA_near_LIG_5A.ndx
+# Step 12: Add pocket CA group to the output index
+# Copy the shared index.ndx into the output directory so each analysis window
+# has its own independent index. Rename the gmx select header to CA_near_LIG_5A
+# and patch it into the copy so group 25 is available to downstream gmx commands
+# without modifying the original index.ndx in WORKDIR.
+echo "[12/20] Copy index.ndx → $OUT_NDX and patch CA_near_LIG_5A"
+cp "$NDX" "$OUT_NDX"
+sed -i 's/^\[.*\]/[ CA_near_LIG_5A ]/' "$CA_NDX"
 
-export NDX
+export OUT_NDX CA_NDX
 python3 - << 'PYEOF'
 import re, sys, os
-NDX_FILE   = os.environ["NDX"]
-PATCH_FILE = "CA_near_LIG_5A.ndx"
+NDX_FILE   = os.environ["OUT_NDX"]
+PATCH_FILE = os.environ["CA_NDX"]
 TARGET     = "CA_near_LIG_5A"
 
 with open(NDX_FILE) as f:
@@ -311,11 +330,11 @@ PYEOF
 # Track conformational stability of the binding-pocket lining residues
 # relative to the medoid, revealing local flexibility independent of global
 # backbone drift.
-if [[ ! -f "rmsd_CA_near_LIG_5A.xvg" ]]; then
-    echo "[13/20] RMSD CA_near_LIG_5A (group 25, up to ${END_NS} ns) → rmsd_CA_near_LIG_5A.xvg"
+if [[ ! -f "${OUT_DIR}/rmsd_CA_near_LIG_5A.xvg" ]]; then
+    echo "[13/20] RMSD CA_near_LIG_5A (group 25, ${START_NS}–${END_NS} ns) → ${OUT_DIR}/rmsd_CA_near_LIG_5A.xvg"
     echo "3 25" | "$GMX" rms \
-        -s medoid_system.pdb -f "$TRIM_XTC" -n "$NDX" \
-        -o rmsd_CA_near_LIG_5A.xvg -e "$END_TIME_PS"
+        -s "$MEDOID_SYS" -f "$TRIM_XTC" -n "$OUT_NDX" \
+        -o "${OUT_DIR}/rmsd_CA_near_LIG_5A.xvg" -e "$END_TIME_PS"
 else
     echo "[13/20] SKIP rmsd_CA_near_LIG_5A.xvg (exists)"
 fi
@@ -324,11 +343,11 @@ fi
 # Monitor the conformational dynamics of the gate loop (residues 84–90),
 # the primary structural element that controls binding-pocket accessibility
 # and distinguishes open vs. closed states.
-if [[ ! -f "rmsd_CA_hinge.xvg" ]]; then
-    echo "[14/20] RMSD CA_hinge (group 24, up to ${END_NS} ns) → rmsd_CA_hinge.xvg"
+if [[ ! -f "${OUT_DIR}/rmsd_CA_hinge.xvg" ]]; then
+    echo "[14/20] RMSD CA_hinge (group 24, ${START_NS}–${END_NS} ns) → ${OUT_DIR}/rmsd_CA_hinge.xvg"
     echo "3 24" | "$GMX" rms \
-        -s medoid_system.pdb -f "$TRIM_XTC" -n "$NDX" \
-        -o rmsd_CA_hinge.xvg -e "$END_TIME_PS"
+        -s "$MEDOID_SYS" -f "$TRIM_XTC" -n "$OUT_NDX" \
+        -o "${OUT_DIR}/rmsd_CA_hinge.xvg" -e "$END_TIME_PS"
 else
     echo "[14/20] SKIP rmsd_CA_hinge.xvg (exists)"
 fi
@@ -337,11 +356,11 @@ fi
 # Quantify ligand pose stability within the pocket over the production
 # trajectory, discriminating well-anchored bound states from loosely
 # associated or partially dissociated conformations.
-if [[ ! -f "rmsd_lig_heavy.xvg" ]]; then
-    echo "[15/20] RMSD LIG_heavy (group 20, up to ${END_NS} ns) → rmsd_lig_heavy.xvg"
+if [[ ! -f "${OUT_DIR}/rmsd_lig_heavy.xvg" ]]; then
+    echo "[15/20] RMSD LIG_heavy (group 20, ${START_NS}–${END_NS} ns) → ${OUT_DIR}/rmsd_lig_heavy.xvg"
     echo "3 20" | "$GMX" rms \
-        -s medoid_system.pdb -f "$TRIM_XTC" -n "$NDX" \
-        -o rmsd_lig_heavy.xvg -e "$END_TIME_PS"
+        -s "$MEDOID_SYS" -f "$TRIM_XTC" -n "$OUT_NDX" \
+        -o "${OUT_DIR}/rmsd_lig_heavy.xvg" -e "$END_TIME_PS"
 else
     echo "[15/20] SKIP rmsd_lig_heavy.xvg (exists)"
 fi
@@ -354,27 +373,31 @@ GRO="prod_md_500ns.gro"
 if [[ ! -f "$GRO" ]]; then
     echo "ERROR: $GRO not found in $WORKDIR" >&2; exit 1
 fi
-echo "[16/20] Build gate–latch distance index → gate_latch.ndx"
-CA_GATE=$(grep -E "^\s+${GATE_RES}[A-Z]+" "$GRO" | grep -E "\s+CA\s+" | awk '{print $3}')
-CA_LATCH=$(grep -E "^\s+${LATCH_RES}[A-Z]+" "$GRO" | grep -E "\s+CA\s+" | awk '{print $3}')
-if [[ -z "$CA_GATE" || -z "$CA_LATCH" ]]; then
-    echo "ERROR: could not find CA atom indices for gate res ${GATE_RES} or latch res ${LATCH_RES} in $GRO" >&2
-    exit 1
+if [[ ! -f "$GL_NDX" ]]; then
+    echo "[16/20] Build gate–latch distance index → $GL_NDX"
+    CA_GATE=$(grep -E "^\s+${GATE_RES}[A-Z]+" "$GRO" | grep -E "\s+CA\s+" | awk '{print $3}')
+    CA_LATCH=$(grep -E "^\s+${LATCH_RES}[A-Z]+" "$GRO" | grep -E "\s+CA\s+" | awk '{print $3}')
+    if [[ -z "$CA_GATE" || -z "$CA_LATCH" ]]; then
+        echo "ERROR: could not find CA atom indices for gate res ${GATE_RES} or latch res ${LATCH_RES} in $GRO" >&2
+        exit 1
+    fi
+    echo "  Gate  CA (res ${GATE_RES}): atom $CA_GATE"
+    echo "  Latch CA (res ${LATCH_RES}): atom $CA_LATCH"
+    printf '[ gate_latch_dist ]\n%s %s\n' "$CA_GATE" "$CA_LATCH" > "$GL_NDX"
+else
+    echo "[16/20] SKIP $GL_NDX (exists)"
 fi
-echo "  Gate  CA (res ${GATE_RES}): atom $CA_GATE"
-echo "  Latch CA (res ${LATCH_RES}): atom $CA_LATCH"
-printf '[ gate_latch_dist ]\n%s %s\n' "$CA_GATE" "$CA_LATCH" > gate_latch.ndx
 
 # Step 17: Gate–latch distance timeseries
-# Compute the time-resolved CA–CA distance between the gate and latch over
-# the full fitted trajectory; the primary observable for tracking pocket
-# closure dynamics and classifying binder vs. nonbinder behaviour.
-if [[ ! -f "gate_latch_timeseries.xvg" ]]; then
-    echo "[17/20] Gate–latch distance ($(( B / 1000 ))–${END_NS} ns) → gate_latch_timeseries.xvg"
+# Compute the time-resolved CA–CA distance between the gate and latch; the
+# primary observable for tracking pocket closure dynamics and classifying
+# binder vs. nonbinder behaviour.
+if [[ ! -f "${OUT_DIR}/gate_latch_timeseries.xvg" ]]; then
+    echo "[17/20] Gate–latch distance (${START_NS}–${END_NS} ns) → ${OUT_DIR}/gate_latch_timeseries.xvg"
     "$GMX" distance \
-        -f "$FIT_XTC" -n gate_latch.ndx \
+        -f "$FIT_XTC" -n "$GL_NDX" \
         -select '"gate_latch_dist"' \
-        -oall gate_latch_timeseries.xvg \
+        -oall "${OUT_DIR}/gate_latch_timeseries.xvg" \
         -b "$B" -e "$END_TIME_PS"
 else
     echo "[17/20] SKIP gate_latch_timeseries.xvg (exists)"
@@ -384,11 +407,11 @@ fi
 # Compute per-residue root-mean-square fluctuation referenced to the medoid
 # structure, capturing average mobility across the production trajectory for
 # every residue.
-if [[ ! -f "rmsf_PL.xvg" ]]; then
-    echo "[18/20] RMSF Protein+LIG (group 23) → rmsf_PL.xvg"
+if [[ ! -f "${OUT_DIR}/rmsf_PL.xvg" ]]; then
+    echo "[18/20] RMSF Protein+LIG (group 23) → ${OUT_DIR}/rmsf_PL.xvg"
     echo 23 | "$GMX" rmsf \
-        -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n "$NDX" \
-        -o rmsf_PL.xvg -res
+        -s "$MEDOID_PL" -f "$PL_ONLY" -n "$OUT_NDX" \
+        -o "${OUT_DIR}/rmsf_PL.xvg" -res
 else
     echo "[18/20] SKIP rmsf_PL.xvg (exists)"
 fi
@@ -397,26 +420,26 @@ fi
 # Compute per-residue RMSF separately for gate, latch, Lb7a5, and recoil loop
 # subgroups, isolating region-specific flexibility signatures used as ML
 # features. Groups 30–33 must be present in index.ndx (created by
-# run_gate_latch.sh); this step is skipped with a warning if they are absent.
+# run_gate_latch.sh); this step is skipped with a warning if absent.
 echo "[19/20] RMSF loop subgroups (groups 30–33)"
 for GROUP_NUM in 30 31 32 33; do
     case $GROUP_NUM in
-        30) LABEL="ca_gate";   OUTFILE="rmsf_PL_ca_gate.xvg"   ;;
-        31) LABEL="ca_latch";  OUTFILE="rmsf_PL_ca_latch.xvg"  ;;
-        32) LABEL="ca_Lb7a5";  OUTFILE="rmsf_PL_ca_Lb7a5.xvg"  ;;
-        33) LABEL="ca_recoil"; OUTFILE="rmsf_PL_ca_recoil.xvg" ;;
+        30) LABEL="ca_gate";   OUTFILE="${OUT_DIR}/rmsf_PL_ca_gate.xvg"   ;;
+        31) LABEL="ca_latch";  OUTFILE="${OUT_DIR}/rmsf_PL_ca_latch.xvg"  ;;
+        32) LABEL="ca_Lb7a5";  OUTFILE="${OUT_DIR}/rmsf_PL_ca_Lb7a5.xvg"  ;;
+        33) LABEL="ca_recoil"; OUTFILE="${OUT_DIR}/rmsf_PL_ca_recoil.xvg" ;;
     esac
-    if grep -qE "^\[[ \t]*${LABEL}[ \t]*\]" "$NDX" 2>/dev/null; then
+    if grep -qE "^\[[ \t]*${LABEL}[ \t]*\]" "$OUT_NDX" 2>/dev/null; then
         if [[ ! -f "$OUTFILE" ]]; then
             echo "  Group ${GROUP_NUM} (${LABEL}) → ${OUTFILE}"
             echo "$GROUP_NUM" | "$GMX" rmsf \
-                -s medoid_PL.pdb -f PL_only_40_500ns.xtc -n "$NDX" \
+                -s "$MEDOID_PL" -f "$PL_ONLY" -n "$OUT_NDX" \
                 -o "$OUTFILE" -res
         else
-            echo "  SKIP ${OUTFILE} (exists)"
+            echo "  SKIP $OUTFILE (exists)"
         fi
     else
-        echo "  WARNING: group '${LABEL}' (${GROUP_NUM}) not found in $NDX — skipping. Run run_gate_latch.sh first."
+        echo "  WARNING: group '${LABEL}' (${GROUP_NUM}) not found in $OUT_NDX — skipping. Run run_gate_latch.sh first."
     fi
 done
 
@@ -424,21 +447,25 @@ done
 # Clean up the #filename# backup files that GROMACS creates when overwriting
 # outputs, preventing unnecessary scratch storage consumption.
 echo "[20/20] Removing GROMACS backup files (#*#)"
-rm -f \#*\#
+rm -f \#*\# "${OUT_DIR}"/\#*\#
 
 echo ""
 echo "════════════════════════════════════════════════════════════════"
 echo "  Pipeline complete: $(basename "$(dirname "$WORKDIR")")/$(basename "$WORKDIR")"
 echo "  End time: $(date)"
-echo "  Output files:"
-echo "    $NDX  (groups 20–25 + any loop subgroups)"
+echo ""
+echo "  Phase 1 outputs (WORKDIR):"
+echo "    $NDX  (groups 20–24)"
 echo "    $RMSD"
 echo "    $TRIM_XTC"
-echo "    $MEDOID_TXT"
+echo ""
+echo "  Phase 2-3 outputs ($OUT_DIR/):"
+echo "    $MEDOID_TXT_FNAME"
 echo "    medoid_PL.pdb, medoid_system.pdb"
+echo "    index.ndx  (copy of shared index with CA_near_LIG_5A as group 25)"
 echo "    rmsd_CA_to_medoid.xvg, rmsd_CA_near_LIG_5A.xvg"
 echo "    rmsd_CA_hinge.xvg, rmsd_lig_heavy.xvg"
-echo "    PL_only_40_500ns.xtc"
+echo "    $(basename "$PL_ONLY")"
 echo "    gate_latch.ndx, gate_latch_timeseries.xvg"
 echo "    rmsf_PL.xvg  (+ loop subgroup files if groups 30–33 present)"
 echo "════════════════════════════════════════════════════════════════"
