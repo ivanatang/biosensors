@@ -1,0 +1,2 @@
+seq_id,resSeq,resName,ligand_region,n_frames,backbone_n_atoms,sidechain_n_atoms,backbone_occupancy,sidechain_occupancy,backbone_mean_mindist_nm,sidechain_mean_mindist_nm
+pair_0932_nb,116,ARG,core,2667,4,7,0.08473940757405324,0.06411698537682789,0.6009226441383362,0.6453285217285156
