@@ -1,0 +1,195 @@
+seq_id,ligand_region,n_frames,gate_bridge_occupancy,latch_bridge_occupancy,co_occurrence_occupancy,triple_bridge_occupancy,mean_n_triple_bridge_waters,seq_type
+bind_019_binder,core,1227,0.5941,0.4344,0.3236,0.2339,0.2584,Binder
+bind_020_binder,core,1227,0.4034,0.1092,0.0774,0.0497,0.0505,Binder
+bind_022_binder,core,1227,0.6642,0.7612,0.5134,0.2852,0.3073,Binder
+bind_034_binder,core,1227,0.5151,0.7335,0.498,0.4548,0.4564,Binder
+bind_041_binder,core,1227,0.5713,0.3667,0.2445,0.198,0.216,Binder
+bind_043_binder,core,1227,0.5681,0.7164,0.4784,0.4156,0.4597,Binder
+bind_069_binder,core,1227,0.1475,0.1532,0.0978,0.0913,0.0994,Binder
+bind_076_binder,core,1227,0.1353,0.6316,0.0619,0.053,0.0546,Binder
+bind_080_binder,core,1227,0.3007,0.6479,0.2869,0.2543,0.282,Binder
+bind_083_binder,core,1227,0.4108,0.8386,0.3945,0.3529,0.4034,Binder
+bind_088_binder,core,1227,0.1785,0.8394,0.1614,0.088,0.097,Binder
+bind_099_binder,core,1227,0.7221,0.7938,0.7001,0.6919,0.696,Binder
+bind_100_binder,core,1227,0.5355,0.5069,0.2885,0.1434,0.154,Binder
+bind_101_binder,core,1227,0.2062,0.8329,0.1989,0.1557,0.1565,Binder
+bind_102_binder,core,1227,0.5607,0.8011,0.4743,0.3032,0.3374,Binder
+bind_110_binder,core,1227,0.1622,0.4947,0.1035,0.0579,0.0587,Binder
+pair_3061_binder,core,1227,0.4971,0.5697,0.3586,0.2478,0.2559,Binder
+pair_3062_binder,core,1227,0.621,0.7628,0.5648,0.5232,0.5958,Binder
+pair_3063_binder,core,1227,0.6496,0.7963,0.546,0.3439,0.4067,Binder
+pair_3066_binder,core,1227,0.5387,0.5949,0.4344,0.3553,0.4091,Binder
+pair_3067_binder,core,1227,0.7188,0.7009,0.4939,0.2836,0.313,Binder
+pair_3068_binder,core,1227,0.5844,0.8419,0.5224,0.3896,0.4303,Binder
+pair_3069_binder,core,1227,0.2013,0.9397,0.1964,0.1027,0.1076,Binder
+pair_3070_binder,core,1227,0.7319,0.7653,0.6292,0.586,0.6748,Binder
+pair_3071_binder,core,1227,0.5689,0.3374,0.251,0.1785,0.2021,Binder
+pair_3072_binder,core,1227,0.6911,0.9022,0.6447,0.3773,0.4124,Binder
+pair_3073_binder,core,1227,0.5623,0.6487,0.401,0.1614,0.1687,Binder
+pair_3074_binder,core,1227,0.7156,0.7971,0.5941,0.3945,0.4491,Binder
+pair_3075_binder,core,1227,0.6072,0.63,0.5029,0.4629,0.5224,Binder
+pair_3076_binder,core,1227,0.6292,0.7685,0.5037,0.2021,0.22,Binder
+pair_3077_binder,core,1227,0.7205,0.7881,0.6634,0.6349,0.7262,Binder
+pair_3078_binder,core,1227,0.3236,0.2258,0.1589,0.1247,0.1402,Binder
+pair_3079_binder,core,1227,0.5338,0.5566,0.3806,0.2885,0.3007,Binder
+pair_3080_binder,core,1227,0.1801,0.859,0.163,0.1337,0.1459,Binder
+pair_3085_binder,core,1227,0.8525,0.9038,0.8158,0.7832,0.8566,Binder
+pair_3086_binder,core,1227,0.4116,0.0465,0.0383,0.0375,0.0424,Binder
+pair_3087_binder,core,1227,0.6903,0.8916,0.6438,0.502,0.5485,Binder
+pair_3088_binder,core,1227,0.6031,0.3879,0.2967,0.2176,0.2412,Binder
+pair_3091_binder,core,1227,0.7213,0.8851,0.6699,0.5607,0.6601,Binder
+pair_3092_binder,core,1227,0.7131,0.8166,0.6194,0.5705,0.6773,Binder
+pair_3098_binder,core,1227,0.4874,0.6178,0.357,0.194,0.2037,Binder
+pair_3099_binder,core,1227,0.5656,0.6699,0.3969,0.1394,0.1483,Binder
+pair_3100_binder,core,1227,0.7767,0.5403,0.4572,0.2306,0.2592,Binder
+pair_3101_binder,core,1227,0.5591,0.4548,0.3048,0.1361,0.1459,Binder
+pair_3103_binder,core,1227,0.6463,0.2877,0.2274,0.1997,0.2249,Binder
+pair_3104_binder,core,1227,0.6764,0.8134,0.6072,0.4833,0.586,Binder
+pair_3108_binder,core,1227,0.6422,0.784,0.5509,0.3888,0.4377,Binder
+seq10_binder,core,1227,0.4254,0.2926,0.1606,0.0986,0.1051,Binder
+seq14_binder,core,1227,0.2037,0.3146,0.1874,0.1793,0.2111,Binder
+seq16_binder,core,1227,0.6985,0.837,0.6381,0.5436,0.6121,Binder
+seq17_binder,core,1227,0.1687,0.7148,0.1581,0.1459,0.1752,Binder
+seq39_binder,core,1227,0.6227,0.546,0.3904,0.2665,0.2885,Binder
+seq42_binder,core,1227,0.6145,0.9405,0.5852,0.3822,0.4205,Binder
+pair_0014_fail_gate,core,1227,0.6553,0.8264,0.5656,0.2388,0.2836,Fail Geometry
+pair_0263_fail_gate,core,1227,0.3822,0.7221,0.2893,0.0937,0.1035,Fail Geometry
+pair_0540_fail_gate,core,1227,0.4491,0.8231,0.4099,0.3464,0.379,Fail Geometry
+pair_0715_fail_gate,core,1227,0.7905,0.85,0.7099,0.4735,0.5672,Fail Geometry
+pair_0997_fail_gate,core,1227,0.674,0.9267,0.6487,0.4662,0.5729,Fail Geometry
+pair_1094_fail_gate,core,1227,0.7009,0.8484,0.6055,0.3537,0.4124,Fail Geometry
+pair_1682_fail_gate,core,1227,0.7311,0.8778,0.6577,0.3301,0.3733,Fail Geometry
+pair_1739_fail_gate,core,1227,0.0758,0.0033,0.0024,0.0024,0.0024,Fail Geometry
+pair_1745_fail_gate,core,1227,0.6887,0.6773,0.5509,0.5053,0.5224,Fail Geometry
+pair_1941_fail_gate,core,1227,0.4108,0.2005,0.1744,0.1524,0.154,Fail Geometry
+pair_0008_low_pkt,core,1227,0.4075,0.8908,0.3798,0.1353,0.1426,Low Confidence
+pair_0065_low_pkt,core,1227,0.5053,0.7498,0.4287,0.3676,0.4002,Low Confidence
+pair_0393_low_pkt,core,1227,0.7148,0.5844,0.4417,0.2249,0.2494,Low Confidence
+pair_0482_low_pkt,core,1227,0.5607,0.8525,0.52,0.3896,0.4491,Low Confidence
+pair_0947_low_pkt,core,1227,0.6838,0.7343,0.5053,0.4311,0.4703,Low Confidence
+pair_0948_low_pkt,core,1227,0.5558,0.89,0.5192,0.361,0.383,Low Confidence
+pair_1331_low_pkt,core,1227,0.5257,0.7604,0.4499,0.2779,0.3105,Low Confidence
+pair_1413_low_pkt,core,1227,0.5738,0.7832,0.4474,0.1671,0.1858,Low Confidence
+pair_1931_low_pkt,core,1227,0.6773,0.4866,0.3765,0.2282,0.238,Low Confidence
+nonb_006_nb,core,1227,0.7042,0.8769,0.6561,0.5029,0.6178,False Positive
+nonb_008_nb,core,1227,0.705,0.546,0.4417,0.2021,0.2192,False Positive
+nonb_009_nb,core,1227,0.586,0.15,0.1117,0.0823,0.0848,False Positive
+nonb_010_nb,core,1227,0.5029,0.8411,0.4344,0.15,0.1565,False Positive
+nonb_011_nb,core,1227,0.5159,0.5029,0.3187,0.2095,0.2412,False Positive
+nonb_013_nb,core,1227,0.1451,0.057,0.0114,0.0057,0.0057,False Positive
+nonb_014_nb,core,1227,0.1638,0.4588,0.1475,0.1133,0.1182,False Positive
+nonb_017_nb,core,1227,0.2078,0.5534,0.1932,0.1451,0.1524,False Positive
+nonb_018_nb,core,1227,0.445,0.2975,0.1394,0.0619,0.0636,False Positive
+nonb_019_nb,core,1227,0.7506,0.044,0.0342,0.0204,0.0204,False Positive
+nonb_021_nb,core,1227,0.6544,0.2893,0.2298,0.1516,0.1711,False Positive
+nonb_022_nb,core,1227,0.5623,0.3765,0.2714,0.1149,0.1222,False Positive
+nonb_023_nb,core,1227,0.0513,0.0318,0.0253,0.022,0.0236,False Positive
+nonb_024_nb,core,1227,0.577,0.7824,0.5208,0.4654,0.5167,False Positive
+nonb_025_nb,core,1227,0.1451,0.8916,0.1385,0.1051,0.1182,False Positive
+nonb_026_nb,core,1227,0.3496,0.7889,0.3227,0.2681,0.2828,False Positive
+nonb_029_nb,core,1227,0.5786,0.8452,0.5216,0.3553,0.3953,False Positive
+nonb_032_nb,core,1227,0.5297,0.9063,0.5151,0.4637,0.5045,False Positive
+nonb_046_nb,core,1227,0.6072,0.7148,0.5183,0.4662,0.5151,False Positive
+nonb_047_nb,core,1227,0.5689,0.2095,0.1948,0.1874,0.2095,False Positive
+nonb_048_nb,core,1227,0.7457,0.7775,0.6129,0.3961,0.4368,False Positive
+nonb_049_nb,core,1227,0.3415,0.8199,0.3236,0.2608,0.3236,False Positive
+nonb_050_nb,core,1227,0.6813,0.8598,0.5958,0.2127,0.2249,False Positive
+nonb_051_nb,core,1227,0.4116,0.6316,0.3268,0.2412,0.2763,False Positive
+nonb_052_nb,core,1227,0.6691,0.8435,0.6031,0.4034,0.4303,False Positive
+nonb_053_nb,core,1227,0.458,0.8068,0.3586,0.2054,0.2176,False Positive
+nonb_054_nb,core,1227,0.9038,0.7702,0.7017,0.317,0.335,False Positive
+nonb_056_nb,core,1227,0.5086,0.8126,0.4303,0.2526,0.2828,False Positive
+nonb_066_nb,core,1227,0.4841,0.7775,0.4385,0.335,0.3708,False Positive
+nonb_067_nb,core,1227,0.1174,0.9055,0.1125,0.0839,0.0929,False Positive
+nonb_068_nb,core,1227,0.3187,0.7897,0.2714,0.1777,0.1826,False Positive
+nonb_071_nb,core,1227,0.5925,0.546,0.4629,0.4303,0.4776,False Positive
+nonb_072_nb,core,1227,0.3064,0.8297,0.2779,0.1703,0.1915,False Positive
+nonb_073_nb,core,1227,0.3024,0.0513,0.0399,0.035,0.0367,False Positive
+nonb_074_nb,core,1227,0.3488,0.0391,0.0253,0.0073,0.0081,False Positive
+nonb_075_nb,core,1227,0.4442,0.3187,0.2681,0.207,0.2209,False Positive
+nonb_080_nb,core,1227,0.1793,0.8541,0.1654,0.1385,0.1491,False Positive
+nonb_081_nb,core,1227,0.5974,0.9576,0.5778,0.2372,0.2559,False Positive
+nonb_082_nb,core,1227,0.6764,0.7783,0.5811,0.4629,0.6178,False Positive
+nonb_085_nb,core,1227,0.5705,0.8248,0.5053,0.379,0.4165,False Positive
+nonb_086_nb,core,1227,0.0799,0.9046,0.0774,0.0375,0.0391,False Positive
+nonb_087_nb,core,1227,0.6699,0.3089,0.2657,0.2037,0.2461,False Positive
+nonb_088_nb,core,1227,0.5623,0.3513,0.2551,0.1711,0.1809,False Positive
+nonb_089_nb,core,1227,0.4735,0.9201,0.4482,0.2706,0.3431,False Positive
+nonb_115_nb,core,1227,0.2608,0.8745,0.2412,0.1638,0.1777,False Positive
+nonb_116_nb,core,1227,0.4491,0.8957,0.4091,0.172,0.185,False Positive
+nonb_117_nb,core,1227,0.1532,0.1451,0.1076,0.0994,0.1002,False Positive
+pair_0052_nb,core,1227,0.652,0.414,0.3138,0.2184,0.2323,False Positive
+pair_0091_nb,core,1227,0.4287,0.1923,0.1385,0.0905,0.0929,False Positive
+pair_0246_nb,core,1227,0.2787,0.7677,0.2535,0.1809,0.194,False Positive
+pair_0269_nb,core,1227,0.0179,0.846,0.0171,0.009,0.0098,False Positive
+pair_0272_nb,core,1227,0.0448,0.8631,0.0448,0.0326,0.0326,False Positive
+pair_0276_nb,core,1227,0.5672,0.7196,0.4271,0.3374,0.3765,False Positive
+pair_0288_nb,core,1227,0.176,0.3089,0.1198,0.1043,0.1059,False Positive
+pair_0341_nb,core,1227,0.5118,0.8892,0.4727,0.2991,0.339,False Positive
+pair_0351_nb,core,1227,0.6039,0.5925,0.4303,0.22,0.2355,False Positive
+pair_0450_nb,core,1227,0.4385,0.8443,0.3985,0.2918,0.3007,False Positive
+pair_0482_nb,core,1227,0.5151,0.85,0.4393,0.1108,0.1133,False Positive
+pair_0502_nb,core,1227,0.7384,0.5216,0.4735,0.3961,0.5004,False Positive
+pair_0506_nb,core,1227,0.3464,0.8354,0.3219,0.2934,0.2999,False Positive
+pair_0549_nb,core,1227,0.4189,0.6357,0.3708,0.3325,0.3496,False Positive
+pair_0567_nb,core,1227,0.1817,0.6414,0.1385,0.0945,0.097,False Positive
+pair_0584_nb,core,1227,0.6251,0.7995,0.5249,0.2323,0.26,False Positive
+pair_0602_nb,core,1227,0.0872,0.7253,0.0725,0.0359,0.0367,False Positive
+pair_0647_nb,core,1227,0.5941,0.7579,0.5289,0.4173,0.4825,False Positive
+pair_0684_nb,core,1227,0.216,0.2575,0.1866,0.1826,0.1923,False Positive
+pair_0736_nb,core,1227,0.1149,0.2543,0.053,0.044,0.0448,False Positive
+pair_0748_nb,core,1227,0.37,0.238,0.1312,0.1084,0.1125,False Positive
+pair_0765_nb,core,1227,0.357,0.3382,0.2437,0.2298,0.2372,False Positive
+pair_0776_nb,core,1227,0.1516,0.674,0.141,0.0921,0.0937,False Positive
+pair_0777_nb,core,1227,0.0407,0.1019,0.0212,0.0147,0.0147,False Positive
+pair_0782_nb,core,1227,0.3146,0.4955,0.2331,0.1418,0.1622,False Positive
+pair_0811_nb,core,1227,0.198,0.2298,0.132,0.1198,0.1231,False Positive
+pair_0822_nb,core,1227,0.5346,0.8908,0.4931,0.3293,0.3782,False Positive
+pair_0827_nb,core,1227,0.0619,0.5273,0.0611,0.0522,0.053,False Positive
+pair_0865_nb,core,1227,0.6341,0.7392,0.4939,0.357,0.3733,False Positive
+pair_0867_nb,core,1227,0.4254,0.4784,0.3203,0.1923,0.2225,False Positive
+pair_0868_nb,core,1227,0.0016,0.0,0.0,0.0,0.0,False Positive
+pair_0876_nb,core,1227,0.172,0.6903,0.1565,0.1206,0.1255,False Positive
+pair_0878_nb,core,1227,0.7816,0.78,0.6553,0.4866,0.6178,False Positive
+pair_0883_nb,core,1227,0.5672,0.4792,0.2698,0.1711,0.1817,False Positive
+pair_0891_nb,core,1227,0.564,0.7694,0.4776,0.3325,0.3415,False Positive
+pair_0908_nb,core,1227,0.3504,0.5012,0.2836,0.2404,0.2429,False Positive
+pair_0932_nb,core,1227,0.5249,0.8313,0.4898,0.4425,0.5469,False Positive
+pair_0940_nb,core,1227,0.4735,0.8411,0.4156,0.1451,0.1508,False Positive
+pair_0974_nb,core,1227,0.0962,0.802,0.0807,0.0546,0.0587,False Positive
+pair_0977_nb,core,1227,0.2135,0.8704,0.1817,0.0945,0.1002,False Positive
+pair_1011_nb,core,1227,0.6764,0.947,0.6642,0.564,0.7677,False Positive
+pair_1023_nb,core,1227,0.1997,0.9201,0.1866,0.1263,0.1394,False Positive
+pair_1102_nb,core,1227,0.5754,0.828,0.476,0.1915,0.2062,False Positive
+pair_1313_nb,core,1227,0.8435,0.8802,0.8174,0.8077,0.828,False Positive
+pair_1397_nb,core,1227,0.6031,0.7588,0.4491,0.357,0.3863,False Positive
+pair_1654_nb,core,1227,0.6544,0.8541,0.6243,0.5575,0.6553,False Positive
+pair_1656_nb,core,1227,0.291,0.89,0.2836,0.2258,0.2657,False Positive
+pair_1658_nb,core,1227,0.5591,0.7922,0.5289,0.489,0.502,False Positive
+pair_1671_nb,core,1227,0.2469,0.2266,0.1288,0.1035,0.1108,False Positive
+pair_1679_nb,core,1227,0.6577,0.6553,0.4588,0.317,0.3553,False Positive
+pair_1709_nb,core,1227,0.1345,0.7213,0.1149,0.097,0.1011,False Positive
+pair_1710_nb,core,1227,0.2722,0.6985,0.2502,0.2233,0.2339,False Positive
+pair_1737_nb,core,1227,0.828,0.5346,0.4947,0.3627,0.4474,False Positive
+pair_1758_nb,core,1227,0.6072,0.912,0.5811,0.5053,0.5526,False Positive
+pair_1784_nb,core,1227,0.3073,0.8191,0.282,0.1548,0.1622,False Positive
+pair_1785_nb,core,1227,0.5738,0.2812,0.2323,0.2062,0.2404,False Positive
+pair_1792_nb,core,1227,0.6536,0.5518,0.4148,0.2217,0.2372,False Positive
+pair_1824_nb,core,1227,0.2877,0.357,0.2706,0.2616,0.2657,False Positive
+pair_1835_nb,core,1227,0.2421,0.9226,0.2347,0.1337,0.1443,False Positive
+pair_1847_nb,core,1227,0.4572,0.7522,0.3904,0.2991,0.3382,False Positive
+pair_1860_nb,core,1227,0.7482,0.771,0.7074,0.6887,0.8851,False Positive
+pair_1914_nb,core,1227,0.3773,0.7506,0.2828,0.1842,0.194,False Positive
+pair_1922_nb,core,1227,0.4165,0.4222,0.1548,0.0081,0.0081,False Positive
+pair_1938_nb,core,1227,0.2494,0.8492,0.2241,0.1467,0.1606,False Positive
+pair_1939_nb,core,1227,0.2037,0.7286,0.1964,0.1923,0.2005,False Positive
+pair_1961_nb,core,1227,0.1907,0.6781,0.1638,0.1271,0.132,False Positive
+pair_1965_nb,core,1227,0.674,0.6064,0.423,0.1932,0.2037,False Positive
+pair_3059_nb,core,1227,0.5444,0.8802,0.5061,0.3358,0.3716,False Positive
+seq1_nb,core,1227,0.7726,0.6055,0.5355,0.3236,0.3757,False Positive
+seq2_nb,core,1227,0.6862,0.4051,0.2478,0.0538,0.057,False Positive
+seq3_nb,core,1227,0.78,0.6707,0.5566,0.3382,0.3782,False Positive
+seq4_nb,core,1227,0.8394,0.9087,0.7742,0.3056,0.3293,False Positive
+seq5_nb,core,1227,0.445,0.4768,0.3293,0.1532,0.1671,False Positive
+seq6_nb,core,1227,0.1989,0.8998,0.185,0.1174,0.132,False Positive
+seq7_nb,core,1227,0.6626,0.2975,0.2241,0.1589,0.1777,False Positive
