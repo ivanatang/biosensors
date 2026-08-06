@@ -1,0 +1,2 @@
+seq_id,resSeq,resName,ligand_region,n_frames,backbone_n_atoms,sidechain_n_atoms,backbone_occupancy,sidechain_occupancy,backbone_mean_mindist_nm,sidechain_mean_mindist_nm
+pair_3100_binder,81,LEU,core,12267,4,4,8.151952392598027e-05,0.011412733349637239,0.8836147785186768,0.6579725742340088

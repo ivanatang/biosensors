@@ -1,0 +1,2 @@
+seq_id,resSeq,resName,ligand_region,n_frames,backbone_n_atoms,sidechain_n_atoms,backbone_occupancy,sidechain_occupancy,backbone_mean_mindist_nm,sidechain_mean_mindist_nm
+pair_1094_fail_gate,164,VAL,core,12267,4,3,0.00024455857177794083,0.17371810548626396,0.6734455227851868,0.557096540927887

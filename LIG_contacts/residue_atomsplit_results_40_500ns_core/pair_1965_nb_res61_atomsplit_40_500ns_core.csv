@@ -1,0 +1,2 @@
+seq_id,resSeq,resName,ligand_region,n_frames,backbone_n_atoms,sidechain_n_atoms,backbone_occupancy,sidechain_occupancy,backbone_mean_mindist_nm,sidechain_mean_mindist_nm
+pair_1965_nb,61,PHE,core,12267,4,7,0.0022825466699274476,0.9496209342137442,0.5772042870521545,0.3739776611328125

@@ -1,0 +1,2 @@
+seq_id,resSeq,resName,ligand_region,n_frames,backbone_n_atoms,sidechain_n_atoms,backbone_occupancy,sidechain_occupancy,backbone_mean_mindist_nm,sidechain_mean_mindist_nm
+bind_041_binder,81,ASP,core,12267,4,4,0.0,0.0015488709545936252,0.8233365416526794,0.7368783950805664
