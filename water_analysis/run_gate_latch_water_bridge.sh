@@ -36,6 +36,11 @@ module purge
 module load anaconda
 conda activate biosensors
 
+# Run from this script's own directory regardless of the sbatch submission
+# CWD, so gate_latch_water_bridge.py's relative import always resolves
+# (matters when this is sbatch'd directly, not just via the submit script).
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 seq_id=$1
 seq_type=$2
 start_ns=${3:-40}

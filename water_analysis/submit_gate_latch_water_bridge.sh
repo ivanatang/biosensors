@@ -17,6 +17,13 @@
 #   pair_3069_binder    Binder
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Always run from this script's own directory, regardless of caller's CWD --
+# sbatch below uses a relative path to find run_gate_latch_water_bridge.sh,
+# and SLURM jobs inherit sbatch's CWD as their own working directory (so this
+# also fixes gate_latch_water_bridge.py's relative import inside the job).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-40}
 END_NS=${3:-500}
