@@ -17,12 +17,13 @@
 #   pair_3069_binder    Binder
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Always run from this script's own directory, regardless of caller's CWD --
-# sbatch below uses a relative path to find run_gate_latch_water_bridge.sh,
-# and SLURM jobs inherit sbatch's CWD as their own working directory (so this
-# also fixes gate_latch_water_bridge.py's relative import inside the job).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Submit the worker via its absolute path -- SLURM copies the submitted
+# script into a per-job spool directory before executing it, so relying on
+# a relative path here (or on BASH_SOURCE-based self-location inside the
+# worker script itself) resolves to that spool directory, not the real repo
+# path. The worker script now references its own python script by absolute
+# path too, so no directory-locating logic is needed on either side.
+RUN_SCRIPT="/projects/ivta1597/biosensors/water_analysis/run_gate_latch_water_bridge.sh"
 
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
@@ -72,7 +73,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     dir_type=$(get_dir_type "$seq_type")
 
     echo "Submitting: $seq_id  [$seq_type -> $dir_type]  window=${START_NS}-${END_NS}ns  region=${LIGAND_REGION}"
-    sbatch run_gate_latch_water_bridge.sh "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION"
+    sbatch "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION"
     ((submitted++))
 
 done < "$SEQ_LIST"
@@ -83,4 +84,4 @@ echo "  Submitted : $submitted jobs"
 echo "  Skipped   : $skipped sequences (run manually)"
 echo ""
 echo "  To run skipped sequences manually:"
-echo "  sbatch run_gate_latch_water_bridge.sh <seq_id> <dir_type> $START_NS $END_NS $LIGAND_REGION"
+echo "  sbatch $RUN_SCRIPT <seq_id> <dir_type> $START_NS $END_NS $LIGAND_REGION"

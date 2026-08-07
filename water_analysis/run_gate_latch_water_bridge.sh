@@ -30,16 +30,13 @@
 #   sbatch run_gate_latch_water_bridge.sh pair_3059_binder binders 40 500 core
 # ============================================================
 
+PYTHON_SCRIPT="/projects/ivta1597/biosensors/water_analysis/gate_latch_water_bridge.py"
+
 set -euo pipefail
 
 module purge
 module load anaconda
 conda activate biosensors
-
-# Run from this script's own directory regardless of the sbatch submission
-# CWD, so gate_latch_water_bridge.py's relative import always resolves
-# (matters when this is sbatch'd directly, not just via the submit script).
-cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 seq_id=$1
 seq_type=$2
@@ -56,7 +53,7 @@ echo "  region   : ${ligand_region}"
 echo "  start    : $(date)"
 echo "============================================================"
 
-python gate_latch_water_bridge.py \
+python "$PYTHON_SCRIPT" \
     --seq_id "$seq_id" --seq_type "$seq_type" \
     --start-ns "$start_ns" --end-ns "$end_ns" \
     --ligand-region "$ligand_region"
