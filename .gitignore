@@ -28,6 +28,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Scratch trajectory/PDB extractions used only as intermediate render inputs
+pymol_renders/scratch_traj/
+
 # VS Code settings
 .vscode/
 
