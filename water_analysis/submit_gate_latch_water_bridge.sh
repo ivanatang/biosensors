@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
-START_NS=${2:-40}
+START_NS=${2:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
 END_NS=${3:-500}
 LIGAND_REGION=${4:-core}
 

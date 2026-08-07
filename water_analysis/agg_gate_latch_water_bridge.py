@@ -79,7 +79,9 @@ def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--seq_list', default="/projects/ivta1597/biosensors/seq_ids_orig.txt")
-    parser.add_argument('--start-ns', type=float, default=40.0)
+    parser.add_argument('--start-ns', type=float, default=0.0,
+                        help="Default 0, matching gate_latch_water_bridge.py's new default "
+                             "(needed for first_appearance_ns to be meaningful).")
     parser.add_argument('--end-ns',   type=float, default=500.0)
     parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], default='core')
     args = parser.parse_args()
@@ -129,9 +131,16 @@ def main():
     print(f"\nSaved combined table: {combined_out}  (shape={combined.shape})")
 
     # ── Binder vs False Positive stats ────────────────────────────────────
+    # First five: occupancy/strength (as before, now periodic-boundary-
+    # corrected). Last five: dynamics -- prevalence and continuity aren't
+    # the same thing (occupancy can be high while still made of many short
+    # on/off runs), so both groups are tested rather than assuming the
+    # occupancy result speaks for the dynamics too.
     features = ["gate_bridge_occupancy", "latch_bridge_occupancy",
                 "co_occurrence_occupancy", "triple_bridge_occupancy",
-                "mean_n_triple_bridge_waters"]
+                "mean_n_triple_bridge_waters",
+                "first_appearance_ns", "n_runs", "n_distinct_waters",
+                "mean_run_duration_ns", "median_run_duration_ns"]
 
     rows = []
     for feat in features:

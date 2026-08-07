@@ -5,7 +5,7 @@
 #SBATCH --error=error_glbridge_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
@@ -43,7 +43,7 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 seq_id=$1
 seq_type=$2
-start_ns=${3:-40}
+start_ns=${3:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
 end_ns=${4:-500}
 ligand_region=${5:-core}
 
