@@ -105,6 +105,13 @@ parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], defaul
                     help="Ligand atoms to test bridging against (default: core, since "
                          "gate/latch close over the ligand's steroid-ring end, not the "
                          "solvent-facing carboxylate tail -- see analysis/core_vs_tail).")
+parser.add_argument('--dump-frames', action='store_true',
+                    help="Also write a per-frame CSV (time_ns, triple_bridge, "
+                         "bridging_water_resSeq) alongside the usual one-row summary. "
+                         "Needed to cross-reference against gmx hbond output (see "
+                         "gate_latch_hbond_gmx.sh) since gmx hbond can't identify a "
+                         "single specific bridging water the way this script does -- "
+                         "off by default so existing summary-only runs are unaffected.")
 args = parser.parse_args()
 seq_id, seq_type = args.seq_id, args.seq_type
 ligand_region = args.ligand_region
@@ -149,8 +156,17 @@ def main():
     summary_out = os.path.join(
         out_dir, f"{seq_id}_gate_latch_bridge_{TAG}{REGION_TAG}.csv"
     )
-    if os.path.exists(summary_out):
-        print(f"[{seq_id}] Output already exists, skipping: {summary_out}")
+    frames_out = os.path.join(
+        out_dir, f"{seq_id}_gate_latch_bridge_frames_{TAG}{REGION_TAG}.csv"
+    )
+    # Only skip if EVERY output this invocation actually asked for is
+    # already on disk -- most of the 194-sequence cohort already has
+    # summary_out from a prior run, predating --dump-frames. Without this
+    # check, re-running with --dump-frames on those sequences would hit
+    # the old summary-only skip and silently never write frames_out.
+    needed = [summary_out] + ([frames_out] if args.dump_frames else [])
+    if all(os.path.exists(p) for p in needed):
+        print(f"[{seq_id}] All requested outputs already exist, skipping.")
         return
 
     for path in (traj_path, top_path):
@@ -337,6 +353,22 @@ def main():
 
     pd.DataFrame([row]).to_csv(summary_out, index=False)
     print(f"[{seq_id}] Wrote: {summary_out}")
+
+    if args.dump_frames:
+        frames_out = os.path.join(
+            out_dir, f"{seq_id}_gate_latch_bridge_frames_{TAG}{REGION_TAG}.csv"
+        )
+        pd.DataFrame({
+            "frame":                 np.arange(nf),
+            "time_ns":               traj.time / 1000.0,
+            "triple_bridge":         triple_bridge,
+            "bridging_water_resSeq": [
+                ",".join(map(str, fw)) if fw is not None else ""
+                for fw in frame_waters
+            ],
+        }).to_csv(frames_out, index=False)
+        print(f"[{seq_id}] Wrote: {frames_out}")
+
     print(f"[{seq_id}] Done.")
 
 

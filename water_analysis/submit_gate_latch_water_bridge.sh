@@ -11,6 +11,7 @@
 #   bash submit_gate_latch_water_bridge.sh                          # 40-500 ns, core (default)
 #   bash submit_gate_latch_water_bridge.sh seq_ids_orig.txt        # specify seq list
 #   bash submit_gate_latch_water_bridge.sh seq_ids_orig.txt 40 500 whole  # whole ligand
+#   bash submit_gate_latch_water_bridge.sh seq_ids_orig.txt 40 500 core true  # also dump frames
 #
 # seq_ids.txt format (tab-separated):
 #   seq_id              seq_type (display)    optional_custom_path
@@ -29,6 +30,7 @@ SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
 END_NS=${3:-500}
 LIGAND_REGION=${4:-core}
+DUMP_FRAMES=${5:-false}
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
@@ -72,8 +74,8 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
     dir_type=$(get_dir_type "$seq_type")
 
-    echo "Submitting: $seq_id  [$seq_type -> $dir_type]  window=${START_NS}-${END_NS}ns  region=${LIGAND_REGION}"
-    sbatch "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION"
+    echo "Submitting: $seq_id  [$seq_type -> $dir_type]  window=${START_NS}-${END_NS}ns  region=${LIGAND_REGION}  dump_frames=${DUMP_FRAMES}"
+    sbatch "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" "$DUMP_FRAMES"
     ((submitted++))
 
 done < "$SEQ_LIST"
