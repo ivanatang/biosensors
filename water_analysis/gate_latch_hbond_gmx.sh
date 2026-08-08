@@ -140,7 +140,10 @@ BACKBONE_NAMES="(name N or name CA or name C or name O)"
 
 build_group () {
     local out_ndx=$1 group_name=$2 selection=$3
-    local raw_ndx="${out_ndx}.raw"
+    # Must already end in .ndx -- gmx select silently APPENDS .ndx to -on
+    # filenames that don't (e.g. "foo.ndx.raw" -> "foo.ndx.raw.ndx"), which
+    # left the awk step below looking for a file that was never created.
+    local raw_ndx="${out_ndx%.ndx}_raw.ndx"
     "$GMX" select -s "$struct" -on "$raw_ndx" -select "$selection"
     # gmx select names the output group after the selection text itself,
     # which is long/messy -- rewrite the header to a clean, predictable name.
