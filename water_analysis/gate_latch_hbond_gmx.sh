@@ -157,7 +157,19 @@ echo "============================================================"
 
 cd "$outdir"
 
-BACKBONE_NAMES="(name N or name CA or name C or name O)"
+# Must include "H" (the backbone amide hydrogen bonded to N) -- confirmed
+# by direct inspection of this topology's atom names (ALA89 in
+# pair_3085_binder_bridge_frame_v4.pdb: N/H/CA/HA/C/O/CB/HB1-3). Without
+# it, gate_backbone/latch_backbone never contain their own donor hydrogen,
+# so gmx hbond can only see backbone acting as an ACCEPTOR (water donating
+# to the carbonyl O), never as a DONOR (the amide N-H donating to water) --
+# and worse, that same H atom was being caught by "not backbone" instead,
+# so backbone-donated H-bonds were being miscounted as side-chain
+# donations. HA/HB*/etc. don't need to be listed here even though they're
+# also technically "backbone-adjacent": gmx hbond only considers N/O
+# (per -de/-ae) as donor/acceptor-eligible elements, so hydrogens on carbon
+# are never candidates regardless of which group they end up in.
+BACKBONE_NAMES="(name N or name CA or name C or name O or name H)"
 
 build_group () {
     local out_ndx=$1 group_name=$2 selection=$3
