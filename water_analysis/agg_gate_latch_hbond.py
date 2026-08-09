@@ -113,7 +113,28 @@ def main():
             f"submit_gate_latch_hbond.sh, then run_gate_latch_hbond_crossref_all.sh first."
         )
 
-    combined = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+    # A per-sequence crossref CSV can be present but EMPTY (0 bytes) if
+    # parse_gate_latch_hbond.py ran to completion without crashing but
+    # found none of that sequence's 4 gmx hbond .xvg files -- e.g. its
+    # gate_latch_hbond_gmx.sh job failed silently from the aggregator's
+    # point of view (run_gate_latch_hbond_crossref_all.sh only reports a
+    # PYTHON crash as "failed", not a python run that completed but wrote
+    # nothing). Skip and report those instead of letting one bad sequence
+    # kill the whole aggregation.
+    dfs, empty_files = [], []
+    for f in files:
+        try:
+            dfs.append(pd.read_csv(f))
+        except pd.errors.EmptyDataError:
+            empty_files.append(f)
+
+    if empty_files:
+        print(f"\nWARNING: {len(empty_files)} crossref CSV(s) were empty (likely missing "
+              f"gmx hbond .xvg outputs for that sequence) -- skipped, not counted below:")
+        for f in empty_files:
+            print(f"  {f}")
+
+    combined = pd.concat(dfs, ignore_index=True)
 
     seq_type_map = load_seq_type_map(args.seq_list)
     combined["seq_type"] = combined["seq_id"].map(seq_type_map)

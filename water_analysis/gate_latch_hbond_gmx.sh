@@ -94,7 +94,17 @@ module load gcc
 module load openmpi
 
 GMX="/projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx"
-BASE="/scratch/alpine/ivta1597/LCA_boltz_models"
+# Read the raw trajectory from PetaLibrary (persistent), NOT
+# /scratch/alpine (auto-deletes after 90 days per CLAUDE.md) -- same split
+# R_score_calc.py and gate_latch_water_bridge.py already use, for the same
+# reason ("scratch auto-deletes ... older runs' xtc/gro are already
+# gone"). An earlier version of this script read the trajectory from
+# scratch too (copied from compute_Rg_sasa.sh, which only gets away with
+# it because it operates on small already-extracted derived files, not the
+# full raw trajectory) -- that silently worked for whichever sequences
+# hadn't been purged yet and silently failed (missing .xtc) for the rest.
+INPUT_BASE="/pl/active/shirts_archive/IvanaTang/biosensors"
+OUTPUT_BASE="/scratch/alpine/ivta1597/LCA_boltz_models"
 RUNREL="prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 seq_id=$1
@@ -107,10 +117,13 @@ end_ps=$(awk -v n="$end_ns"   'BEGIN{printf "%d", n*1000}')
 R_CUT=0.35   # nm  -- heavy-atom donor...acceptor distance cutoff
 A_CUT=30     # deg -- H-donor...acceptor angle cutoff (deviation from linear)
 
-rundir="${BASE}/${seq_type}/${seq_id}/${RUNREL}"
-xtc="${rundir}/prod_md_500ns.xtc"
-gro="${rundir}/prod_md_500ns.gro"
-tpr="${rundir}/prod_md_500ns.tpr"
+indir="${INPUT_BASE}/${seq_type}/${seq_id}/${RUNREL}"
+outdir="${OUTPUT_BASE}/${seq_type}/${seq_id}/${RUNREL}"
+mkdir -p "$outdir"
+
+xtc="${indir}/prod_md_500ns.xtc"
+gro="${indir}/prod_md_500ns.gro"
+tpr="${indir}/prod_md_500ns.tpr"
 
 # Prefer a .tpr if one exists in the run directory -- it carries explicit
 # bonded topology, so gmx hbond doesn't have to guess H attachment from
@@ -142,7 +155,7 @@ echo "  r_cut    : ${R_CUT} nm   a_cut: ${A_CUT} deg"
 echo "  start    : $(date)"
 echo "============================================================"
 
-cd "$rundir"
+cd "$outdir"
 
 BACKBONE_NAMES="(name N or name CA or name C or name O)"
 
@@ -221,5 +234,5 @@ for grp in gate_backbone gate_sidechain latch_backbone latch_sidechain; do
 done
 
 echo "Finished at: $(date)"
-echo "Outputs written to: $rundir"
+echo "Outputs written to: $outdir"
 echo "  hbond_{gate,latch}_{backbone,sidechain}_${start_ns}_${end_ns}ns_num.xvg"

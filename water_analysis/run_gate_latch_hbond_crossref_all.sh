@@ -72,11 +72,19 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     python "${SCRIPT_DIR}/parse_gate_latch_hbond.py" \
         --seq_id "$seq_id" --seq_type "$dir_type" \
         --start-ns "$START_NS" --end-ns "$END_NS"
+    py_status=$?
 
-    if [[ $? -eq 0 ]]; then
+    # parse_gate_latch_hbond.py can exit 0 while still writing an EMPTY
+    # crossref CSV (e.g. all 4 gmx hbond .xvg files missing for this
+    # sequence -- it warns per-group and just moves on rather than
+    # crashing). A zero exit code alone doesn't mean this sequence's
+    # result is usable, so also check the output file actually has content.
+    crossref_csv="/scratch/alpine/ivta1597/LCA_boltz_models/${dir_type}/${seq_id}/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/${seq_id}_gate_latch_hbond_crossref_$(printf '%d' "$START_NS")_$(printf '%d' "$END_NS")ns.csv"
+
+    if [[ $py_status -eq 0 && -s "$crossref_csv" ]]; then
         ((ok++))
     else
-        echo "  FAILED: $seq_id"
+        echo "  FAILED: $seq_id (exit=${py_status}, output=$([[ -s "$crossref_csv" ]] && echo present || echo missing/empty))"
         ((failed++))
     fi
 
