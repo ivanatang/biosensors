@@ -25,18 +25,28 @@
 #
 # This script answers that with gmx hbond, which uses the actual geometric
 # H-bond definition: heavy-atom donor...acceptor distance < R_CUT (default
-# 0.35 nm) AND H-donor...acceptor angle < A_CUT (default 30 deg from
-# linear) -- see `gmx hbond -h` on this cluster's build to confirm exact
-# flag names/defaults before trusting these blindly; -r/-a matched the
-# classic gmx hbond interface as of GROMACS <=2022 but were NOT verified
-# against gromacs-2025.3 directly (no way to run gmx from this dev
-# environment) -- if `gmx hbond -h` shows different flags, fix the
-# GMX_HBOND_CMD template below before submitting at scale.
+# 0.35 nm, -hbr) AND H-donor...acceptor angle < A_CUT (default 30 deg from
+# linear, -hba).
+#
+# CONFIRMED against gromacs-2025.3's own `gmx hbond -h` (previously guessed
+# and got it wrong twice -- see git history): this build's gmx hbond is the
+# NEW implementation added in GROMACS 2024 ("If you need the old one, use
+# gmx hbond-legacy" per its own help text), rewritten onto the same
+# selection-language engine as `gmx select` (the "Too few selections
+# provided" error from an earlier version of this script traced back to
+# selectioncollection.cpp, the exact source file behind gmx select's own
+# parser). There is NO interactive index-number prompt in this version --
+# -r/-t take selection EXPRESSIONS directly (reference/target selections,
+# NOT a distance cutoff -- -r means something different than it did in the
+# pre-2024 tool most tutorials still describe), and the real geometric
+# cutoff flags are -hbr/-hba, not -r/-a.
 #
 # Backbone/side-chain groups are built with `gmx select`, reusing the
 # `group "Protein" and resid ...` syntax already confirmed to parse on this
 # GROMACS 2025.3 build in compute_Rg_sasa.sh (the bare `protein` selection
 # macro fails to parse on this build; `group "Protein"` works around it).
+# The same `group "name"` syntax is reused directly in gmx hbond's -r/-t
+# expressions below, referencing groups supplied via -n.
 #
 # Groups (residue numbers per CLAUDE.md: gate 84-90, latch 114-118):
 #   gate_backbone   : gate residues,  atoms named N/CA/C/O
@@ -47,12 +57,10 @@
 #   latch_sidechain : latch residues, every other atom
 #   water_sol       : resname SOL
 #
-# For each of the 4 protein groups, gmx hbond is run against water_sol
-# alone (each pair written to its OWN 2-group .ndx, always group 0=water,
-# group 1=protein-part, so the interactive group prompt can always be
-# answered "0\n1" -- avoids depending on GROMACS's own default-group
-# numbering, which varies run to run and has already caused off-by-one
-# problems elsewhere in this repo).
+# For each of the 4 protein groups, gmx hbond -r/-t is run against
+# water_sol alone (each pair's groups supplied via a small 2-group -n file,
+# just to keep each invocation minimal/uncluttered -- no numbering games
+# needed anymore since selections reference groups by NAME).
 #
 # -num output only (time vs. H-bond count meeting the real geometric
 # criteria) -- NOT -hbm/-dist/-ang, to keep this a first-pass yes/no signal
@@ -144,7 +152,12 @@ build_group () {
     # filenames that don't (e.g. "foo.ndx.raw" -> "foo.ndx.raw.ndx"), which
     # left the awk step below looking for a file that was never created.
     local raw_ndx="${out_ndx%.ndx}_raw.ndx"
-    "$GMX" select -s "$struct" -on "$raw_ndx" -select "$selection"
+    # gmx select writes its normal startup banner/progress text to stderr
+    # unconditionally, success or failure -- redirect it to its own log
+    # (same pattern as the gmx hbond calls below) so it doesn't pollute
+    # SLURM's error_*.err and look like a failure when nothing broke.
+    "$GMX" select -s "$struct" -on "$raw_ndx" -select "$selection" \
+        2> "${group_name}_select.log"
     # gmx select names the output group after the selection text itself,
     # which is long/messy -- rewrite the header to a clean, predictable name.
     awk -v name="$group_name" '
@@ -161,7 +174,15 @@ build_group latch_sidechain.ndx latch_sidechain "group \"Protein\" and resid 114
 build_group water_sol.ndx       water_sol       "resname SOL"
 
 for grp in gate_backbone gate_sidechain latch_backbone latch_sidechain; do
-    n_atoms=$(grep -A1 "\[ ${grp} \]" "${grp}.ndx" | tail -n1 | wc -w)
+    # Sum atom-index tokens across ALL lines belonging to this group, not
+    # just the first one -- GROMACS wraps .ndx atom lists at ~15 per line,
+    # so a plain "-A1" undercounts any group with more than ~15 atoms.
+    n_atoms=$(awk -v name="$grp" '
+        $0 == "[ " name " ]" { found=1; next }
+        /^\[/ { found=0 }
+        found { n += NF }
+        END { print n+0 }
+    ' "${grp}.ndx")
     echo "  ${grp}: ${n_atoms} atoms"
     if [[ "$n_atoms" -eq 0 ]]; then
         echo "  ERROR: ${grp} selection matched 0 atoms -- check resid numbering / selection syntax"
@@ -174,12 +195,24 @@ run_hbond () {
     local pair_ndx="${grp}_pair.ndx"
     cat water_sol.ndx "${grp}.ndx" > "$pair_ndx"
 
+    # GROMACS 2024+ rewrote gmx hbond onto the same selection-language
+    # engine as gmx select (confirmed: the "Too few selections provided"
+    # error traced back to selectioncollection.cpp, the same source file
+    # behind the group "..." syntax already proven to work for gmx select
+    # in compute_Rg_sasa.sh). There is no interactive index-number prompt
+    # in this version -- -r/-t take selection EXPRESSIONS directly, and -n
+    # just supplies the named groups those expressions can reference via
+    # group "name". -hbr/-hba are the real distance/angle cutoff flags
+    # (NOT -r/-a, which don't mean what the classic pre-2024 gmx hbond's
+    # docs/tutorials imply: -r here means "reference selection").
     echo "── gmx hbond: water_sol vs ${grp} ──"
-    printf "0\n1\n" | "$GMX" hbond \
+    "$GMX" hbond \
         -s "$struct" -f "$xtc" -n "$pair_ndx" \
+        -r 'group "water_sol"' -t "group \"${grp}\"" \
         -b "$start_ps" -e "$end_ps" \
-        -r "$R_CUT" -a "$A_CUT" \
+        -hbr "$R_CUT" -hba "$A_CUT" \
         -num "hbond_${grp}_${start_ns}_${end_ns}ns_num.xvg" \
+        -o "hbond_${grp}_${start_ns}_${end_ns}ns_pairs.ndx" \
         2> "hbond_${grp}_${start_ns}_${end_ns}ns.log"
 }
 
