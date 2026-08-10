@@ -25,6 +25,8 @@
 # path too, so no directory-locating logic is needed on either side.
 RUN_SCRIPT="/projects/ivta1597/biosensors/water_analysis/run_gate_latch_water_bridge.sh"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
 END_NS=${3:-500}
@@ -34,6 +36,9 @@ if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
     exit 1
 fi
+
+FAILED_LIST="${SCRIPT_DIR}/submit_gate_latch_water_bridge_failed_${START_NS}_${END_NS}ns.txt"
+> "$FAILED_LIST"
 
 REGION_SUFFIX=""
 [ "$LIGAND_REGION" != "whole" ] && REGION_SUFFIX="_${LIGAND_REGION}"
@@ -59,6 +64,7 @@ get_dir_type() {
 
 submitted=0
 skipped=0
+failed=0
 
 while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
@@ -72,8 +78,18 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
     dir_type=$(get_dir_type "$seq_type")
 
-    echo "Submitting: $seq_id  [$seq_type -> $dir_type]  window=${START_NS}-${END_NS}ns  region=${LIGAND_REGION}"
-    sbatch "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION"
+    sbatch_out=$(sbatch --job-name="glwb_${seq_id}" \
+                        --output="${SCRIPT_DIR}/output_glwb_${seq_id}_%j.out" \
+                        --error="${SCRIPT_DIR}/error_glwb_${seq_id}_%j.err" \
+                        "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" 2>&1)
+    if [[ $? -ne 0 ]]; then
+        echo "SUBMIT FAILED: $seq_id  -- $sbatch_out"
+        printf '%s\t%s\n' "$seq_id" "$seq_type" >> "$FAILED_LIST"
+        ((failed++))
+        continue
+    fi
+
+    echo "Submitting: $seq_id  [$seq_type -> $dir_type]  window=${START_NS}-${END_NS}ns  region=${LIGAND_REGION}  ($sbatch_out)"
     ((submitted++))
 
 done < "$SEQ_LIST"
@@ -82,6 +98,12 @@ echo ""
 echo "=== Done ==="
 echo "  Submitted : $submitted jobs"
 echo "  Skipped   : $skipped sequences (run manually)"
+echo "  Failed    : $failed sequences (sbatch itself rejected the submission)"
 echo ""
 echo "  To run skipped sequences manually:"
 echo "  sbatch $RUN_SCRIPT <seq_id> <dir_type> $START_NS $END_NS $LIGAND_REGION"
+if (( failed > 0 )); then
+    echo ""
+    echo "  $failed failed submissions written to: $FAILED_LIST"
+    echo "  Re-submit just those: bash ${SCRIPT_DIR}/submit_gate_latch_water_bridge.sh $FAILED_LIST $START_NS $END_NS $LIGAND_REGION"
+fi

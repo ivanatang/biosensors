@@ -26,6 +26,9 @@ START_NS="${2:-40}"
 END_NS="${3:-500}"
 LIGAND_REGION="${4:-whole}"
 
+FAILED_LIST="${BASE}/submit_contact_analysis_failed_${START_NS}_${END_NS}ns_${LIGAND_REGION}.txt"
+> "$FAILED_LIST"
+
 echo "============================================================"
 echo "  Contact type analysis submission"
 echo "  Seq list : $SEQ_IDS_FILE"
@@ -35,14 +38,28 @@ echo "  Output   : contact_type_results_${START_NS}_${END_NS}ns$([ "$LIGAND_REGI
 echo "============================================================"
 
 submitted=0
+failed=0
 
 while read -r SEQ_ID _rest || [[ -n "${SEQ_ID}" ]]; do
     [[ -z "${SEQ_ID}" || "${SEQ_ID}" == \#* ]] && continue
-    echo "Submitting: ${SEQ_ID}  window=${START_NS}–${END_NS}ns  region=${LIGAND_REGION}"
-    sbatch --export=SEQ_ID="${SEQ_ID}",START_NS="${START_NS}",END_NS="${END_NS}",LIGAND_REGION="${LIGAND_REGION}" \
-           "${WORKER}"
+    sbatch_out=$(sbatch --job-name="ct_${SEQ_ID}" \
+                        --output="${BASE}/output_ct_${SEQ_ID}_%j.out" \
+                        --error="${BASE}/error_ct_${SEQ_ID}_%j.err" \
+                        --export=SEQ_ID="${SEQ_ID}",START_NS="${START_NS}",END_NS="${END_NS}",LIGAND_REGION="${LIGAND_REGION}" \
+                        "${WORKER}" 2>&1)
+    if [[ $? -ne 0 ]]; then
+        echo "SUBMIT FAILED: ${SEQ_ID}  -- $sbatch_out"
+        printf '%s\n' "${SEQ_ID}" >> "$FAILED_LIST"
+        ((failed++))
+        continue
+    fi
+    echo "Submitting: ${SEQ_ID}  window=${START_NS}–${END_NS}ns  region=${LIGAND_REGION}  ($sbatch_out)"
     ((submitted++))
 done < "${SEQ_IDS_FILE}"
 
 echo ""
-echo "=== Done: submitted ${submitted} jobs ==="
+echo "=== Done: submitted ${submitted} jobs, ${failed} failed ==="
+if (( failed > 0 )); then
+    echo "  $failed failed submissions written to: $FAILED_LIST"
+    echo "  Re-submit just those: bash ${BASE}/submit_contact_analysis.sh $FAILED_LIST $START_NS $END_NS $LIGAND_REGION"
+fi

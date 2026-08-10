@@ -19,6 +19,8 @@
 #   seq14_binder        Binder                /scratch/.../HMR/dodecahedron   ← skipped
 # ─────────────────────────────────────────────────────────────────────────────
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_ngs_observed.txt}
 REFERENCE_REGION=${2:-ligand}
 START_NS=${3:-40}
@@ -30,6 +32,9 @@ if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
     exit 1
 fi
+
+FAILED_LIST="${SCRIPT_DIR}/submit_hydration_analysis_failed_${START_NS}_${END_NS}ns.txt"
+> "$FAILED_LIST"
 
 echo "============================================================"
 echo "  Hydration-shell analysis submission"
@@ -54,6 +59,7 @@ get_dir_type() {
 
 submitted=0
 skipped=0
+failed=0
 
 while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
@@ -70,8 +76,19 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
     dir_type=$(get_dir_type "$seq_type")
 
-    echo "Submitting: $seq_id  [$seq_type → $dir_type]  region=${REFERENCE_REGION}  window=${START_NS}–${END_NS}ns"
-    sbatch run_hydration_analysis.sh "$seq_id" "$dir_type" "$REFERENCE_REGION" "$START_NS" "$END_NS" "$CUTOFFS" "$STRIDE"
+    sbatch_out=$(sbatch --job-name="hyd_${seq_id}" \
+                        --output="${SCRIPT_DIR}/output_hyd_${seq_id}_%j.out" \
+                        --error="${SCRIPT_DIR}/error_hyd_${seq_id}_%j.err" \
+                        "${SCRIPT_DIR}/run_hydration_analysis.sh" \
+                        "$seq_id" "$dir_type" "$REFERENCE_REGION" "$START_NS" "$END_NS" "$CUTOFFS" "$STRIDE" 2>&1)
+    if [[ $? -ne 0 ]]; then
+        echo "SUBMIT FAILED: $seq_id  -- $sbatch_out"
+        printf '%s\t%s\n' "$seq_id" "$seq_type" >> "$FAILED_LIST"
+        ((failed++))
+        continue
+    fi
+
+    echo "Submitting: $seq_id  [$seq_type → $dir_type]  region=${REFERENCE_REGION}  window=${START_NS}–${END_NS}ns  ($sbatch_out)"
     ((submitted++))
 
 done < "$SEQ_LIST"
@@ -80,6 +97,12 @@ echo ""
 echo "=== Done ==="
 echo "  Submitted : $submitted jobs"
 echo "  Skipped   : $skipped sequences (run manually)"
+echo "  Failed    : $failed sequences (sbatch itself rejected the submission)"
 echo ""
 echo "  To run skipped sequences manually:"
-echo "  sbatch run_hydration_analysis.sh <seq_id> <dir_type> $REFERENCE_REGION $START_NS $END_NS $CUTOFFS $STRIDE"
+echo "  sbatch ${SCRIPT_DIR}/run_hydration_analysis.sh <seq_id> <dir_type> $REFERENCE_REGION $START_NS $END_NS $CUTOFFS $STRIDE"
+if (( failed > 0 )); then
+    echo ""
+    echo "  $failed failed submissions written to: $FAILED_LIST"
+    echo "  Re-submit just those: bash ${SCRIPT_DIR}/submit_hydration_analysis.sh $FAILED_LIST $REFERENCE_REGION $START_NS $END_NS $CUTOFFS $STRIDE"
+fi
