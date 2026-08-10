@@ -17,10 +17,12 @@ Two tables are produced:
 
 TAG defaults to "_500ns" and is set once at the top of the CONFIG block
 (or via --tag), so re-running against a different analysis window only
-requires changing that one value.
+requires changing that one value. --end-ns controls which windowed
+subdirectory (e.g. "250ns") the source .xvg files are read from, and is
+independent of --tag (which only affects output filenames).
 
 Usage:
-    python extract_rmsf_feats.py [seq_ids.txt] [--tag _500ns]
+    python extract_rmsf_feats.py [seq_ids.txt] [--tag _500ns] [--end-ns 500]
 """
 
 import os
@@ -61,15 +63,15 @@ SINGLE_RESIDUES = {
 }
 
 
-def rmsf_run_dir(seq_id, group_label):
+def rmsf_run_dir(seq_id, group_label, end_ns):
     """Directory containing a sequence's rmsf_*.xvg outputs. Newer pipeline
-    runs write outputs under runrel/500ns/; older ones write directly into
-    runrel/. Prefer whichever location actually has rmsf_PL.xvg rather than
-    guessing from seq_id, since the two layouts don't map cleanly onto
+    runs write outputs under runrel/{end_ns}ns/; older ones write directly
+    into runrel/. Prefer whichever location actually has rmsf_PL.xvg rather
+    than guessing from seq_id, since the two layouts don't map cleanly onto
     naming prefix or pair ID (e.g. pair_0482_low_pkt uses the flat layout
     despite matching the "resubmitted with new pipeline" ID list)."""
     run_dir = os.path.join(BASE, TYPE_SUBDIR[group_label], seq_id, RUNREL)
-    nested_dir = os.path.join(run_dir, "500ns")
+    nested_dir = os.path.join(run_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "rmsf_PL.xvg")):
         return nested_dir
     return run_dir
@@ -108,8 +110,13 @@ def main():
     parser.add_argument("seq_list", nargs="?", default="seq_ids.txt")
     parser.add_argument("--tag", default=TAG,
                         help=f"Suffix appended to output CSV filenames (default: {TAG})")
+    parser.add_argument("--end-ns", type=float, default=500.0,
+                        help="End of analysis window in ns; selects which "
+                             "windowed subdirectory to read .xvg files from "
+                             "(default: 500)")
     args = parser.parse_args()
     tag = args.tag
+    end_ns = args.end_ns
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")
@@ -120,7 +127,7 @@ def main():
     # ── 1. Single-residue RMSF (from full per-residue rmsf_PL.xvg) ───────────
     rows_single, missing_single = [], []
     for seq_id, group_label in all_systems:
-        xvg = os.path.join(rmsf_run_dir(seq_id, group_label), "rmsf_PL.xvg")
+        xvg = os.path.join(rmsf_run_dir(seq_id, group_label, end_ns), "rmsf_PL.xvg")
         if not os.path.exists(xvg):
             missing_single.append(seq_id)
             continue
@@ -157,7 +164,7 @@ def main():
     # ── 2. Per-region Ca RMSF summary (mean +/- SD) ──────────────────────────
     rows_ca, missing_ca = [], []
     for seq_id, group_label in all_systems:
-        run_dir = rmsf_run_dir(seq_id, group_label)
+        run_dir = rmsf_run_dir(seq_id, group_label, end_ns)
         row = {"Sequence": seq_id, "Group": group_label}
         any_found = False
         for region_name, region_fname in REGIONS_CA.items():

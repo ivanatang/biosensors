@@ -17,6 +17,8 @@ CONFIG="$1"
 SEQ_ID="$2"
 SEQ_TYPE="$3"
 SCRIPT_DIR="$4"
+START_NS="${5:-40}"
+END_NS="${6:-500}"
 
 export TMPDIR=$SLURM_SCRATCH
 export SLURM_EXPORT_ENV=ALL
@@ -28,4 +30,5 @@ module load anaconda
 conda activate biosensors
 
 python "${SCRIPT_DIR}/salt_bridge_analysis.py" \
-       "$CONFIG" "$SEQ_ID" "$SEQ_TYPE"
+       "$CONFIG" "$SEQ_ID" "$SEQ_TYPE" \
+       --start-ns "$START_NS" --end-ns "$END_NS"

@@ -36,6 +36,12 @@ def parse_args():
                         help='Text file with seq_id, seq_type, and optional '
                              'custom base path, one per line')
     parser.add_argument('--out_csv', required=True)
+    parser.add_argument('--start-ns', type=float, default=40.0,
+                        help='Start of analysis window in ns (default: 40), '
+                             'must match the value used for salt_bridge_analysis.py')
+    parser.add_argument('--end-ns', type=float, default=500.0,
+                        help='End of analysis window in ns (default: 500), '
+                             'must match the value used for salt_bridge_analysis.py')
     return parser.parse_args()
 
 
@@ -54,28 +60,32 @@ def load_seq_list(seq_list_path):
     return entries
 
 
-def get_occupancy_path(seq_id, seq_type, custom_dir, cfg):
+def get_occupancy_path(seq_id, seq_type, custom_dir, cfg, tag):
     sb_cfg = cfg["salt_bridge"]
     occ_file = sb_cfg["output_files"]["occupancy"]
+    # Mirrors salt_bridge_analysis.py: default window (40-500ns) reads from the
+    # original, untagged directory; any other window reads from its own tagged
+    # subdirectory.
+    subdir = sb_cfg["output_subdir"] if tag == "40_500ns" else f"{sb_cfg['output_subdir']}_{tag}"
 
     if custom_dir:
-        return os.path.join(custom_dir, sb_cfg["output_subdir"], occ_file)
+        return os.path.join(custom_dir, subdir, occ_file)
 
     base   = os.path.expandvars(cfg["paths"]["base"])
     runrel = cfg["paths"]["runrel"]
 
     if seq_id.endswith('_binder'):
-        subdir = cfg["paths"]["type_subdir"]["binder"]
+        type_subdir = cfg["paths"]["type_subdir"]["binder"]
     elif seq_id.endswith('_nb'):
-        subdir = cfg["paths"]["type_subdir"]["nb"]
+        type_subdir = cfg["paths"]["type_subdir"]["nb"]
     elif seq_id.endswith('_low_pkt'):
-        subdir = cfg["paths"]["type_subdir"]["low_pkt"]
+        type_subdir = cfg["paths"]["type_subdir"]["low_pkt"]
     elif seq_id.endswith('_fail_gate'):
-        subdir = cfg["paths"]["type_subdir"]["fail_gate"]
+        type_subdir = cfg["paths"]["type_subdir"]["fail_gate"]
     else:
-        subdir = cfg["paths"]["type_subdir"].get(seq_type, "")
+        type_subdir = cfg["paths"]["type_subdir"].get(seq_type, "")
 
-    return os.path.join(base, subdir, seq_id, runrel, sb_cfg["output_subdir"], occ_file)
+    return os.path.join(base, type_subdir, seq_id, runrel, subdir, occ_file)
 
 
 def summarize(occ_df):
@@ -99,12 +109,13 @@ if __name__ == "__main__":
         cfg = yaml.safe_load(f)
 
     seq_list = load_seq_list(args.seq_list)
+    tag = f"{int(args.start_ns)}_{int(args.end_ns)}ns"
 
     rows    = []
     missing = []
 
     for seq_id, seq_type, custom_dir in seq_list:
-        path = get_occupancy_path(seq_id, seq_type, custom_dir, cfg)
+        path = get_occupancy_path(seq_id, seq_type, custom_dir, cfg, tag)
 
         if not os.path.exists(path):
             print(f"  MISSING: {path}")

@@ -77,14 +77,14 @@ def get_type_subdir(seq_id):
     )
 
 
-def run_dir(seq_id):
+def run_dir(seq_id, end_ns):
     """Directory containing a sequence's medoid_PL.pdb / PL_only_*.xtc.
-    Newer pipeline runs write these under runrel/500ns/; older ones write
-    directly into runrel/. Prefer whichever location actually has
+    Newer pipeline runs write these under runrel/{end_ns}ns/; older ones
+    write directly into runrel/. Prefer whichever location actually has
     medoid_PL.pdb rather than guessing from seq_id (see the equivalent
     rmsf_run_dir() in extract_rmsf_feats.py for why guessing is unreliable)."""
     flat_dir   = os.path.join(base, get_type_subdir(seq_id), seq_id, runrel)
-    nested_dir = os.path.join(flat_dir, "500ns")
+    nested_dir = os.path.join(flat_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "medoid_PL.pdb")):
         return nested_dir
     return flat_dir
@@ -153,10 +153,10 @@ def parse_args():
 # ─────────────────────────────────────────────
 # LOAD TRAJECTORY
 # ─────────────────────────────────────────────
-def load_trajectory(seq_id, start_ps, end_ps):
-    seq_dir  = run_dir(seq_id)
+def load_trajectory(seq_id, start_ps, end_ps, end_ns):
+    seq_dir  = run_dir(seq_id, end_ns)
     top_path = os.path.join(seq_dir, "medoid_PL.pdb")
-    xtc_path = os.path.join(seq_dir, "PL_only_40_500ns.xtc")
+    xtc_path = os.path.join(seq_dir, f"PL_only_40_{int(end_ns)}ns.xtc")
 
     for path in (top_path, xtc_path):
         if not os.path.exists(path):
@@ -363,7 +363,7 @@ def main():
         print(f"[{seq_id}] Output already exists, skipping: {summary_out}")
         sys.exit(0)
 
-    traj = load_trajectory(seq_id, start_ps, end_ps)
+    traj = load_trajectory(seq_id, start_ps, end_ps, end_ns)
 
     per_frame_df, residue_df = compute_contact_type_features(traj, seq_id, ligand_region)
 

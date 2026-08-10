@@ -1,20 +1,40 @@
 #!/usr/bin/env python
 """
 salt_bridge_analysis.py
-Usage: python salt_bridge_analysis.py <config.yaml> <seq_id> <seq_type> <custom_path>
+Usage: python salt_bridge_analysis.py <config.yaml> <seq_id> <seq_type>
+           [--start-ns START] [--end-ns END]
 
 Scans all basic (chargeable) residue sidechains for proximity to the LCA
 carboxylate, with no assumption about which position participates.
-Outputs per-residue occupancy across the full trajectory, plus distance
+Outputs per-residue occupancy across the analysis window, plus distance
 time series for the top-N most-contacted residues.
 """
-import sys, os
+import os
+import sys
+import argparse
 import numpy as np
 import pandas as pd
 import MDAnalysis as mda
 import yaml
 
-config_path, seq_id, seq_type = sys.argv[1:4]
+parser = argparse.ArgumentParser()
+parser.add_argument("config_path")
+parser.add_argument("seq_id")
+parser.add_argument("seq_type")
+parser.add_argument("--start-ns", type=float, default=40.0,
+                     help="Start of analysis window in ns (default: 40)")
+parser.add_argument("--end-ns", type=float, default=500.0,
+                     help="End of analysis window in ns (default: 500)")
+args = parser.parse_args()
+
+config_path, seq_id, seq_type = args.config_path, args.seq_id, args.seq_type
+
+# ── Analysis window ────────────────────────────────────────────────
+START_NS = args.start_ns
+END_NS   = args.end_ns
+START_PS = START_NS * 1000
+END_PS   = END_NS   * 1000
+TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 
 with open(config_path) as f:
     cfg = yaml.safe_load(f)
@@ -70,18 +90,29 @@ res_atom_idx = [candidate_sel.select_atoms(f"resid {r.resid} and resname {r.resn
                 for r in residues]
 
 # ── Single pass over trajectory: per-residue min distance to carboxylate ──────
-n_frames = len(u.trajectory)
-dist_matrix = np.full((n_frames, n_res), np.nan)
-
-for ts_i, ts in enumerate(u.trajectory):
+# dist_matrix is sized only to in-window frames — leaving out-of-window rows
+# as NaN would silently dilute occupancy, since `NaN < CUTOFF` evaluates to
+# False (not NaN) and nanmean() would then count those frames as "no contact".
+n_frames_total = len(u.trajectory)
+dist_rows = []
+for ts in u.trajectory:
+    if not (START_PS <= ts.time <= END_PS):
+        continue
     carbox_pos = carbox.positions  # (2, 3)
+    row = np.full(n_res, np.nan)
     for r_i, atoms in enumerate(res_atom_idx):
         if len(atoms) == 0:
             continue
         d = np.linalg.norm(
             carbox_pos[:, None, :] - atoms.positions[None, :, :], axis=-1
         )
-        dist_matrix[ts_i, r_i] = d.min()
+        row[r_i] = d.min()
+    dist_rows.append(row)
+
+dist_matrix = np.array(dist_rows) if dist_rows else np.zeros((0, n_res))
+n_frames = dist_matrix.shape[0]
+print(f"{seq_id}: time window {START_NS:.0f}-{END_NS:.0f} ns "
+      f"({n_frames} of {n_frames_total} frames retained)")
 
 # ── Per-residue occupancy summary ──────────────────────────────────────────────
 rows = []
@@ -108,7 +139,12 @@ if len(occ_df_filtered) > 0:
     print(occ_df_filtered.head(N_TOP).to_string(index=False))
 
 # ── Save occupancy table ───────────────────────────────────────────────────────
-out_dir = os.path.join(rundir, sb_cfg["output_subdir"])
+# Default window (40-500ns) keeps writing to the original, untagged directory
+# so existing 500ns outputs are never disturbed; any other window gets its own
+# tagged subdirectory so it can never collide with the 500ns results.
+DEFAULT_TAG = "40_500ns"
+subdir = sb_cfg["output_subdir"] if TAG == DEFAULT_TAG else f"{sb_cfg['output_subdir']}_{TAG}"
+out_dir = os.path.join(rundir, subdir)
 os.makedirs(out_dir, exist_ok=True)
 occ_df_filtered.to_csv(
     os.path.join(out_dir, sb_cfg["output_files"]["occupancy"]), index=False)

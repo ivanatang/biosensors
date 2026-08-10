@@ -104,12 +104,12 @@ for _lo, _hi in (GATE, LATCH, LB7A5, RECOIL):
     EXCLUDED_RESIDS.update(range(_lo, _hi + 1))
 
 
-def seq_run_dir(seq_id, group_label):
+def seq_run_dir(seq_id, group_label, end_ns):
     """Directory containing a sequence's per-frame trajectory outputs.
     Mirrors extract_rmsf_feats.py's rmsf_run_dir: newer pipeline runs write
-    under runrel/500ns/, older ones write directly into runrel/."""
+    under runrel/{end_ns}ns/, older ones write directly into runrel/."""
     run_dir = os.path.join(BASE, TYPE_SUBDIR[group_label], seq_id, RUNREL)
-    nested_dir = os.path.join(run_dir, "500ns")
+    nested_dir = os.path.join(run_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "medoid_PL.pdb")):
         return nested_dir
     return run_dir
@@ -151,11 +151,11 @@ def _rmsd_to_ref(traj_super, traj_idx, ref, ref_idx):
     return np.sqrt(np.mean(np.sum(diff ** 2, axis=2), axis=1)) * NM_TO_ANG
 
 
-def compute_all_rmsd(seq_id, group_label):
+def compute_all_rmsd(seq_id, group_label, end_ns):
     ref_pdb = find_reference_pdb(seq_id, group_label)
-    run_dir = seq_run_dir(seq_id, group_label)
+    run_dir = seq_run_dir(seq_id, group_label, end_ns)
     top_pdb = os.path.join(run_dir, "medoid_PL.pdb")
-    xtc     = os.path.join(run_dir, "PL_only_40_500ns.xtc")
+    xtc     = os.path.join(run_dir, f"PL_only_40_{int(end_ns)}ns.xtc")
 
     if ref_pdb is None or not os.path.exists(top_pdb) or not os.path.exists(xtc):
         return None
@@ -237,9 +237,14 @@ def main():
     parser.add_argument("--wide-window-ns", type=float, default=100.0,
                         help="Window size (ns) for early/late mean comparison (default: 100.0), "
                              "used for the recommended ML feature.")
+    parser.add_argument("--end-ns", type=float, default=500.0,
+                        help="End of analysis window in ns; selects which "
+                             "windowed subdirectory / PL_only xtc to read "
+                             "(default: 500)")
     args = parser.parse_args()
     tag = args.tag
     wide_window = args.wide_window_ns
+    end_ns = args.end_ns
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")
@@ -252,13 +257,13 @@ def main():
         if group_label not in TYPE_SUBDIR:
             missing.append(seq_id)
             continue
-        result = compute_all_rmsd(seq_id, group_label)
+        result = compute_all_rmsd(seq_id, group_label, end_ns)
         if result is None:
             missing.append(seq_id)
             continue
         time_ns, region_rmsd = result
 
-        run_dir = seq_run_dir(seq_id, group_label)
+        run_dir = seq_run_dir(seq_id, group_label, end_ns)
         for name, xvg_name in REGION_XVG.items():
             write_xvg(os.path.join(run_dir, xvg_name), time_ns, region_rmsd[name],
                       f"{name} Ca RMSD to Boltz reference (A)")
