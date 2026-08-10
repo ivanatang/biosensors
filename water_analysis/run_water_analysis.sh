@@ -40,6 +40,14 @@
 
 set -euo pipefail
 
+# Absolute paths, not relative -- SLURM copies this script into a per-job
+# spool directory before executing it, and the job's CWD is wherever `sbatch`
+# was invoked from (not this script's real location), so relative script
+# paths silently fail with FileNotFoundError depending on the caller's CWD.
+R_SCORE_SCRIPT="/projects/ivta1597/biosensors/water_analysis/R_score_calc.py"
+HBOND_THRESHOLD_SCRIPT="/projects/ivta1597/biosensors/water_analysis/Hbond_threshold.py"
+HBOND_STABILITY_SCRIPT="/projects/ivta1597/biosensors/water_analysis/water_hbond_stability.py"
+
 module purge
 module load anaconda
 conda activate biosensors
@@ -61,7 +69,7 @@ echo "============================================================"
 
 echo ""
 echo "=== Step 1: R_score_calc.py ==="
-python R_score_calc.py --seq_id $seq_id --seq_type $seq_type --start-ns $start_ns --end-ns $end_ns --ligand-region $ligand_region
+python "$R_SCORE_SCRIPT" --seq_id $seq_id --seq_type $seq_type --start-ns $start_ns --end-ns $end_ns --ligand-region $ligand_region
 if [ $? -ne 0 ]; then
     echo "ERROR: R_score_calc.py failed for $seq_id"
     exit 1
@@ -79,7 +87,7 @@ fi
 
 echo ""
 echo "=== Step 2: Hbond_threshold.py ==="
-python Hbond_threshold.py \
+python "$HBOND_THRESHOLD_SCRIPT" \
     --seq_id   $seq_id   \
     --seq_type $seq_type \
     --start-ns $start_ns \
@@ -91,7 +99,7 @@ fi
 
 echo ""
 echo "=== Step 3: water_hbond_stability.py ==="
-python water_hbond_stability.py \
+python "$HBOND_STABILITY_SCRIPT" \
     --seq_id   $seq_id   \
     --seq_type $seq_type \
     --start-ns $start_ns \

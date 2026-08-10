@@ -34,6 +34,12 @@
 
 set -euo pipefail
 
+# Absolute path, not relative -- SLURM copies this script into a per-job
+# spool directory before executing it, and the job's CWD is wherever `sbatch`
+# was invoked from (not this script's real location), so a relative script
+# path silently fails with FileNotFoundError depending on the caller's CWD.
+HYDRATION_CALC_SCRIPT="/projects/ivta1597/biosensors/water_spatial/hydration_calc.py"
+
 module purge
 module load anaconda
 conda activate biosensors
@@ -57,7 +63,7 @@ echo "  stride   : ${stride}"
 echo "  start    : $(date)"
 echo "============================================================"
 
-python hydration_calc.py \
+python "$HYDRATION_CALC_SCRIPT" \
     --seq_id   "$seq_id"   \
     --seq_type "$seq_type" \
     --reference-region "$reference_region" \
