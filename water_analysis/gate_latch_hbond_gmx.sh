@@ -230,15 +230,63 @@ run_hbond () {
     # group "name". -hbr/-hba are the real distance/angle cutoff flags
     # (NOT -r/-a, which don't mean what the classic pre-2024 gmx hbond's
     # docs/tutorials imply: -r here means "reference selection").
+    local num_out="hbond_${grp}_${start_ns}_${end_ns}ns_num.xvg"
+    local log_out="hbond_${grp}_${start_ns}_${end_ns}ns.log"
+
     echo "── gmx hbond: water_sol vs ${grp} ──"
+    # "|| true" is required here: the script runs under set -e, and without
+    # it a failing first attempt (e.g. the .tpr/.xtc atom-count mismatch
+    # seen on pair_3074_binder) kills the WHOLE SCRIPT right here, before
+    # execution ever reaches the retry logic below -- which is exactly
+    # what happened the last two times this looked like the retry "didn't
+    # fire": it never even got the chance to.
     "$GMX" hbond \
         -s "$struct" -f "$xtc" -n "$pair_ndx" \
         -r 'group "water_sol"' -t "group \"${grp}\"" \
         -b "$start_ps" -e "$end_ps" \
         -hbr "$R_CUT" -hba "$A_CUT" \
-        -num "hbond_${grp}_${start_ns}_${end_ns}ns_num.xvg" \
+        -num "$num_out" \
         -o "hbond_${grp}_${start_ns}_${end_ns}ns_pairs.ndx" \
-        2> "hbond_${grp}_${start_ns}_${end_ns}ns.log"
+        2> "$log_out" || true
+
+    # A .tpr can be stale/mismatched relative to the current .xtc (seen on
+    # pair_3074_binder: "Trajectory has less atoms ... than required" --
+    # a genuine data inconsistency between those two files, not a
+    # selection/logic bug, confirmed by grepping the actual gmx error).
+    # -s is otherwise CORRECT and already verified to give proper donor
+    # detection (pair_3085_binder: 6 backbone donors), so don't weaken it
+    # for every sequence over one bad file -- just retry THIS call with
+    # the .gro once, which the rest of this repo's mdtraj-based scripts
+    # already use successfully against the same .xtc for every sequence.
+    #
+    # Check for actual DATA rows, not just "file exists with nonzero
+    # size" -- gmx hbond writes the .xvg header/comment block (a few
+    # hundred bytes) BEFORE it starts reading frames, so a crash mid-read
+    # still leaves a small nonzero-size file with zero real data lines.
+    # -s alone missed this the first time (1211-byte header-only file
+    # passed the "file has content" check, so the retry never fired).
+    # Same #/@-skip convention this repo's own .xvg parsing uses.
+    data_lines=$(grep -v '^[#@]' "$num_out" 2>/dev/null | wc -l)
+    if [[ "$data_lines" -eq 0 && "$struct" == "$tpr" ]]; then
+        echo "  ${grp}: gmx hbond failed with the .tpr, retrying with .gro"
+        "$GMX" hbond \
+            -s "$gro" -f "$xtc" -n "$pair_ndx" \
+            -r 'group "water_sol"' -t "group \"${grp}\"" \
+            -b "$start_ps" -e "$end_ps" \
+            -hbr "$R_CUT" -hba "$A_CUT" \
+            -num "$num_out" \
+            -o "hbond_${grp}_${start_ns}_${end_ns}ns_pairs.ndx" \
+            2>> "$log_out" || true
+        data_lines=$(grep -v '^[#@]' "$num_out" 2>/dev/null | wc -l)
+        if [[ "$data_lines" -gt 0 ]]; then
+            echo "  ${grp}: .gro retry succeeded -- donor detection from a bare"
+            echo "  .gro relies on GROMACS's residue-name-based bonding, not"
+            echo "  explicit .tpr bonds; sanity-check this sequence's donor/"
+            echo "  acceptor counts against a known-good one (e.g. pair_3085_binder)."
+        else
+            echo "  ERROR: ${grp}: .gro retry ALSO produced no data -- see ${log_out}"
+        fi
+    fi
 }
 
 for grp in gate_backbone gate_sidechain latch_backbone latch_sidechain; do
