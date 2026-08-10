@@ -171,7 +171,7 @@ def main():
     print(f"Saved ({len(single_res_df)} rows) -> {csv_path_single}")
 
     # ── 2. Per-region Ca RMSF summary (mean +/- SD) ──────────────────────────
-    rows_ca, missing_ca = [], []
+    rows_ca, missing_ca, empty_ca = [], [], []
     for seq_id, group_label in all_systems:
         run_dir = rmsf_run_dir(seq_id, group_label, end_ns)
         row = {"Sequence": seq_id, "Group": group_label}
@@ -184,6 +184,14 @@ def main():
                 continue
             any_found = True
             _, rmsf_nm = get_data(xvg)
+            if rmsf_nm.size == 0:
+                # File exists (gmx wrote it) but has zero data rows, i.e. the
+                # underlying index group had zero atoms for this sequence --
+                # NaN, not an np.mean()-on-empty-array warning with no context.
+                empty_ca.append((seq_id, region_name, xvg))
+                row[f"{region_name} mean (A)"] = np.nan
+                row[f"{region_name} SD (A)"]   = np.nan
+                continue
             vals = rmsf_nm * NM_TO_ANG
             row[f"{region_name} mean (A)"] = round(float(np.mean(vals)), 5)
             row[f"{region_name} SD (A)"]   = (
@@ -197,6 +205,12 @@ def main():
     if missing_ca:
         print(f"rmsf_PL_ca_*.xvg missing for {len(missing_ca)} sequences: "
               f"{missing_ca[:5]}{'...' if len(missing_ca) > 5 else ''}")
+
+    if empty_ca:
+        print(f"\nrmsf_PL_ca_*.xvg present but EMPTY (zero data rows) for "
+              f"{len(empty_ca)} (sequence, region) pair(s):")
+        for seq_id, region_name, xvg in empty_ca:
+            print(f"  {seq_id:<28} {region_name:<22} {xvg}")
 
     if not rows_ca:
         print("\nNo rmsf_PL_ca_*.xvg files found - nothing to write.")
