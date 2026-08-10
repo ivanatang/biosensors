@@ -3,8 +3,10 @@ extract_rmsf_feats.py
 
 Extracts per-sequence RMSF features for the regions of interest (gate, latch,
 Lb7a5 loop, C-terminal recoil helix, plus individual pocket residues) from
-gmx rmsf outputs, for every sequence in seq_ids.txt. Computed on the full
-500 ns trajectory.
+gmx rmsf outputs, for every sequence in seq_ids.txt. Reads directly from the
+PetaLibrary archive (BASE, matching config.yaml's paths.base and every
+sibling extraction script) and writes into REPO_DIR/analysis/, so this runs
+entirely on Alpine's login node -- no local Mac / OneDrive sync needed.
 
 Two tables are produced:
     rmsf_single_residues_per_seq{TAG}.csv
@@ -32,7 +34,14 @@ import numpy as np
 import pandas as pd
 
 # ── Configurable paths / window tag ───────────────────────────────────────────
-BASE   = "/Users/ivanatang/Library/CloudStorage/OneDrive-UCB-O365/Shirts Lab/LCA_boltz_models"
+# BASE mirrors config.yaml's paths.base and every sibling script
+# (contact_type_analysis.py, extract_gate_latch_rmsd_feats.py,
+# salt_bridge_analysis.py): rmsf_PL*.xvg is written here by
+# post_processing_pipeline_worker.sh, on the durable PetaLibrary archive, not
+# scratch (auto-deletes after 90 days) or OneDrive. Runs on Alpine's login
+# node directly, no local Mac / OneDrive sync step needed.
+BASE     = "/pl/active/shirts_archive/IvanaTang/biosensors"
+REPO_DIR = "/projects/ivta1597/biosensors"
 RUNREL = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 TAG    = "_500ns"   # appended to output CSV filenames only
 NM_TO_ANG = 10.0
@@ -155,7 +164,7 @@ def main():
         {f"{label} RMSF (A)": 5 for label in SINGLE_RESIDUES}
     )
 
-    out_dir = os.path.join(BASE, "analysis")
+    out_dir = os.path.join(REPO_DIR, "analysis")
     os.makedirs(out_dir, exist_ok=True)
     csv_path_single = os.path.join(out_dir, f"rmsf_single_residues_per_seq{tag}.csv")
     single_res_df.to_csv(csv_path_single)
