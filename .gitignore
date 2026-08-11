@@ -31,6 +31,17 @@ Thumbs.db
 # Scratch trajectory/PDB extractions used only as intermediate render inputs
 pymol_renders/scratch_traj/
 
+# Per-frame / per-sequence intermediate analysis output -- simulation-derived
+# data, not a persistent deliverable (the aggregated *_features_all_*.csv
+# files are the thing that belongs in the repo; see CLAUDE.md storage policy)
+LIG_contacts/contact_type_results_*/
+
+# Debugging artifacts from SLURM submission scripts (submit_*.sh's
+# failed-submission tracking, ad hoc resubmit lists) -- session-scoped, not
+# analysis deliverables
+*_failed_*.txt
+water_analysis/resubmit_*.txt
+
 # VS Code settings
 .vscode/
 
