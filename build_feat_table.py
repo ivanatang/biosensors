@@ -134,12 +134,20 @@ def main():
         report(df, ct_type_cols, n_base, "contact_type")
 
         # rmsf: single-residue + Ca region summary
-        rmsf_single = pd.read_csv(f"analysis/rmsf_single_residues_per_seq_{end_i}ns.csv")
-        rmsf_ca     = pd.read_csv(f"analysis/rmsf_ca_per_seq_summary_{end_i}ns.csv")
-        rmsf = rmsf_single[["Sequence"] + [c for c in rmsf_single.columns if c in rmsf_cols]].merge(
-            rmsf_ca[["Sequence"] + [c for c in rmsf_ca.columns if c in rmsf_cols]],
-            on="Sequence", how="outer")
-        df = df.merge(rmsf, left_on="name", right_on="Sequence", how="left").drop(columns=["Sequence"])
+        # NOTE: rename Sequence (seq_id here) -> seq_id before merging -- the
+        # anchor df already has a "Sequence" column (the amino-acid sequence
+        # string, from ANCHOR_COLS), so merging in another "Sequence" column
+        # with a different meaning makes pandas suffix both as
+        # Sequence_x/Sequence_y, silently breaking the drop(columns=["Sequence"])
+        # below.
+        rmsf_single = pd.read_csv(f"analysis/rmsf_single_residues_per_seq_{end_i}ns.csv") \
+            .rename(columns={"Sequence": "seq_id"})
+        rmsf_ca     = pd.read_csv(f"analysis/rmsf_ca_per_seq_summary_{end_i}ns.csv") \
+            .rename(columns={"Sequence": "seq_id"})
+        rmsf = rmsf_single[["seq_id"] + [c for c in rmsf_single.columns if c in rmsf_cols]].merge(
+            rmsf_ca[["seq_id"] + [c for c in rmsf_ca.columns if c in rmsf_cols]],
+            on="seq_id", how="outer")
+        df = df.merge(rmsf, left_on="name", right_on="seq_id", how="left").drop(columns=["seq_id"])
         report(df, rmsf_cols, n_base, "rmsf")
 
     # ── Gate-latch RMSD-to-reference ────────────────────────────────────────
