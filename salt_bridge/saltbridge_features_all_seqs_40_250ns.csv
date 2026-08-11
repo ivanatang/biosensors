@@ -1,0 +1,194 @@
+seq_id,seq_type,max_saltbridge_occupancy_pct,n_saltbridges_gt50pct,mean_top3_occupancy_pct
+seq16_binder,Binder,75.21,2,48.61
+seq14_binder,Binder,92.48,1,30.83
+seq10_binder,Binder,54.12,2,35.66
+seq17_binder,Binder,94.96,1,31.65
+seq39_binder,Binder,50.64,1,32.07
+seq42_binder,Binder,0.0,0,0.0
+pair_3069_binder,Binder,46.05,0,18.23
+pair_3070_binder,Binder,80.77,1,30.45
+pair_3092_binder,Binder,29.23,0,14.99
+pair_3098_binder,Binder,56.12,1,24.05
+pair_3059_nb,False Positive,81.0,1,35.35
+pair_3062_binder,Binder,70.16,1,31.36
+pair_3063_binder,Binder,55.61,1,19.35
+pair_3066_binder,Binder,69.02,1,23.01
+pair_3067_binder,Binder,9.27,0,3.09
+pair_3068_binder,Binder,91.07,1,31.63
+pair_3071_binder,Binder,62.84,1,32.04
+pair_3072_binder,Binder,12.98,0,5.01
+pair_3073_binder,Binder,93.61,1,31.2
+pair_3075_binder,Binder,54.7,1,28.82
+pair_3076_binder,Binder,58.0,1,22.33
+pair_3077_binder,Binder,62.66,1,29.42
+pair_3078_binder,Binder,92.73,1,30.91
+pair_3079_binder,Binder,97.96,1,33.77
+pair_3080_binder,Binder,93.0,1,31.0
+pair_3085_binder,Binder,73.46,1,30.81
+pair_3086_binder,Binder,88.48,1,30.73
+pair_3087_binder,Binder,67.86,1,29.95
+pair_3088_binder,Binder,50.23,1,30.05
+pair_3091_binder,Binder,73.14,1,25.29
+pair_3099_binder,Binder,96.12,1,32.04
+pair_3100_binder,Binder,89.29,1,29.76
+pair_3101_binder,Binder,23.27,0,10.89
+pair_3103_binder,Binder,82.77,1,34.39
+pair_3104_binder,Binder,79.61,1,34.83
+pair_3108_binder,Binder,53.82,1,31.78
+seq1_nb,False Positive,76.07,1,25.36
+seq2_nb,False Positive,0.0,0,0.0
+seq3_nb,False Positive,33.05,0,11.02
+seq4_nb,False Positive,76.29,1,31.37
+seq5_nb,False Positive,69.27,1,24.48
+seq6_nb,False Positive,0.0,0,0.0
+seq7_nb,False Positive,95.57,1,31.86
+pair_0052_nb,False Positive,91.29,1,30.43
+pair_0091_nb,False Positive,3.91,0,1.3
+pair_0246_nb,False Positive,58.14,1,19.38
+pair_0269_nb,False Positive,62.62,1,24.63
+pair_0272_nb,False Positive,93.29,1,31.1
+pair_0276_nb,False Positive,91.05,1,30.35
+pair_0288_nb,False Positive,92.54,1,30.85
+pair_0351_nb,False Positive,97.7,1,32.57
+pair_0502_nb,False Positive,95.7,1,32.35
+pair_0506_nb,False Positive,67.18,1,28.36
+pair_0647_nb,False Positive,91.68,1,32.24
+pair_0777_nb,False Positive,0.0,0,0.0
+pair_0827_nb,False Positive,96.84,1,32.28
+pair_1824_nb,False Positive,69.93,1,23.31
+pair_1939_nb,False Positive,8.61,0,2.87
+pair_0822_nb,False Positive,0.0,0,0.0
+pair_0865_nb,False Positive,0.0,0,0.0
+pair_0867_nb,False Positive,70.71,1,23.57
+pair_1860_nb,False Positive,34.21,0,11.4
+pair_1965_nb,False Positive,87.48,1,29.16
+pair_0341_nb,False Positive,90.8,1,30.27
+pair_0450_nb,False Positive,69.52,1,24.39
+pair_0549_nb,False Positive,95.95,1,31.98
+pair_0567_nb,False Positive,64.61,1,27.2
+pair_0584_nb,False Positive,41.46,0,17.2
+pair_0602_nb,False Positive,94.29,1,31.43
+pair_0684_nb,False Positive,51.86,1,17.29
+pair_0736_nb,False Positive,97.55,1,32.52
+pair_0748_nb,False Positive,92.21,1,30.74
+pair_0765_nb,False Positive,96.0,1,32.0
+pair_0776_nb,False Positive,0.0,0,0.0
+pair_0782_nb,False Positive,2.8,0,0.93
+pair_0811_nb,False Positive,91.64,1,30.55
+pair_0868_nb,False Positive,54.41,1,18.14
+pair_0876_nb,False Positive,0.0,0,0.0
+pair_0878_nb,False Positive,91.77,1,30.59
+pair_0883_nb,False Positive,29.98,0,9.99
+pair_0891_nb,False Positive,20.02,0,6.67
+pair_0908_nb,False Positive,0.0,0,0.0
+pair_0932_nb,False Positive,92.57,1,30.86
+pair_0940_nb,False Positive,77.18,1,30.77
+pair_0974_nb,False Positive,0.0,0,0.0
+pair_0977_nb,False Positive,0.0,0,0.0
+pair_1011_nb,False Positive,94.38,1,31.46
+pair_1023_nb,False Positive,95.39,1,35.25
+pair_1102_nb,False Positive,48.32,0,29.27
+pair_1313_nb,False Positive,0.0,0,0.0
+pair_1397_nb,False Positive,0.0,0,0.0
+pair_1654_nb,False Positive,0.0,0,0.0
+pair_1656_nb,False Positive,0.0,0,0.0
+pair_1658_nb,False Positive,51.57,1,17.19
+pair_1671_nb,False Positive,0.0,0,0.0
+pair_1679_nb,False Positive,0.0,0,0.0
+pair_1709_nb,False Positive,29.14,0,9.71
+pair_1710_nb,False Positive,27.73,0,9.24
+pair_1737_nb,False Positive,97.5,1,32.5
+pair_1758_nb,False Positive,89.93,2,55.65
+pair_1784_nb,False Positive,47.95,0,26.63
+pair_1785_nb,False Positive,7.23,0,2.41
+pair_1792_nb,False Positive,43.34,0,24.99
+pair_1835_nb,False Positive,95.55,1,31.85
+pair_1847_nb,False Positive,11.3,0,3.77
+pair_1914_nb,False Positive,48.86,0,18.47
+pair_1922_nb,False Positive,94.82,1,31.61
+pair_1938_nb,False Positive,33.77,0,11.26
+pair_1961_nb,False Positive,81.0,1,28.77
+pair_0008_low_pkt,Low Confidence,96.16,2,56.56
+pair_0393_low_pkt,Low Confidence,83.8,1,30.34
+pair_0482_low_pkt,Low Confidence,93.39,1,33.18
+pair_0482_nb,False Positive,29.57,0,9.86
+pair_1331_low_pkt,Low Confidence,0.0,0,0.0
+pair_1931_low_pkt,Low Confidence,86.95,1,28.98
+pair_0065_low_pkt,Low Confidence,74.96,1,31.65
+pair_0947_low_pkt,Low Confidence,52.8,1,32.95
+pair_0948_low_pkt,Low Confidence,91.41,2,54.7
+pair_1413_low_pkt,Low Confidence,56.46,1,19.74
+pair_0715_fail_gate,Fail Geometry,5.29,0,1.76
+pair_1094_fail_gate,Fail Geometry,70.3,1,24.87
+pair_1682_fail_gate,Fail Geometry,51.46,1,23.01
+pair_1739_fail_gate,Fail Geometry,0.0,0,0.0
+pair_1941_fail_gate,Fail Geometry,0.0,0,0.0
+pair_0014_fail_gate,Fail Geometry,95.57,1,36.64
+pair_0263_fail_gate,Fail Geometry,52.38,1,17.46
+pair_0540_fail_gate,Fail Geometry,0.0,0,0.0
+pair_0997_fail_gate,Fail Geometry,94.34,1,31.45
+pair_1745_fail_gate,Fail Geometry,66.41,1,22.14
+bind_019_binder,Binder,92.93,1,30.98
+bind_020_binder,Binder,90.46,1,30.15
+bind_022_binder,Binder,93.55,2,55.23
+bind_034_binder,Binder,1.41,0,0.47
+bind_041_binder,Binder,56.02,1,22.92
+bind_043_binder,Binder,75.04,1,38.16
+bind_069_binder,Binder,97.68,1,32.56
+bind_076_binder,Binder,4.07,0,1.36
+bind_080_binder,Binder,79.38,1,28.03
+bind_083_binder,Binder,98.18,1,32.73
+bind_088_binder,Binder,0.0,0,0.0
+bind_099_binder,Binder,31.64,0,10.55
+bind_100_binder,Binder,0.0,0,0.0
+bind_101_binder,Binder,61.46,1,20.49
+bind_102_binder,Binder,0.0,0,0.0
+bind_110_binder,Binder,0.0,0,0.0
+pair_3061_binder,Binder,73.23,1,24.41
+nonb_006_nb,False Positive,33.73,0,11.24
+nonb_008_nb,False Positive,82.05,2,50.88
+nonb_009_nb,False Positive,2.77,0,0.92
+nonb_010_nb,False Positive,26.61,0,8.87
+nonb_011_nb,False Positive,60.88,1,20.29
+nonb_013_nb,False Positive,87.39,1,36.67
+nonb_014_nb,False Positive,0.0,0,0.0
+nonb_017_nb,False Positive,50.91,1,32.64
+nonb_018_nb,False Positive,21.8,0,7.27
+nonb_019_nb,False Positive,50.61,1,16.87
+nonb_021_nb,False Positive,46.45,0,15.48
+nonb_022_nb,False Positive,86.52,1,29.61
+nonb_023_nb,False Positive,97.95,1,32.65
+nonb_024_nb,False Positive,0.0,0,0.0
+nonb_025_nb,False Positive,88.66,2,50.18
+nonb_026_nb,False Positive,1.27,0,0.42
+nonb_029_nb,False Positive,91.71,1,30.57
+nonb_032_nb,False Positive,91.16,1,32.15
+nonb_046_nb,False Positive,94.5,1,33.62
+nonb_047_nb,False Positive,13.61,0,7.81
+nonb_048_nb,False Positive,91.71,1,49.49
+nonb_049_nb,False Positive,96.43,2,52.05
+nonb_050_nb,False Positive,77.8,1,38.83
+nonb_051_nb,False Positive,93.57,1,34.09
+nonb_052_nb,False Positive,81.68,1,41.3
+nonb_053_nb,False Positive,96.41,1,32.14
+nonb_054_nb,False Positive,93.71,1,36.19
+nonb_056_nb,False Positive,46.0,0,23.44
+nonb_066_nb,False Positive,91.12,1,30.37
+nonb_067_nb,False Positive,96.02,1,32.01
+nonb_068_nb,False Positive,45.23,0,15.08
+nonb_071_nb,False Positive,95.3,1,31.77
+nonb_072_nb,False Positive,94.5,1,31.5
+nonb_073_nb,False Positive,65.5,1,30.47
+nonb_074_nb,False Positive,78.57,1,38.16
+nonb_075_nb,False Positive,78.36,1,30.64
+nonb_080_nb,False Positive,91.05,1,46.58
+nonb_081_nb,False Positive,93.29,1,31.1
+nonb_082_nb,False Positive,97.79,1,32.6
+nonb_085_nb,False Positive,87.7,1,30.16
+nonb_086_nb,False Positive,94.48,1,31.49
+nonb_087_nb,False Positive,89.11,1,29.7
+nonb_088_nb,False Positive,0.0,0,0.0
+nonb_089_nb,False Positive,76.46,2,50.39
+nonb_115_nb,False Positive,0.0,0,0.0
+nonb_116_nb,False Positive,55.23,1,22.75
+nonb_117_nb,False Positive,83.34,1,29.08

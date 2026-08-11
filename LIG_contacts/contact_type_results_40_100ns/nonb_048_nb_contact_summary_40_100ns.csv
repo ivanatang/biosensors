@@ -1,0 +1,2 @@
+seq_id,mean_n_hydrophobic,std_n_hydrophobic,occ_n_hydrophobic_gt0,mean_n_polar,std_n_polar,occ_n_polar_gt0,mean_n_pos_charged,std_n_pos_charged,occ_n_pos_charged_gt0,mean_n_neg_charged,std_n_neg_charged,occ_n_neg_charged_gt0,mean_n_other,std_n_other,occ_n_other_gt0,mean_n_total,std_n_total,occ_n_total_gt0,mean_frac_hydrophobic,std_frac_hydrophobic
+nonb_048_nb,13.269375,1.1502443694167774,1.0,1.596875,0.6986524417584182,0.9275,3.95375,0.3957409980024814,1.0,1.060625,0.23864117284115077,1.0,0.0,0.0,0.0,19.880625,1.3486565943096858,1.0,0.6675057114032077,0.03784697929714509
