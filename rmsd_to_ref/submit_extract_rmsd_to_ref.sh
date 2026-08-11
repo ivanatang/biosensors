@@ -42,12 +42,20 @@ module load openmpi
 module load anaconda
 conda activate biosensors
 
-cd /projects/ivta1597/biosensors/rmsd_to_ref
-
 SEQ_LIST="${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}"
 if [[ $# -gt 0 ]]; then
     shift
 fi
+
+# Resolve a relative SEQ_LIST against the directory `sbatch` was invoked
+# from (SLURM sets SLURM_SUBMIT_DIR) *before* cd'ing into rmsd_to_ref/ below
+# -- otherwise a relative path silently resolves against the wrong
+# directory once we cd, since it's not re-resolved at open() time.
+if [[ "$SEQ_LIST" != /* ]]; then
+    SEQ_LIST="${SLURM_SUBMIT_DIR}/${SEQ_LIST}"
+fi
+
+cd /projects/ivta1597/biosensors/rmsd_to_ref
 
 echo "Running extract_gate_latch_rmsd_feats.py against $SEQ_LIST"
 python extract_gate_latch_rmsd_feats.py "$SEQ_LIST" "$@"
