@@ -1,26 +1,34 @@
 #!/usr/bin/env python3
 """
-plot_energy_check_qfix.py
+plot_energy_check.py
 
-Plots and numerically summarizes the EM/NVT/NPT stability check for the
-bond-order/charge-fix ("_qfix") pilot systems, from the .xvg files produced
-by run_energy_check_qfix.sh:
+Plots and numerically summarizes the EM/NVT/NPT stability check from the
+.xvg files produced by run_energy_check.sh:
 
-    EM_qfix/em_potential_qfix.xvg   -- potential energy during minimization
-    NVT_qfix/nvt_temp_qfix.xvg      -- temperature during NVT
-    NPT_qfix/npt_density_qfix.xvg   -- density during NPT
-    NPT_qfix/npt_volume_qfix.xvg    -- volume during NPT
+    EM{suffix}/em_potential{suffix}.xvg   -- potential energy during minimization
+    NVT{suffix}/nvt_temp{suffix}.xvg      -- temperature during NVT
+    NPT{suffix}/npt_density{suffix}.xvg   -- density during NPT
+    NPT{suffix}/npt_volume{suffix}.xvg    -- volume during NPT
 
 For each sequence, saves a 2x2 panel PNG to
-    {WORKDIR}/{seq_id}_EM_EQ_energy_qfix.png
-and prints a stability verdict per quantity (temperature target 300 K,
-pressure target 1.0 bar per nvt.mdp/npt.mdp; density/volume/potential
-checked for plateau via second-half drift rather than an absolute target).
+    {WORKDIR}/{seq_id}_EM_EQ_energy{suffix}.png
+and prints a stability verdict per quantity (temperature target 300 K per
+nvt.mdp; density/volume checked for plateau via second-half noise and drift
+rather than an absolute target).
+
+Reads sequences from a seq_ids.txt-style file (same format the bash scripts
+use), same convention as run_energy_check.sh -- pass a smaller file, or a
+process-substitution filter, to scope to specific sequences rather than
+creating a separate tracked seq-list file.
 
 Usage:
     conda activate biosensors
-    python plot_energy_check_qfix.py
+    python plot_energy_check.py --seq-list seq_ids.txt --suffix _qfix \
+        --filter bind_022_binder bind_019_binder bind_020_binder \
+                 nonb_006_nb nonb_008_nb nonb_009_nb
+    python plot_energy_check.py --filter cdca_001 glca_001 lca3s_001 lca_001
 """
+import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,14 +36,29 @@ import matplotlib.pyplot as plt
 BASE_DIR = "/scratch/alpine/ivta1597/LCA_boltz_models"
 TARGET_TEMP_K = 300.0
 
-PILOT = [
-    ("binders", "bind_022_binder"),
-    ("binders", "bind_019_binder"),
-    ("binders", "bind_020_binder"),
-    ("nonbinders", "nonb_006_nb"),
-    ("nonbinders", "nonb_008_nb"),
-    ("nonbinders", "nonb_009_nb"),
-]
+DIR_TYPE = {
+    "Binder": "binders",
+    "False Positive": "nonbinders",
+    "Low Confidence": "neg_low_pkt",
+    "Fail Geometry": "neg_fail_gate",
+}
+
+
+def read_seq_list(path, name_filter):
+    """Parse a seq_ids.txt-style file into [(type_dir, seq_id), ...],
+    optionally restricted to seq_ids containing any of name_filter."""
+    sequences = []
+    with open(path) as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            seq_id, seq_type = parts[0], parts[1]
+            if name_filter and not any(sub in seq_id for sub in name_filter):
+                continue
+            sequences.append((DIR_TYPE.get(seq_type, seq_type), seq_id))
+    return sequences
 
 
 def read_xvg(path):
@@ -88,17 +111,35 @@ def verdict_plateau(label, mean, std, drift_frac, unit):
                        f"({rel_std*100:.2f}% of mean), drift={drift_frac*100:.2f}% of mean")
 
 
+def parse_args():
+    p = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--seq-list", default="seq_ids.txt",
+                    help="seq_ids.txt-style file to read sequences from (default: seq_ids.txt)")
+    p.add_argument("--suffix", default="",
+                    help='directory/filename suffix, e.g. "_qfix" (default: none, standard EM/NVT/NPT)')
+    p.add_argument("--filter", nargs="+", default=None,
+                    help="only process seq_ids containing any of these substrings "
+                         "(default: all rows in --seq-list)")
+    return p.parse_args()
+
+
 def main():
+    args = parse_args()
+    sequences = read_seq_list(args.seq_list, args.filter)
+    suffix = args.suffix
+
     summary = []
-    for type_dir, seq_id in PILOT:
+    for type_dir, seq_id in sequences:
         workdir = os.path.join(BASE_DIR, type_dir, seq_id)
-        em_f = os.path.join(workdir, "EM_qfix", "em_potential_qfix.xvg")
-        nvt_f = os.path.join(workdir, "NVT_qfix", "nvt_temp_qfix.xvg")
-        dens_f = os.path.join(workdir, "NPT_qfix", "npt_density_qfix.xvg")
-        vol_f = os.path.join(workdir, "NPT_qfix", "npt_volume_qfix.xvg")
+        em_f = os.path.join(workdir, f"EM{suffix}", f"em_potential{suffix}.xvg")
+        nvt_f = os.path.join(workdir, f"NVT{suffix}", f"nvt_temp{suffix}.xvg")
+        dens_f = os.path.join(workdir, f"NPT{suffix}", f"npt_density{suffix}.xvg")
+        vol_f = os.path.join(workdir, f"NPT{suffix}", f"npt_volume{suffix}.xvg")
 
         if not all(os.path.isfile(f) for f in [em_f, nvt_f, dens_f, vol_f]):
-            print(f"SKIP {seq_id}: missing one or more .xvg files (run run_energy_check_qfix.sh first)")
+            print(f"SKIP {seq_id}: missing one or more .xvg files "
+                  f"(run `bash run_energy_check.sh {args.seq_list} {suffix}` first)")
             continue
 
         em_x, em_y = read_xvg(em_f)
@@ -133,9 +174,9 @@ def main():
         axes[1, 1].set_ylabel("Volume (nm^3)")
         axes[1, 1].grid(True, alpha=0.4)
 
-        fig.suptitle(f"{seq_id} (_qfix) -- EM/NVT/NPT stability check")
+        fig.suptitle(f"{seq_id}{suffix} -- EM/NVT/NPT stability check")
 
-        out_png = os.path.join(workdir, f"{seq_id}_EM_EQ_energy_qfix.png")
+        out_png = os.path.join(workdir, f"{seq_id}_EM_EQ_energy{suffix}.png")
         fig.savefig(out_png, dpi=300)
         plt.close(fig)
 

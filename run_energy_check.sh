@@ -1,16 +1,21 @@
 #!/bin/bash
 # run_energy_check.sh
 # ─────────────────────────────────────────────────────────────────────────────
-# Loops through seq_ids.txt and, for each sequence, runs:
+# Loops through seq_ids.txt and, for each sequence, runs (with SUFFIX=""
+# by default, or e.g. "_qfix" for the bond-order/charge-fix systems):
 #
-#   echo "10 0" | gmx energy -f EM/em.edr  -o EM/em_potential.xvg   # Potential
-#   echo "16 0" | gmx energy -f NVT/nvt.edr -o NVT/nvt_temp.xvg     # Temperature
-#   echo "24 0" | gmx energy -f NPT/npt.edr -o NPT/npt_density.xvg  # Density
-#   echo "23 0" | gmx energy -f NPT/npt.edr -o NPT/npt_volume.xvg   # Volume
+#   echo "10 0" | gmx energy -f EM${SUFFIX}/em.edr   -o EM${SUFFIX}/em_potential${SUFFIX}.xvg   # Potential
+#   echo "16 0" | gmx energy -f NVT${SUFFIX}/nvt.edr -o NVT${SUFFIX}/nvt_temp${SUFFIX}.xvg      # Temperature
+#   echo "24 0" | gmx energy -f NPT${SUFFIX}/npt.edr -o NPT${SUFFIX}/npt_density${SUFFIX}.xvg   # Density
+#   echo "23 0" | gmx energy -f NPT${SUFFIX}/npt.edr -o NPT${SUFFIX}/npt_volume${SUFFIX}.xvg    # Volume
 #
 # Usage:
-#   bash run_energy_check.sh                  # uses seq_ids.txt in cwd by default
-#   bash run_energy_check.sh my_seq_list.txt  # pass a different file
+#   bash run_energy_check.sh                          # seq_ids.txt, standard EM/NVT/NPT
+#   bash run_energy_check.sh my_seq_list.txt           # different seq list
+#   bash run_energy_check.sh seq_ids.txt _qfix         # EM_qfix/NVT_qfix/NPT_qfix
+#   bash run_energy_check.sh <(grep -E "^cdca_001|^glca_001" seq_ids.txt)
+#                                                       # scope to specific sequences without
+#                                                       # a separate tracked seq-list file
 #
 # seq_ids.txt format (tab-separated):
 #   seq_id       seq_type (display)      optional_custom_path
@@ -22,6 +27,7 @@
 set -uo pipefail
 
 SEQ_LIST=${1:-seq_ids.txt}
+SUFFIX=${2:-}
 
 # ── Path configuration ─────────────────────────────────────────────────────
 BASE_DIR="/scratch/alpine/ivta1597/LCA_boltz_models"
@@ -81,14 +87,14 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     fi
     [[ -n "$SUBDIR" ]] && WORKDIR="${WORKDIR}/${SUBDIR}"
 
-    echo "Running energy extraction: $seq_id  [$seq_type -> $WORKDIR]"
+    echo "Running energy extraction: $seq_id  [$seq_type -> $WORKDIR]  (suffix='${SUFFIX}')"
 
     (
         cd "$WORKDIR" || exit 1
-        echo "10 0" | "$GMX" energy -f EM/em.edr   -o EM/em_potential.xvg
-        echo "16 0" | "$GMX" energy -f NVT/nvt.edr -o NVT/nvt_temp.xvg
-        echo "24 0" | "$GMX" energy -f NPT/npt.edr -o NPT/npt_density.xvg
-        echo "23 0" | "$GMX" energy -f NPT/npt.edr -o NPT/npt_volume.xvg
+        echo "10 0" | "$GMX" energy -f "EM${SUFFIX}/em.edr"   -o "EM${SUFFIX}/em_potential${SUFFIX}.xvg"
+        echo "16 0" | "$GMX" energy -f "NVT${SUFFIX}/nvt.edr" -o "NVT${SUFFIX}/nvt_temp${SUFFIX}.xvg"
+        echo "24 0" | "$GMX" energy -f "NPT${SUFFIX}/npt.edr" -o "NPT${SUFFIX}/npt_density${SUFFIX}.xvg"
+        echo "23 0" | "$GMX" energy -f "NPT${SUFFIX}/npt.edr" -o "NPT${SUFFIX}/npt_volume${SUFFIX}.xvg"
     )
 
 done < "$SEQ_LIST"

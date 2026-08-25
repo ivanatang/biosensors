@@ -1,4 +1,0 @@
-cdca_001_binder	Binder
-glca_001_binder	Binder
-lca3s_001_binder	Binder
-lca_001_binder	Binder
