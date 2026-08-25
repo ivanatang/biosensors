@@ -66,6 +66,34 @@ if [ ! -f "$SEQ_DIR/EM_qfix/em.gro" ]; then
     exit 1
 fi
 
+# Position restraints: matches run_genrstr.sh's original protocol (backbone
+# restraints, 1000 kJ/mol/nm^2), which patches the standard-pipeline .top
+# files but was never run against the _qfix topology. nvt.mdp/npt.mdp both
+# reference -DPOSRES, so grompp fails ("macro defined but not used") without
+# this. The protein topology is identical between the original and _qfix
+# systems (only the ligand changed), but this regenerates from EM_qfix/em.gro
+# directly rather than assuming the original posre_protein.itp is reusable.
+POSRE=$SEQ_DIR/posre_protein_qfix.itp
+if [ ! -f "$POSRE" ]; then
+    ( cd "$SEQ_DIR" && echo 4 | gmx genrestr -f EM_qfix/em.gro -o posre_protein_qfix.itp -fc 1000 1000 1000 )
+fi
+if ! grep -q "POSRES" "$TOP"; then
+    LINE=$(grep -in '^#include.*protein' "$TOP" | head -n1 | cut -d: -f1)
+    if [ -z "$LINE" ]; then
+        echo "ERROR: no '#include ... protein' line found in $TOP" >&2
+        exit 1
+    fi
+    awk -v n="$LINE" '
+        { print }
+        NR == n {
+            print "#ifdef POSRES"
+            print "#include \"posre_protein_qfix.itp\""
+            print "#endif"
+        }
+    ' "$TOP" > "${TOP}.tmp" && mv "${TOP}.tmp" "$TOP"
+    echo "Inserted POSRES include after line $LINE: $TOP"
+fi
+
 # dodecahedron unit cell
 # NVT
 cd "$SEQ_DIR"
