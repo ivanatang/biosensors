@@ -89,12 +89,24 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
 
     echo "Running energy extraction: $seq_id  [$seq_type -> $WORKDIR]  (suffix='${SUFFIX}')"
 
+    # Skip per-output-file if it already exists -- gmx energy doesn't
+    # overwrite in place, it renames the existing file to #name.N# and
+    # piles those up on every re-run.
+    extract() {
+        local edr="$1" terms="$2" out="$3"
+        if [[ -f "${WORKDIR}/${out}" ]]; then
+            echo "  SKIP (exists): $out"
+        else
+            echo "$terms" | "$GMX" energy -f "$edr" -o "$out"
+        fi
+    }
+
     (
         cd "$WORKDIR" || exit 1
-        echo "10 0" | "$GMX" energy -f "EM${SUFFIX}/em.edr"   -o "EM${SUFFIX}/em_potential${SUFFIX}.xvg"
-        echo "16 0" | "$GMX" energy -f "NVT${SUFFIX}/nvt.edr" -o "NVT${SUFFIX}/nvt_temp${SUFFIX}.xvg"
-        echo "24 0" | "$GMX" energy -f "NPT${SUFFIX}/npt.edr" -o "NPT${SUFFIX}/npt_density${SUFFIX}.xvg"
-        echo "23 0" | "$GMX" energy -f "NPT${SUFFIX}/npt.edr" -o "NPT${SUFFIX}/npt_volume${SUFFIX}.xvg"
+        extract "EM${SUFFIX}/em.edr"   "10 0" "EM${SUFFIX}/em_potential${SUFFIX}.xvg"
+        extract "NVT${SUFFIX}/nvt.edr" "16 0" "NVT${SUFFIX}/nvt_temp${SUFFIX}.xvg"
+        extract "NPT${SUFFIX}/npt.edr" "24 0" "NPT${SUFFIX}/npt_density${SUFFIX}.xvg"
+        extract "NPT${SUFFIX}/npt.edr" "23 0" "NPT${SUFFIX}/npt_volume${SUFFIX}.xvg"
     )
 
 done < "$SEQ_LIST"
