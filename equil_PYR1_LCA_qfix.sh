@@ -60,7 +60,7 @@ if [ ! -d "$SEQ_DIR" ]; then
     exit 1
 fi
 
-TOP=$SEQ_DIR/${PREFIX}_${ID}_dodecahedron_HMR_qfix.top
+TOP=$SEQ_DIR/${PREFIX}_${ID}_${SUFFIX}_dodecahedron_HMR_qfix.top
 if [ ! -f "$SEQ_DIR/EM_qfix/em.gro" ]; then
     echo "ERROR: EM_qfix/em.gro not found -- run em_PYR1_LCA_qfix.sh first" >&2
     exit 1

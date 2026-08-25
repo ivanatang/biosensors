@@ -63,8 +63,8 @@ if [ ! -d "$SEQ_DIR" ]; then
     exit 1
 fi
 
-TOP=$SEQ_DIR/${PREFIX}_${ID}_dodecahedron_HMR_qfix.top
-GRO=$SEQ_DIR/${PREFIX}_${ID}_dodecahedron_HMR_qfix.gro
+TOP=$SEQ_DIR/${PREFIX}_${ID}_${SUFFIX}_dodecahedron_HMR_qfix.top
+GRO=$SEQ_DIR/${PREFIX}_${ID}_${SUFFIX}_dodecahedron_HMR_qfix.gro
 if [ ! -f "$TOP" ] || [ ! -f "$GRO" ]; then
     echo "ERROR: _qfix topology not found ($TOP / $GRO) -- sync it from OneDrive first" >&2
     exit 1
