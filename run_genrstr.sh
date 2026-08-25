@@ -2,11 +2,12 @@
 # run_genrstr.sh
 # ─────────────────────────────────────────────────────────────────────────────
 # Loops through seq_ids.txt and, for each sequence:
-#   1. runs:
+#   1. runs (skipped if posre_protein.itp already exists):
 #        echo 4 | gmx genrestr -f EM/em.gro -o posre_protein.itp -fc 1000 1000 1000
 #      (selection "4" = Backbone in the default GROMACS index groups)
 #   2. inserts the POSRES include block right after the "#include ... protein"
-#      line in {seq_id}_dodecahedron_HMR.top:
+#      line in the sequence's *_dodecahedron_HMR.top (found by glob, not
+#      reconstructed from seq_id -- see comment at the glob below for why):
 #        #ifdef POSRES
 #        #include "posre_protein.itp"
 #        #endif
@@ -21,8 +22,11 @@
 #   nonb_046     False Positive
 #   seq14_binder Binder                  /scratch/.../seq14_binder   ← custom path used as-is
 #
-# .top naming convention (lives alongside posre_protein.itp in WORKDIR):
-#   {seq_type}_{ID}_dodecahedron_HMR.top  e.g. bind_043_dodecahedron_HMR.top
+# .top file: whatever single *_dodecahedron_HMR.top exists in WORKDIR
+# (alongside posre_protein.itp). Naming varies across this project's history
+# (bind_043_dodecahedron_HMR.top, pair3059_dodecahedron_HMR.top,
+# cdca_001_dodecahedron_HMR.top, ...), so this is found by glob rather than
+# built from seq_id.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -uo pipefail
@@ -143,29 +147,50 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
         continue
     fi
 
-    echo "Running genrestr: $seq_id  [$seq_type -> $WORKDIR]"
+    # .top naming is NOT a reliable function of seq_id: across the different
+    # naming eras in this project the actual GROMACS export prefix has been
+    # {seq_type}_{ID} (e.g. bind_043_dodecahedron_HMR.top, no _binder
+    # suffix), {prefix}{ID} with no underscore for pair_ sequences
+    # (pair3059_dodecahedron_HMR.top), and {prefix}_{ID}_{suffix} for the
+    # _qfix systems and the newer ligand-screening sequences
+    # (cdca_001_dodecahedron_HMR.top). Glob on the fixed suffix instead of
+    # reconstructing the filename from seq_id -- also naturally excludes any
+    # *_qfix.top sibling, which ends in "_qfix.top" not "_HMR.top".
+    shopt -s nullglob
+    top_candidates=("${WORKDIR}"/*_dodecahedron_HMR.top)
+    shopt -u nullglob
+    if [[ ${#top_candidates[@]} -eq 0 ]]; then
+        echo "SKIP (no *_dodecahedron_HMR.top found): $seq_id   [$WORKDIR]"
+        ((skipped++))
+        continue
+    elif [[ ${#top_candidates[@]} -gt 1 ]]; then
+        echo "WARNING: multiple *_dodecahedron_HMR.top in $WORKDIR — using first: ${top_candidates[0]}"
+    fi
+    TOP_FILE="${top_candidates[0]}"
 
-    (
-        cd "$WORKDIR" || exit 1
-        echo 4 | "$GMX" genrestr -f EM/em.gro -o posre_protein.itp -fc 1000 1000 1000
-    )
-
-    if [[ $? -eq 0 ]]; then
+    POSRE_FILE="${WORKDIR}/posre_protein.itp"
+    if [[ -f "$POSRE_FILE" ]]; then
+        echo "SKIP genrestr (posre_protein.itp already exists): $seq_id"
         ((completed++))
-
-        # .top naming pattern: {seq_type}_{ID}_dodecahedron_HMR.top
-        # seq_id is already "{seq_type}_{ID}" (e.g. bind_043, nonb_046), so it
-        # maps directly onto the filename.
-        TOP_FILE="${WORKDIR}/${seq_id}_dodecahedron_HMR.top"
-
-        if add_posres_include "$TOP_FILE"; then
-            ((top_patched++))
-        else
-            ((top_failed++))
-        fi
     else
-        echo "FAILED: $seq_id"
-        ((failed++))
+        echo "Running genrestr: $seq_id  [$seq_type -> $WORKDIR]"
+        (
+            cd "$WORKDIR" || exit 1
+            echo 4 | "$GMX" genrestr -f EM/em.gro -o posre_protein.itp -fc 1000 1000 1000
+        )
+        if [[ $? -eq 0 ]]; then
+            ((completed++))
+        else
+            echo "FAILED: $seq_id"
+            ((failed++))
+            continue
+        fi
+    fi
+
+    if add_posres_include "$TOP_FILE"; then
+        ((top_patched++))
+    else
+        ((top_failed++))
     fi
 
 done < "$SEQ_LIST"
