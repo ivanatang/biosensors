@@ -74,3 +74,7 @@ pair_0782_nb	False Positive
 pair_0811_nb	False Positive
 pair_0822_nb	False Positive
 pair_1654_nb	False Positive
+cdca_001_binder	Binder
+glca_001_binder	Binder
+lca3s_001_binder	Binder
+lca_001_binder	Binder
