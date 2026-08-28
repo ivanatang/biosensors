@@ -52,16 +52,56 @@ xtc = os.path.join(rundir, cfg["trajectory"]["xtc"])
 u = mda.Universe(gro, xtc)
 
 # ── Ligand carboxylate ─────────────────────────────────────────────────────────
-lig_resname  = cfg["ligand"]["resname"]
-carbox_idx   = cfg["ligand"]["carboxylate_indices"]
-hydroxyl_idx = cfg["ligand"]["hydroxyl_index"]
+# Identified from connectivity + partial charge, NOT a fixed atom index.
+# Atom ordering in the exported topology depends on which structure-
+# prediction batch produced the source PDB, not just which ligand it is --
+# a hardcoded index (formerly config.yaml's ligand.carboxylate_indices)
+# silently picked up the wrong atoms for structures from a different batch
+# than the one the index was derived from, even for the same ligand. See
+# find_carboxylate() below.
+lig_resname = cfg["ligand"]["resname"]
+lig = u.select_atoms(f"resname {lig_resname}")
 
-lig      = u.select_atoms(f"resname {lig_resname}")
-carbox   = lig[carbox_idx]
-hydroxyl = lig[[hydroxyl_idx]]
 
-assert len(carbox) == 2, f"Expected 2 carboxylate atoms, found {len(carbox)}"
-assert set(carbox.names) == {"O"}, f"Expected O atoms, got {list(carbox.names)}"
+def find_carboxylate(atomgroup):
+    """Locate a deprotonated carboxylate, -C(=O)[O-], by structural
+    signature: a carbon bonded to exactly two oxygens that each have no
+    other bonds (no H -- distinguishes a deprotonated carboxylate/O- from
+    a protonated -COOH or a plain hydroxyl -OH, and the "bonded to C, not
+    S" check excludes e.g. a sulfate ester's terminal oxygens), with
+    near-equal, strongly negative partial charges (resonance-delocalized
+    between the two oxygens).
+    """
+    candidates = {}  # carbon atom index -> list of its terminal O atoms
+    for atom in atomgroup:
+        if atom.name != "O":
+            continue
+        bonded = atom.bonded_atoms
+        if len(bonded) != 1:
+            continue  # has an H (hydroxyl) or otherwise isn't terminal
+        neighbor = bonded[0]
+        if neighbor.name != "C":
+            continue  # e.g. a sulfate ester's O, bonded to S not C
+        candidates.setdefault(neighbor.index, []).append(atom)
+
+    carboxyl_carbons = {c: os for c, os in candidates.items() if len(os) == 2}
+    if len(carboxyl_carbons) != 1:
+        raise ValueError(
+            f"Expected exactly 1 carbon with 2 terminal (deprotonated) "
+            f"oxygens in the ligand, found {len(carboxyl_carbons)}. Ligand "
+            f"may not be a deprotonated carboxylic acid, or bonds weren't "
+            f"read correctly from the topology.")
+    o_pair = list(carboxyl_carbons.values())[0]
+    charges = [o.charge for o in o_pair]
+    if abs(charges[0] - charges[1]) > 0.15 or max(charges) > -0.3:
+        raise ValueError(
+            f"Candidate carboxylate oxygens don't look like a resonance- "
+            f"delocalized carboxylate: charges={charges} (expected both "
+            f"strongly negative and nearly equal).")
+    return mda.AtomGroup(o_pair)
+
+
+carbox = find_carboxylate(lig)
 
 # ── Build candidate atom selection from config (no position assumption) ───────
 sb_cfg     = cfg["salt_bridge"]

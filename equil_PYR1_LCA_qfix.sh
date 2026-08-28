@@ -53,6 +53,11 @@ else
     exit 1
 fi
 
+# #SBATCH directives are static text parsed before ID/SEQ_TYPE/PREFIX are
+# known, so relabel the job now that they are, rather than leaving every
+# submission of this script showing the same generic name in squeue.
+scontrol update JobId=$SLURM_JOB_ID JobName="${PREFIX}_${ID}_eq_qfix" 2>/dev/null
+
 # Navigate to the sequence's scratch directory for trajectory files
 SEQ_DIR=$BASE/${SEQ_TYPE}/${PREFIX}_${ID}_${SUFFIX}
 if [ ! -d "$SEQ_DIR" ]; then

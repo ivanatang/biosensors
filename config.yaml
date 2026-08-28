@@ -14,11 +14,18 @@ trajectory:
   xtc: "prod_md_500ns.xtc"
   frame_spacing_ps: 37.5
 
-# ── LCA ligand atom names (confirmed via .itp partial charges) ────────────────
+# ── Ligand resname ──────────────────────────────────────────────────────────
 ligand:
   resname: "LIG"
-  carboxylate_indices: [0, 1]    # residue-local atom indices (not names)
-  hydroxyl_index: 2
+  # No carboxylate atom indices here anymore -- salt_bridge_analysis.py
+  # identifies the carboxylate at runtime from topology connectivity and
+  # partial charge (find_carboxylate()), not a fixed index. Atom ordering
+  # in the exported topology depends on which structure-prediction batch
+  # produced the source PDB, not just which ligand it is, so a hardcoded
+  # index here would silently break for a new batch even of the same
+  # ligand (this happened: LCA's carboxylate O's were at indices [0,1] in
+  # the original production topologies but [5,6] in a freshly re-derived
+  # one from a different source PDB).
 
 # ── Salt bridge analysis parameters ────────────────────────────────────────────
 salt_bridge:
