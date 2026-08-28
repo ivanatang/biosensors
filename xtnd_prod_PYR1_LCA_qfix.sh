@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=xtnd_qfix
-#SBATCH --output=out_xt_qfix_%j.out                  # Output file
-#SBATCH --error=err_xt_qfix_%j.err                    # Error file
+#SBATCH --output=output_xt_qfix_%j.out                  # Output file
+#SBATCH --error=error_xt_qfix_%j.err                    # Error file
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
 #SBATCH --time=24:00:00
