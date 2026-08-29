@@ -22,6 +22,13 @@
 #                                                           # was run with)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Absolute path, not relative -- sbatch resolves a bare filename against the
+# directory this script was INVOKED from, not this script's own location, so
+# "sbatch water_spatial_run.sh" silently fails with "Unable to open file"
+# whenever this is run from anywhere other than water_spatial/ itself (e.g.
+# from the repo root, the documented/expected way to run it).
+RUN_SCRIPT="/projects/ivta1597/biosensors/water_spatial/water_spatial_run.sh"
+
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_ngs_observed.txt}
 BIN_NM=${2:-0.05}
 NAB=${3:-300}
@@ -64,7 +71,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     dir_type=$(get_dir_type "$seq_type")
 
     echo "Submitting: $seq_id  [$seq_type -> $dir_type]"
-    sbatch water_spatial_run.sh "$seq_id" "$dir_type" "$BIN_NM" "$NAB" "$SUFFIX"
+    sbatch "$RUN_SCRIPT" "$seq_id" "$dir_type" "$BIN_NM" "$NAB" "$SUFFIX"
     ((submitted++))
 
 done < "$SEQ_LIST"
@@ -75,4 +82,4 @@ echo "  Submitted : $submitted jobs"
 echo "  Skipped   : $skipped sequences (run manually)"
 echo ""
 echo "  To run skipped sequences manually:"
-echo "  sbatch water_spatial_run.sh <seq_id> <dir_type> $BIN_NM"
+echo "  sbatch $RUN_SCRIPT <seq_id> <dir_type> $BIN_NM"

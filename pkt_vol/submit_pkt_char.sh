@@ -15,6 +15,10 @@
 # systems (default: "", the standard production directory).
 # =============================================================================
 
+# Absolute path, not relative -- sbatch resolves a bare filename against the
+# directory this script was invoked from, not this script's own location.
+WORKER="/projects/ivta1597/biosensors/pkt_vol/pkt_vol_char.sh"
+
 OVERWRITE=false
 SUFFIX=""
 SEQ_LIST="/projects/ivta1597/biosensors/seq_ids_orig.txt"
@@ -64,7 +68,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     dir_type=$(get_dir_type "$seq_type")
 
     echo "Submitting: $seq_id  [$seq_type → $dir_type]"
-    sbatch pkt_vol_char.sh "$seq_id" "$dir_type" "$OVERWRITE" "$SUFFIX"
+    sbatch "$WORKER" "$seq_id" "$dir_type" "$OVERWRITE" "$SUFFIX"
     ((submitted++))
 
 done < "$SEQ_LIST"
