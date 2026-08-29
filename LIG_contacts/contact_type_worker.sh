@@ -61,6 +61,11 @@ module purge
 module load anaconda
 conda activate "${CONDA_ENV}"
 
+# pandas/scipy (and other compiled-extension) imports need the env's own
+# newer libstdc++, not the HPC image's old /lib64/libstdc++.so.6 --
+# ImportError: .../libstdc++.so.6: version `GLIBCXX_3.4.29' not found
+export LD_LIBRARY_PATH="/projects/ivta1597/software/anaconda/envs/${CONDA_ENV}/lib:$LD_LIBRARY_PATH"
+
 python "${PYTHON_SCRIPT}" "${SEQ_ID}"    \
     --start-ns "${START_NS}"             \
     --end-ns   "${END_NS}"               \

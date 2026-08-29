@@ -73,6 +73,11 @@ module load openmpi
 module load anaconda
 conda activate biosensors
 
+# pandas/scipy (and other compiled-extension) imports need the envs own
+# newer libstdc++, not the HPC images old /lib64/libstdc++.so.6 --
+# ImportError: .../libstdc++.so.6: version GLIBCXX_3.4.29 not found
+export LD_LIBRARY_PATH="/projects/ivta1597/software/anaconda/envs/biosensors/lib:$LD_LIBRARY_PATH"
+
 # ── Parse config.yaml ───────────────────────────────────────────────────────────
 eval "$(python3 << 'PYEOF'
 import yaml, os
