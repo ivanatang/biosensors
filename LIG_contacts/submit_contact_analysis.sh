@@ -25,6 +25,7 @@ SEQ_IDS_FILE="${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}"
 START_NS="${2:-40}"
 END_NS="${3:-500}"
 LIGAND_REGION="${4:-whole}"
+SUFFIX="${5:-}"
 
 FAILED_LIST="${BASE}/submit_contact_analysis_failed_${START_NS}_${END_NS}ns_${LIGAND_REGION}.txt"
 > "$FAILED_LIST"
@@ -45,7 +46,7 @@ while read -r SEQ_ID _rest || [[ -n "${SEQ_ID}" ]]; do
     sbatch_out=$(sbatch --job-name="ct_${SEQ_ID}" \
                         --output="${BASE}/output_ct_${SEQ_ID}_%j.out" \
                         --error="${BASE}/error_ct_${SEQ_ID}_%j.err" \
-                        --export=SEQ_ID="${SEQ_ID}",START_NS="${START_NS}",END_NS="${END_NS}",LIGAND_REGION="${LIGAND_REGION}" \
+                        --export=SEQ_ID="${SEQ_ID}",START_NS="${START_NS}",END_NS="${END_NS}",LIGAND_REGION="${LIGAND_REGION}",SUFFIX="${SUFFIX}" \
                         "${WORKER}" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "SUBMIT FAILED: ${SEQ_ID}  -- $sbatch_out"

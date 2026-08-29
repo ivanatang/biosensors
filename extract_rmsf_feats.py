@@ -123,9 +123,18 @@ def main():
                         help="End of analysis window in ns; selects which "
                              "windowed subdirectory to read .xvg files from "
                              "(default: 500)")
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory suffix, e.g. '_qfix' for the "
+                             "bond-order/charge-fix systems (default: '', the "
+                             "standard production directory). Applies to every "
+                             "sequence in seq_list -- run _qfix sequences via a "
+                             "separate seq_list from standard ones.")
     args = parser.parse_args()
     tag = args.tag
     end_ns = args.end_ns
+
+    global RUNREL
+    RUNREL = f"{RUNREL}{args.suffix}"
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")

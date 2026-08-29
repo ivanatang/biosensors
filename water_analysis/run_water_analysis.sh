@@ -16,7 +16,7 @@
 
 # ============================================================
 # Usage:
-#   sbatch run_water_analysis.sh <seq_id> <seq_type> [start_ns] [end_ns] [ligand_region]
+#   sbatch run_water_analysis.sh <seq_id> <seq_type> [start_ns] [end_ns] [ligand_region] [suffix]
 #
 # Arguments:
 #   seq_id         - sequence identifier (e.g. pair_3059_binder)
@@ -24,6 +24,8 @@
 #   start_ns       - start of analysis window in ns (default: 40)
 #   end_ns         - end of analysis window in ns   (default: 500)
 #   ligand_region  - whole | core | tail (default: whole)
+#   suffix         - run-directory/output suffix, e.g. "_qfix" for the
+#                    bond-order/charge-fix systems (default: "", standard)
 #
 # Examples:
 #   sbatch run_water_analysis.sh pair_3059_binder binders                    # full 500 ns
@@ -31,6 +33,7 @@
 #   sbatch run_water_analysis.sh pair_3059_binder binders 40 300             # 300 ns window
 #   sbatch run_water_analysis.sh pair_3059_binder binders 40 500 core        # steroid core only
 #   sbatch run_water_analysis.sh pair_3059_binder binders 40 500 tail        # carboxylate tail only
+#   sbatch run_water_analysis.sh bind_022_binder binders 40 500 whole _qfix  # _qfix system
 #
 # NOTE: Hbond_threshold.py and water_hbond_stability.py (steps 2-3) always
 # select the whole ligand and read/write the unsuffixed water_contacts_{TAG}
@@ -57,6 +60,7 @@ seq_type=$2
 start_ns=${3:-40}
 end_ns=${4:-500}
 ligand_region=${5:-whole}
+suffix=${6:-}
 
 echo "============================================================"
 echo "  Water contact analysis"
@@ -64,12 +68,13 @@ echo "  seq_id   : $seq_id"
 echo "  seq_type : $seq_type"
 echo "  window   : ${start_ns}–${end_ns} ns"
 echo "  region   : ${ligand_region}"
+echo "  suffix   : '${suffix}'"
 echo "  start    : $(date)"
 echo "============================================================"
 
 echo ""
 echo "=== Step 1: R_score_calc.py ==="
-python "$R_SCORE_SCRIPT" --seq_id $seq_id --seq_type $seq_type --start-ns $start_ns --end-ns $end_ns --ligand-region $ligand_region
+python "$R_SCORE_SCRIPT" --seq_id $seq_id --seq_type $seq_type --start-ns $start_ns --end-ns $end_ns --ligand-region $ligand_region --suffix "$suffix"
 if [ $? -ne 0 ]; then
     echo "ERROR: R_score_calc.py failed for $seq_id"
     exit 1
@@ -91,7 +96,8 @@ python "$HBOND_THRESHOLD_SCRIPT" \
     --seq_id   $seq_id   \
     --seq_type $seq_type \
     --start-ns $start_ns \
-    --end-ns   $end_ns
+    --end-ns   $end_ns \
+    --suffix   "$suffix"
 if [ $? -ne 0 ]; then
     echo "ERROR: Hbond_threshold.py failed for $seq_id"
     exit 1
@@ -103,7 +109,8 @@ python "$HBOND_STABILITY_SCRIPT" \
     --seq_id   $seq_id   \
     --seq_type $seq_type \
     --start-ns $start_ns \
-    --end-ns   $end_ns
+    --end-ns   $end_ns \
+    --suffix   "$suffix"
 if [ $? -ne 0 ]; then
     echo "ERROR: water_hbond_stability.py failed for $seq_id"
     exit 1

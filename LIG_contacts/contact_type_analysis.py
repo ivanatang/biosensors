@@ -147,6 +147,10 @@ def parse_args():
                         help="Restrict ligand atoms to the steroid ring core, the "
                              "C20-C24 carboxylate tail, or the whole ligand "
                              "(default: whole)")
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory/output suffix, e.g. '_qfix' for the "
+                             "bond-order/charge-fix systems (default: '', the "
+                             "standard production directory)")
     return parser.parse_args()
 
 
@@ -335,6 +339,8 @@ def print_diagnostics(per_frame_df, residue_df, seq_id):
 # MAIN
 # ─────────────────────────────────────────────
 def main():
+    global runrel
+
     args     = parse_args()
     seq_id   = args.seq_id
     start_ns = args.start_ns
@@ -344,13 +350,17 @@ def main():
     TAG      = f"{int(start_ns)}_{int(end_ns)}ns"
     ligand_region = args.ligand_region
 
+    # "" reproduces the original runrel exactly; e.g. "_qfix" points run_dir()
+    # at the bond-order/charge-fix systems' differently-named run directory.
+    runrel = f"{runrel}{args.suffix}"
+
     # Region suffix keeps core/tail runs from overwriting the whole-ligand
     # results; "whole" reproduces the original, unsuffixed path exactly.
     REGION_TAG = "" if ligand_region == "whole" else f"_{ligand_region}"
 
     # Tagged output directory — one per time window, consistent with
     # water_contacts_{TAG}/ naming used by the water analysis pipeline
-    tagged_output_dir = os.path.join(output_base, f"contact_type_results_{TAG}{REGION_TAG}")
+    tagged_output_dir = os.path.join(output_base, f"contact_type_results_{TAG}{REGION_TAG}{args.suffix}")
     os.makedirs(tagged_output_dir, exist_ok=True)
 
     print(f"\n=== contact_type_analysis.py  |  seq_id={seq_id}  "

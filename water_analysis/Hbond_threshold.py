@@ -54,6 +54,10 @@ parser.add_argument('--start-ns',  type=float, default=40.0,
                     help='Start of analysis window in ns (default: 40)')
 parser.add_argument('--end-ns',    type=float, default=500.0,
                     help='End of analysis window in ns (default: 500)')
+parser.add_argument('--suffix', default='',
+                    help="Run-directory/output suffix, e.g. '_qfix' for the "
+                         "bond-order/charge-fix systems (default: '', the "
+                         "standard production directory)")
 args = parser.parse_args()
 seq_id   = args.seq_id
 seq_type = args.seq_type
@@ -70,12 +74,12 @@ TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 # ─────────────────────────────────────────────────────────────────────────────
 base   = "/scratch/alpine/ivta1597/LCA_boltz_models"
 ext    = "HMR/dodecahedron"
-prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
+prod   = f"prod_md_0p9_cutoff_3dt_64x1_16PME_642dd{args.suffix}"
 
 traj_path    = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
 top_path     = os.path.join(base, seq_type, seq_id, prod, "prod_md_500ns.gro")
-rscores_csv  = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}", f"{seq_id}_R_scores_{TAG}.csv")
-out_dir      = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}")
+rscores_csv  = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}{args.suffix}", f"{seq_id}_R_scores_{TAG}.csv")
+out_dir      = os.path.join(base, seq_type, seq_id, f"water_contacts_{TAG}{args.suffix}")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"

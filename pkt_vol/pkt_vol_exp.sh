@@ -7,12 +7,14 @@
 # from long path lengths (known fpocket bug).
 #
 # Called by submit_mdpocket_exploration.sh:
-#   sbatch run_mdpocket_exploration.sh <seq_id> <dir_type> [overwrite]
+#   sbatch run_mdpocket_exploration.sh <seq_id> <dir_type> [overwrite] [suffix]
 #
 # overwrite ("true"/"false", default false) forces mdpocket to rerun and
 # removes existing mdpocket_<seq_id>_* outputs first, instead of skipping
 # when freq_iso_0_5.pdb already has pocket atoms. Needed after a stale
 # input gets fixed upstream (e.g. a PetaLibrary archive resync).
+#
+# suffix - run-directory suffix, e.g. "_qfix" (default: "")
 # =============================================================================
 
 #SBATCH --job-name=mdpocket_exp
@@ -48,9 +50,11 @@ PROT_PDB="protein_only.pdb"
 SEQ_ID=$1
 DIR_TYPE=$2
 OVERWRITE=${3:-false}
+SUFFIX=${4:-}
+RUNREL="${RUNREL}${SUFFIX}"
 
 if [[ -z "$SEQ_ID" || -z "$DIR_TYPE" ]]; then
-    echo "ERROR: usage: sbatch run_mdpocket_exploration.sh <seq_id> <dir_type> [overwrite]"
+    echo "ERROR: usage: sbatch run_mdpocket_exploration.sh <seq_id> <dir_type> [overwrite] [suffix]"
     exit 1
 fi
 

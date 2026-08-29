@@ -16,10 +16,16 @@
 #   bash submit_water_spatial_run.sh                      # seq_ids_ngs_observed.txt
 #   bash submit_water_spatial_run.sh seq_ids.txt           # specify seq list
 #   bash submit_water_spatial_run.sh seq_ids.txt 0.05      # explicit bin width
+#   bash submit_water_spatial_run.sh seq_ids.txt 0.05 300 _qfix
+#                                                           # _qfix systems (must match
+#                                                           # what water_spatial_prep.sh
+#                                                           # was run with)
 # ─────────────────────────────────────────────────────────────────────────────
 
 SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_ngs_observed.txt}
 BIN_NM=${2:-0.05}
+NAB=${3:-300}
+SUFFIX=${4:-}
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
@@ -58,7 +64,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     dir_type=$(get_dir_type "$seq_type")
 
     echo "Submitting: $seq_id  [$seq_type -> $dir_type]"
-    sbatch water_spatial_run.sh "$seq_id" "$dir_type" "$BIN_NM"
+    sbatch water_spatial_run.sh "$seq_id" "$dir_type" "$BIN_NM" "$NAB" "$SUFFIX"
     ((submitted++))
 
 done < "$SEQ_LIST"

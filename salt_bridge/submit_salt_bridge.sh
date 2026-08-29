@@ -1,13 +1,15 @@
 #!/bin/bash
-# Usage: bash submit_salt_bridge.sh [seq_list] [start_ns] [end_ns]
-#   bash submit_salt_bridge.sh                                    # seq_ids.txt, 40-500 ns
+# Usage: bash submit_salt_bridge.sh [seq_list] [start_ns] [end_ns] [config]
+#   bash submit_salt_bridge.sh                                    # seq_ids.txt, 40-500 ns, config.yaml
 #   bash submit_salt_bridge.sh ../seq_ids_orig.txt 40 250          # 250 ns window, full cohort
+#   bash submit_salt_bridge.sh ../seq_ids_new_ligands.txt 40 500 ../config_qfix.yaml
+#                                                                  # _qfix systems (differently-named runrel)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG="${SCRIPT_DIR}/../config.yaml"
 SEQ_FILE="${1:-${SCRIPT_DIR}/../seq_ids.txt}"
 START_NS="${2:-40}"
 END_NS="${3:-500}"
+CONFIG="${4:-${SCRIPT_DIR}/../config.yaml}"
 
 FAILED_LIST="${SCRIPT_DIR}/submit_salt_bridge_failed_${START_NS}_${END_NS}ns.txt"
 > "$FAILED_LIST"

@@ -34,7 +34,7 @@
 #
 # Usage:
 #   bash water_spatial_prep.sh [seq_ids_ngs_observed.txt] [--overwrite-existing]
-#                               [--start-ns 40] [--end-ns 500]
+#                               [--start-ns 40] [--end-ns 500] [--suffix _qfix]
 #
 # Input  (per sequence, archive only): <ARCHIVE_BASE>/<dir_type>/<seq_id>/<RUNREL>/prod_md_500ns.{tpr,xtc}
 # Output (per sequence, scratch):      <BASE>/<dir_type>/<seq_id>/<RUNREL>/water_spatial/{protein_lig.ndx,pbc.xtc,fit_trim.xtc}
@@ -57,6 +57,7 @@ OUTPUT_GROUP="System"
 OVERWRITE=false
 START_NS=40
 END_NS=500
+SUFFIX=""
 SEQ_LIST="/projects/ivta1597/biosensors/seq_ids_ngs_observed.txt"
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
@@ -64,10 +65,15 @@ while [[ $# -gt 0 ]]; do
         --overwrite-existing) OVERWRITE=true; shift ;;
         --start-ns)            START_NS="$2"; shift 2 ;;
         --end-ns)               END_NS="$2"; shift 2 ;;
+        --suffix)               SUFFIX="$2"; shift 2 ;;
         *)                     POSITIONAL+=("$1"); shift ;;
     esac
 done
 [[ ${#POSITIONAL[@]} -gt 0 ]] && SEQ_LIST="${POSITIONAL[0]}"
+
+# "" reproduces the original RUNREL exactly; e.g. "_qfix" points this at the
+# bond-order/charge-fix systems' differently-named run directory.
+RUNREL="${RUNREL}${SUFFIX}"
 
 START_PS=$(( START_NS * 1000 ))
 END_PS=$(( END_NS * 1000 ))

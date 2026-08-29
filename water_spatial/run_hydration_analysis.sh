@@ -16,7 +16,7 @@
 
 # ============================================================
 # Usage:
-#   sbatch run_hydration_analysis.sh <seq_id> <seq_type> [reference_region] [start_ns] [end_ns] [cutoffs] [stride]
+#   sbatch run_hydration_analysis.sh <seq_id> <seq_type> [reference_region] [start_ns] [end_ns] [cutoffs] [stride] [suffix]
 #
 # Arguments:
 #   seq_id            - sequence identifier (e.g. pair_3059_binder)
@@ -26,6 +26,7 @@
 #   end_ns            - end of analysis window in ns   (default: 500)
 #   cutoffs           - comma-separated hydration-shell cutoffs in Angstrom (default: 3,4,5,6,8)
 #   stride            - frame stride (default: 10)
+#   suffix            - run-directory/output suffix, e.g. "_qfix" (default: "")
 #
 # Example:
 #   sbatch run_hydration_analysis.sh pair_3059_binder binders
@@ -51,6 +52,7 @@ start_ns=${4:-40}
 end_ns=${5:-500}
 cutoffs=${6:-3,4,5,6,8}
 stride=${7:-10}
+suffix=${8:-}
 
 echo "============================================================"
 echo "  Hydration-shell water count"
@@ -60,6 +62,7 @@ echo "  region   : ${reference_region}"
 echo "  window   : ${start_ns}-${end_ns} ns"
 echo "  cutoffs  : ${cutoffs} A"
 echo "  stride   : ${stride}"
+echo "  suffix   : '${suffix}'"
 echo "  start    : $(date)"
 echo "============================================================"
 
@@ -70,7 +73,8 @@ python "$HYDRATION_CALC_SCRIPT" \
     --start-ns "$start_ns" \
     --end-ns   "$end_ns"   \
     --cutoffs  "$cutoffs"  \
-    --stride   "$stride"
+    --stride   "$stride"   \
+    --suffix   "$suffix"
 
 echo ""
 echo "============================================================"

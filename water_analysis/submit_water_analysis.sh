@@ -13,6 +13,8 @@
 #   bash submit_water_analysis.sh seq_ids.txt 40 300       # 300 ns window
 #   bash submit_water_analysis.sh seq_ids.txt 40 500 core  # steroid core only
 #   bash submit_water_analysis.sh seq_ids.txt 40 500 tail  # carboxylate tail only
+#   bash submit_water_analysis.sh seq_ids_qfix.txt 40 500 whole _qfix
+#                                                           # _qfix systems
 #
 # NOTE: ligand_region=core/tail only runs R_score_calc.py (steps 2-3 of
 # run_water_analysis.sh are whole-ligand only and are skipped automatically).
@@ -29,6 +31,7 @@ SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-40}
 END_NS=${3:-500}
 LIGAND_REGION=${4:-whole}
+SUFFIX=${5:-}
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
@@ -88,7 +91,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
                         --output="${SCRIPT_DIR}/output_water_${seq_id}_%j.out" \
                         --error="${SCRIPT_DIR}/error_water_${seq_id}_%j.err" \
                         "${SCRIPT_DIR}/run_water_analysis.sh" \
-                        "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" 2>&1)
+                        "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" "$SUFFIX" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "SUBMIT FAILED: $seq_id  -- $sbatch_out"
         printf '%s\t%s\n' "$seq_id" "$seq_type" >> "$FAILED_LIST"

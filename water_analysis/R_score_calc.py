@@ -64,6 +64,10 @@ parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], defaul
                     help="Restrict ligand atoms to the steroid ring core, the "
                          "C20-C24 carboxylate tail, or the whole ligand "
                          "(default: whole)")
+parser.add_argument('--suffix', default='',
+                    help="Run-directory/output suffix, e.g. '_qfix' for the "
+                         "bond-order/charge-fix systems (default: '', the "
+                         "standard production directory)")
 args = parser.parse_args()
 seq_id   = args.seq_id
 seq_type = args.seq_type
@@ -84,15 +88,16 @@ TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 input_base  = "/pl/active/shirts_archive/IvanaTang/biosensors"
 output_base = "/scratch/alpine/ivta1597/LCA_boltz_models"
 ext    = "HMR/dodecahedron"
-prod   = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
+prod   = f"prod_md_0p9_cutoff_3dt_64x1_16PME_642dd{args.suffix}"
 
 traj_path = os.path.join(input_base, seq_type, seq_id, prod, "prod_md_500ns.xtc")
 top_path  = os.path.join(input_base, seq_type, seq_id, prod, "prod_md_500ns.gro")
 
 # Region suffix keeps core/tail runs from overwriting the whole-ligand
-# results; "whole" reproduces the original, unsuffixed path exactly.
+# results; "whole" reproduces the original, unsuffixed path exactly. Same
+# idea for args.suffix ("" reproduces the original path exactly).
 REGION_TAG = "" if ligand_region == "whole" else f"_{ligand_region}"
-out_dir    = os.path.join(output_base, seq_type, seq_id, f"water_contacts_{TAG}{REGION_TAG}")
+out_dir    = os.path.join(output_base, seq_type, seq_id, f"water_contacts_{TAG}{REGION_TAG}{args.suffix}")
 os.makedirs(out_dir, exist_ok=True)
 
 LIG_RESNAME    = "LIG"

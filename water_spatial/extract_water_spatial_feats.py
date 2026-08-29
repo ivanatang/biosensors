@@ -296,7 +296,16 @@ def main():
                         help=f"A voxel is excluded if atom-occupied in at least this "
                              f"fraction of sampled frames (default: "
                              f"{DEFAULT_OCCUPIED_FRAME_FRAC}).")
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory suffix, e.g. '_qfix' for the "
+                             "bond-order/charge-fix systems (default: '', the "
+                             "standard production directory). Applies to every "
+                             "sequence in seq_list -- run _qfix sequences via a "
+                             "separate seq_list from standard ones.")
     args = parser.parse_args()
+
+    global RUNREL
+    RUNREL = f"{RUNREL}{args.suffix}"
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")

@@ -45,12 +45,14 @@ fi
 START_NS="${START_NS:-40}"
 END_NS="${END_NS:-500}"
 LIGAND_REGION="${LIGAND_REGION:-whole}"
+SUFFIX="${SUFFIX:-}"
 
 echo "──────────────────────────────────────────"
 echo "Job ID     : ${SLURM_JOB_ID}"
 echo "Seq ID     : ${SEQ_ID}"
 echo "Window     : ${START_NS}–${END_NS} ns"
 echo "Region     : ${LIGAND_REGION}"
+echo "Suffix     : '${SUFFIX}'"
 echo "Node       : $(hostname)"
 echo "Start time : $(date)"
 echo "──────────────────────────────────────────"
@@ -62,6 +64,7 @@ conda activate "${CONDA_ENV}"
 python "${PYTHON_SCRIPT}" "${SEQ_ID}"    \
     --start-ns "${START_NS}"             \
     --end-ns   "${END_NS}"               \
-    --ligand-region "${LIGAND_REGION}"
+    --ligand-region "${LIGAND_REGION}"   \
+    --suffix "${SUFFIX}"
 
 echo "Finished at: $(date)"

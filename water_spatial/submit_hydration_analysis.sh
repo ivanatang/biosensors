@@ -27,6 +27,7 @@ START_NS=${3:-40}
 END_NS=${4:-500}
 CUTOFFS=${5:-3,4,5,6,8}
 STRIDE=${6:-10}
+SUFFIX=${7:-}
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
@@ -80,7 +81,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
                         --output="${SCRIPT_DIR}/output_hyd_${seq_id}_%j.out" \
                         --error="${SCRIPT_DIR}/error_hyd_${seq_id}_%j.err" \
                         "${SCRIPT_DIR}/run_hydration_analysis.sh" \
-                        "$seq_id" "$dir_type" "$REFERENCE_REGION" "$START_NS" "$END_NS" "$CUTOFFS" "$STRIDE" 2>&1)
+                        "$seq_id" "$dir_type" "$REFERENCE_REGION" "$START_NS" "$END_NS" "$CUTOFFS" "$STRIDE" "$SUFFIX" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "SUBMIT FAILED: $seq_id  -- $sbatch_out"
         printf '%s\t%s\n' "$seq_id" "$seq_type" >> "$FAILED_LIST"

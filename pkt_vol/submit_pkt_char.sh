@@ -6,18 +6,28 @@
 # mdpocket characterization using the selected_pocket.pdb from exploration.
 #
 # Usage:
-#   bash submit_mdpocket_char.sh [seq_ids_orig.txt] [--overwrite-existing]
+#   bash submit_mdpocket_char.sh [seq_ids_orig.txt] [--overwrite-existing] [--suffix _qfix]
 #
 # --overwrite-existing is passed through to every submitted job, forcing
 # mdpocket characterization to rerun instead of skipping sequences that
 # already have descriptors.
+# --suffix is passed through too, e.g. "_qfix" for the bond-order/charge-fix
+# systems (default: "", the standard production directory).
 # =============================================================================
 
 OVERWRITE=false
+SUFFIX=""
 SEQ_LIST="/projects/ivta1597/biosensors/seq_ids_orig.txt"
+next_is_suffix=false
 for arg in "$@"; do
+    if [[ "$next_is_suffix" == "true" ]]; then
+        SUFFIX="$arg"
+        next_is_suffix=false
+        continue
+    fi
     case "$arg" in
         --overwrite-existing) OVERWRITE=true ;;
+        --suffix)              next_is_suffix=true ;;
         *)                    SEQ_LIST="$arg" ;;
     esac
 done
@@ -54,7 +64,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     dir_type=$(get_dir_type "$seq_type")
 
     echo "Submitting: $seq_id  [$seq_type → $dir_type]"
-    sbatch pkt_vol_char.sh "$seq_id" "$dir_type" "$OVERWRITE"
+    sbatch pkt_vol_char.sh "$seq_id" "$dir_type" "$OVERWRITE" "$SUFFIX"
     ((submitted++))
 
 done < "$SEQ_LIST"

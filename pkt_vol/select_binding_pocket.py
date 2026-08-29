@@ -189,7 +189,16 @@ def main():
     parser.add_argument("--overwrite-existing", action="store_true",
                         help="Regenerate selected_pocket.pdb even if it already exists, "
                              "instead of skipping.")
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory suffix, e.g. '_qfix' for the "
+                             "bond-order/charge-fix systems (default: '', the "
+                             "standard production directory). Applies to every "
+                             "sequence in seq_list -- run _qfix sequences via a "
+                             "separate seq_list from standard ones.")
     args = parser.parse_args()
+
+    global RUNREL
+    RUNREL = f"{RUNREL}{args.suffix}"
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")

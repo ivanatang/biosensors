@@ -241,8 +241,17 @@ def main():
                         help="End of analysis window in ns; selects which "
                              "windowed subdirectory / PL_only xtc to read "
                              "(default: 500)")
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory suffix, e.g. '_qfix' for the "
+                             "bond-order/charge-fix systems (default: '', the "
+                             "standard production directory). Applies to every "
+                             "sequence in seq_list -- run _qfix sequences via a "
+                             "separate seq_list from standard ones.")
     args = parser.parse_args()
     tag = args.tag
+
+    global RUNREL
+    RUNREL = f"{RUNREL}{args.suffix}"
     wide_window = args.wide_window_ns
     end_ns = args.end_ns
 

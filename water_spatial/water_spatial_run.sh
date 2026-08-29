@@ -25,12 +25,14 @@
 # <run_dir>/water_spatial/{protein_lig.ndx,fit_trim.xtc} for this sequence.
 #
 # Usage:
-#   sbatch water_spatial_run.sh <seq_id> <dir_type> [bin_nm] [nab]
+#   sbatch water_spatial_run.sh <seq_id> <dir_type> [bin_nm] [nab] [suffix]
 #
 # Arguments:
 #   seq_id    - sequence identifier (e.g. pair_3059_binder)
 #   dir_type  - directory group (binders | nonbinders | neg_low_pkt | neg_fail_gate)
 #   bin_nm    - gmx spatial grid spacing in nm (default: 0.05 = 0.5 A)
+#   suffix    - run-directory suffix, e.g. "_qfix" (default: ""), must match
+#               what water_spatial_prep.sh was run with for this sequence
 #   nab       - gmx spatial -nab ("number of ADDITIONAL BINS" per
 #               `gmx spatial -h` -- padding added around the frame-0
 #               bounding box is nab * bin_nm nm, NOT a fixed nm margin;
@@ -76,11 +78,12 @@ seq_id=$1
 dir_type=$2
 bin_nm=${3:-0.05}
 nab=${4:-300}
+suffix=${5:-}
 
 # ── Configurable paths ────────────────────────────────────────────────────────
 ARCHIVE_BASE="/pl/active/shirts_archive/IvanaTang/biosensors"
 BASE="/scratch/alpine/ivta1597/LCA_boltz_models"
-RUNREL="prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
+RUNREL="prod_md_0p9_cutoff_3dt_64x1_16PME_642dd${suffix}"
 GMX="/projects/ivta1597/pkgs/gromacs-2025.3/bin/gmx"
 REF_TPR="prod_md_500ns.tpr"
 # ─────────────────────────────────────────────────────────────────────────────

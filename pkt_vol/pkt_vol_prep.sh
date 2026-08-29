@@ -17,7 +17,7 @@
 #            -f protein_only.pdb -o mdpocket_<seq_id>
 #
 # Usage:
-#   bash run_pocket_pipeline_manual.sh [seq_ids_orig.txt] [--overwrite-existing]
+#   bash run_pocket_pipeline_manual.sh [seq_ids_orig.txt] [--overwrite-existing] [--suffix _qfix]
 #
 # --overwrite-existing regenerates protein_only.xtc/.pdb even if they already
 # exist, instead of skipping. Needed after a stale input gets fixed upstream
@@ -40,12 +40,24 @@ PROT_GROUP="Protein"
 
 OVERWRITE=false
 SEQ_LIST="/projects/ivta1597/biosensors/seq_ids_orig.txt"
+SUFFIX=""
+next_is_suffix=false
 for arg in "$@"; do
+    if [[ "$next_is_suffix" == "true" ]]; then
+        SUFFIX="$arg"
+        next_is_suffix=false
+        continue
+    fi
     case "$arg" in
         --overwrite-existing) OVERWRITE=true ;;
+        --suffix)              next_is_suffix=true ;;
         *)                    SEQ_LIST="$arg" ;;
     esac
 done
+
+# "" reproduces the original RUNREL exactly; e.g. "_qfix" points this at the
+# bond-order/charge-fix systems' differently-named run directory.
+RUNREL="${RUNREL}${SUFFIX}"
 
 # Returns 0 (run/regenerate) if OVERWRITE=true or the output file doesn't
 # exist yet. Mirrors post_processing_pipeline_worker.sh's should_run/FORCE.

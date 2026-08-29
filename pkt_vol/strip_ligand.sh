@@ -6,7 +6,10 @@
 # existing protein+ligand production XTC using gmx trjconv.
 #
 # Usage:
-#   bash strip_ligand_trjconv.sh [seq_ids.txt]
+#   bash strip_ligand_trjconv.sh [seq_ids.txt] [suffix]
+#
+# suffix - run-directory suffix, e.g. "_qfix" for the bond-order/charge-fix
+#          systems (default: "", the standard production directory)
 #
 # Input  (per sequence): <BASE>/<dir_type>/<seq_id>/<RUNREL>/PL_only_40_500ns.xtc
 # Output (per sequence): <BASE>/<dir_type>/<seq_id>/<RUNREL>/protein_only.xtc
@@ -24,6 +27,8 @@ OUTPUT_GROUP="Protein"
 # ─────────────────────────────────────────────────────────────────────────────
 
 SEQ_LIST=${1:-seq_ids.txt}
+SUFFIX=${2:-}
+RUNREL="${RUNREL}${SUFFIX}"
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"

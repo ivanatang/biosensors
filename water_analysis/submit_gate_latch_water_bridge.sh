@@ -31,6 +31,7 @@ SEQ_LIST=${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}
 START_NS=${2:-0}   # default 0 (not 40) so first_appearance_ns is meaningful
 END_NS=${3:-500}
 LIGAND_REGION=${4:-core}
+SUFFIX=${5:-}
 
 if [ ! -f "$SEQ_LIST" ]; then
     echo "ERROR: seq list file not found: $SEQ_LIST"
@@ -81,7 +82,7 @@ while IFS=$'\t' read -r seq_id seq_type custom_path || [[ -n "$seq_id" ]]; do
     sbatch_out=$(sbatch --job-name="glwb_${seq_id}" \
                         --output="${SCRIPT_DIR}/output_glwb_${seq_id}_%j.out" \
                         --error="${SCRIPT_DIR}/error_glwb_${seq_id}_%j.err" \
-                        "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" 2>&1)
+                        "$RUN_SCRIPT" "$seq_id" "$dir_type" "$START_NS" "$END_NS" "$LIGAND_REGION" "$SUFFIX" 2>&1)
     if [[ $? -ne 0 ]]; then
         echo "SUBMIT FAILED: $seq_id  -- $sbatch_out"
         printf '%s\t%s\n' "$seq_id" "$seq_type" >> "$FAILED_LIST"
