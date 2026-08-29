@@ -1,0 +1,6 @@
+bind_022_binder	Binder
+bind_019_binder	Binder
+bind_020_binder	Binder
+nonb_006_nb	False Positive
+nonb_008_nb	False Positive
+nonb_009_nb	False Positive
