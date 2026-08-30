@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=rg_sasa
-#SBATCH --output=logs/output_%A_%a.out
-#SBATCH --error=logs/error_%A_%a.err
+#SBATCH --output=/projects/ivta1597/biosensors/logs/output_%A_%a.out
+#SBATCH --error=/projects/ivta1597/biosensors/logs/error_%A_%a.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
 #SBATCH --time=03:00:00
@@ -16,6 +16,13 @@
 
 # Usage: sbatch --array=1-<N>%20 submit_compute_Rg_sasa.sh [--region pocket|whole] [seq_ids.txt]
 #   N = number of lines in seq_ids.txt  (wc -l seq_ids.txt)
+#
+# This script IS the sbatch-submitted job (no separate submit wrapper), so
+# unlike scripts with a wrapper that can mkdir the log dir before sbatch
+# runs, you must create it yourself once before first use -- SLURM opens
+# --output/--error at launch time and does not create missing parent
+# directories:
+#   mkdir -p /projects/ivta1597/biosensors/logs
 
 set -uo pipefail
 

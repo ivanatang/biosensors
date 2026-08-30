@@ -11,8 +11,8 @@
 #   sbatch --export=SEQ_ID=pair_3059_binder,START_NS=40,END_NS=500,LIGAND_REGION=core contact_type_worker.sh
 
 #SBATCH --job-name=contact_type
-#SBATCH --output=logs/contact_type_%j.out
-#SBATCH --error=logs/contact_type_%j.err
+#SBATCH --output=/projects/ivta1597/biosensors/LIG_contacts/logs/contact_type_%j.out
+#SBATCH --error=/projects/ivta1597/biosensors/LIG_contacts/logs/contact_type_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
 #SBATCH --time=04:00:00

@@ -17,8 +17,8 @@
 # =============================================================================
 
 #SBATCH --job-name=mdpocket_char
-#SBATCH --output=logs/mdpocket_char_%j.out
-#SBATCH --error=logs/mdpocket_char_%j.err
+#SBATCH --output=/projects/ivta1597/biosensors/pkt_vol/logs/mdpocket_char_%j.out
+#SBATCH --error=/projects/ivta1597/biosensors/pkt_vol/logs/mdpocket_char_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
 #SBATCH --time=20:00:00

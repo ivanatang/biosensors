@@ -10,8 +10,8 @@
 #          residue_atom_split_worker.sh
 
 #SBATCH --job-name=res_atomsplit
-#SBATCH --output=logs/res_atomsplit_%j.out
-#SBATCH --error=logs/res_atomsplit_%j.err
+#SBATCH --output=/projects/ivta1597/biosensors/LIG_contacts/logs/res_atomsplit_%j.out
+#SBATCH --error=/projects/ivta1597/biosensors/LIG_contacts/logs/res_atomsplit_%j.err
 #SBATCH --account=ucb351_asc4
 #SBATCH --partition=acpu
 #SBATCH --time=04:00:00

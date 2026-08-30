@@ -20,6 +20,12 @@
 BASE="/projects/ivta1597/biosensors/LIG_contacts"
 WORKER="${BASE}/residue_atom_split_worker.sh"
 
+# SLURM opens --output/--error at launch time using the worker's own
+# hardcoded absolute path, and does not create missing parent directories --
+# without this, every submission fails immediately with nowhere to write,
+# and no log file anywhere to explain why.
+mkdir -p "${BASE}/logs"
+
 SEQ_IDS_FILE="${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}"
 RESSEQ="${2:-116}"
 LIGAND_REGION="${3:-core}"

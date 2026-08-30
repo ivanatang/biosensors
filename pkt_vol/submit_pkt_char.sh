@@ -19,6 +19,12 @@
 # directory this script was invoked from, not this script's own location.
 WORKER="/projects/ivta1597/biosensors/pkt_vol/pkt_vol_char.sh"
 
+# SLURM opens --output/--error at launch time using the worker's own
+# hardcoded absolute path, and does not create missing parent directories --
+# without this, every submission fails immediately with nowhere to write,
+# and no log file anywhere to explain why.
+mkdir -p /projects/ivta1597/biosensors/pkt_vol/logs
+
 OVERWRITE=false
 SUFFIX=""
 SEQ_LIST="/projects/ivta1597/biosensors/seq_ids_orig.txt"

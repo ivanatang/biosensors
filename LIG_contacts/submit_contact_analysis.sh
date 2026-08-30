@@ -21,6 +21,12 @@
 BASE="/projects/ivta1597/biosensors/LIG_contacts"
 WORKER="${BASE}/contact_type_worker.sh"
 
+# SLURM opens --output/--error at launch time using the worker's own
+# hardcoded absolute path, and does not create missing parent directories --
+# without this, every submission fails immediately with nowhere to write,
+# and no log file anywhere to explain why.
+mkdir -p "${BASE}/logs"
+
 SEQ_IDS_FILE="${1:-/projects/ivta1597/biosensors/seq_ids_orig.txt}"
 START_NS="${2:-40}"
 END_NS="${3:-500}"
