@@ -1,0 +1,7 @@
+seq_id,ligand_region,n_frames,window_start_ns,window_end_ns,gate_bridge_occupancy,latch_bridge_occupancy,co_occurrence_occupancy,triple_bridge_occupancy,mean_n_triple_bridge_waters,first_appearance_ns,n_runs,n_distinct_waters,mean_run_duration_ns,median_run_duration_ns,seq_type
+bind_022_binder,core,1334,0.0,500.0,0.7219,0.946,0.7031,0.6034,0.7069,0.0,227,438,1.3298,0.75,Binder
+bind_019_binder,core,1334,0.0,500.0,0.527,0.7714,0.434,0.2954,0.3253,18.0,212,320,0.6969,0.375,Binder
+bind_020_binder,core,1334,0.0,500.0,0.7024,0.4805,0.4145,0.2706,0.3126,0.375,228,317,0.5938,0.375,Binder
+nonb_006_nb,core,1334,0.0,500.0,0.5885,0.8711,0.533,0.455,0.5202,0.75,258,530,0.8823,0.375,False Positive
+nonb_008_nb,core,1334,0.0,500.0,0.8988,0.7294,0.6754,0.3928,0.4333,1.125,270,482,0.7278,0.375,False Positive
+nonb_009_nb,core,1334,0.0,500.0,0.5967,0.5015,0.3051,0.1694,0.1784,3.375,167,205,0.5075,0.375,False Positive

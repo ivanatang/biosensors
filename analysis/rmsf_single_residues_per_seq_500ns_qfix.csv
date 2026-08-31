@@ -1,0 +1,7 @@
+Sequence,Group,Q69 RMSF (A),I134 RMSF (A),Y23 RMSF (A),K59 RMSF (A),R79 RMSF (A),I110 RMSF (A),G163 RMSF (A)
+bind_022_binder,Binder,2.468,3.248,1.777,0.672,0.56,0.73,0.762
+bind_019_binder,Binder,3.712,2.538,0.968,1.063,0.794,0.844,0.768
+bind_020_binder,Binder,2.918,2.504,1.669,1.001,0.744,1.249,0.707
+nonb_006_nb,False Positive,5.927,3.991,0.862,1.479,0.963,0.976,1.146
+nonb_008_nb,False Positive,2.263,2.749,1.787,0.693,0.454,0.887,1.933
+nonb_009_nb,False Positive,4.39,3.191,0.786,1.162,1.427,0.986,1.102

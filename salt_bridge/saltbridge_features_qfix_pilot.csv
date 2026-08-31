@@ -1,0 +1,7 @@
+seq_id,seq_type,max_saltbridge_occupancy_pct,n_saltbridges_gt50pct,mean_top3_occupancy_pct
+bind_022_binder,Binder,93.39,2,48.57
+bind_019_binder,Binder,91.34,1,36.93
+bind_020_binder,Binder,93.96,1,40.03
+nonb_006_nb,False Positive,83.03,2,46.84
+nonb_008_nb,False Positive,97.71,2,64.57
+nonb_009_nb,False Positive,52.04,1,22.49
