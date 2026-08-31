@@ -47,9 +47,12 @@ for seq_id in "${SEQ_IDS[@]}"; do
         "${SCRATCH}/${dir_type}/${seq_id}/${RUNREL}/500ns/rmsf_PL.xvg" \
         "${SCRATCH}/${dir_type}/${seq_id}/${RUNREL}_qfix/500ns/rmsf_PL.xvg"
 
+    # extract_gate_latch_rmsd_feats.py reads/writes directly against the
+    # PetaLibrary archive (BASE=archive in that script), not scratch --
+    # unlike every other per-sequence output checked here.
     check "RMSD-to-ref (gate_rmsd_to_ref.xvg)" \
-        "${SCRATCH}/${dir_type}/${seq_id}/${RUNREL}/500ns/gate_rmsd_to_ref.xvg" \
-        "${SCRATCH}/${dir_type}/${seq_id}/${RUNREL}_qfix/500ns/gate_rmsd_to_ref.xvg"
+        "${ARCHIVE}/${dir_type}/${seq_id}/${RUNREL}/500ns/gate_rmsd_to_ref.xvg" \
+        "${ARCHIVE}/${dir_type}/${seq_id}/${RUNREL}_qfix/500ns/gate_rmsd_to_ref.xvg"
 
     check "R-scores (whole)" \
         "${SCRATCH}/${dir_type}/${seq_id}/water_contacts_40_500ns/${seq_id}_R_scores_40_500ns.csv" \
