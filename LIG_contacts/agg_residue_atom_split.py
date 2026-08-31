@@ -15,7 +15,6 @@ Usage:
 """
 
 import os
-import glob
 import argparse
 import numpy as np
 import pandas as pd
@@ -66,6 +65,12 @@ def load_seq_type_map(seq_list_path):
     return mapping
 
 
+def load_seq_ids(seq_list_path):
+    with open(seq_list_path) as f:
+        return [line.split()[0] for line in f
+                if line.strip() and not line.startswith("#")]
+
+
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
     a = df.loc[df["seq_type"] == group_a, col].dropna().values
     b = df.loc[df["seq_type"] == group_b, col].dropna().values
@@ -103,35 +108,41 @@ def main():
     print(f"Region      : {args.ligand_region}")
     print(f"Results dir : {results_dir}")
 
-    # ── Load and combine per-sequence summaries ──────────────────────────
-    summary_files = sorted(glob.glob(
-        os.path.join(results_dir, f"*_res{args.resseq}_atomsplit_{TAG}{REGION_TAG}.csv")
-    ))
-    print(f"Found {len(summary_files)} summary files")
-    if not summary_files:
+    # ── Build explicit per-sequence paths from seq_list (not a glob over the
+    # whole shared results dir) -- a glob also picks up leftover output from
+    # any sequence that ever had this step run, including ones no longer in
+    # the current cohort (e.g. seq_ids_orig.txt's superseded 200-sequence
+    # list), inflating the combined table with unlabeled rows. See the
+    # equivalent fix in agg_gate_latch_water_bridge.py.
+    seq_ids = load_seq_ids(args.seq_list)
+    seq_type_map = load_seq_type_map(args.seq_list)
+
+    rows    = []
+    missing = []
+    for seq_id in seq_ids:
+        path = os.path.join(results_dir,
+                             f"{seq_id}_res{args.resseq}_atomsplit_{TAG}{REGION_TAG}.csv")
+        if not os.path.exists(path):
+            print(f"  MISSING: {path}")
+            missing.append(seq_id)
+            continue
+        df = pd.read_csv(path)
+        df["seq_type"] = seq_type_map.get(seq_id, "Unknown")
+        rows.append(df)
+
+    print(f"Found {len(rows)} of {len(seq_ids)} summary files")
+    if not rows:
         raise FileNotFoundError(
-            f"No summary CSVs found in: {results_dir}\n"
-            f"Expected pattern: *_res{args.resseq}_atomsplit_{TAG}{REGION_TAG}.csv"
+            f"No summary CSVs found for any sequence in {args.seq_list}.\n"
+            f"Expected pattern: {results_dir}/<seq_id>_res{args.resseq}_atomsplit_{TAG}{REGION_TAG}.csv"
         )
 
-    combined = pd.concat([pd.read_csv(f) for f in summary_files], ignore_index=True)
+    combined = pd.concat(rows, ignore_index=True)
 
-    seq_type_map = load_seq_type_map(args.seq_list)
-    combined["seq_type"] = combined["seq_id"].map(seq_type_map)
-
-    missing_type = combined[combined["seq_type"].isna()]
-    if len(missing_type):
-        print(f"WARNING: {len(missing_type)} sequences not found in {args.seq_list}: "
-              f"{missing_type['seq_id'].tolist()}")
-
-    if os.path.exists(args.seq_list):
-        with open(args.seq_list) as fh:
-            all_ids = [l.split()[0] for l in fh if l.strip() and not l.startswith('#')]
-        missing = set(all_ids) - set(combined["seq_id"])
-        if missing:
-            print(f"WARNING: {len(missing)} sequences missing atom-split results: {missing}")
-        else:
-            print("All sequences accounted for.")
+    if missing:
+        print(f"\nWARNING: {len(missing)} sequences missing atom-split results: {missing}")
+    else:
+        print("All sequences accounted for.")
 
     combined.to_csv(combined_out, index=False)
     print(f"\nSaved combined table: {combined_out}  (shape={combined.shape})")
