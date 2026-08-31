@@ -14,7 +14,6 @@ Usage:
 """
 
 import os
-import glob
 import argparse
 import numpy as np
 import pandas as pd
@@ -54,16 +53,53 @@ def bh_fdr(pvals):
     return out
 
 
-def load_seq_type_map(seq_list_path):
-    mapping = {}
+def load_seq_list(seq_list_path):
+    """
+    Returns a list of (seq_id, seq_type, custom_dir_or_None) tuples, mirroring
+    aggregate_r_scores.py's load_seq_list -- so the same seq_ids.txt-style
+    files (two or three tab-separated columns) work for both aggregators.
+    """
+    entries = []
     with open(seq_list_path) as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("#"):
+            if not line or line.startswith('#'):
                 continue
-            parts = line.split("\t")
-            mapping[parts[0]] = parts[1] if len(parts) > 1 else "Unknown"
-    return mapping
+            parts = [p.strip() for p in line.replace(',', '\t').split('\t')]
+            seq_id   = parts[0]
+            seq_type = parts[1] if len(parts) > 1 else 'Unknown'
+            custom   = parts[2] if len(parts) > 2 else None
+            entries.append((seq_id, seq_type, custom))
+    return entries
+
+
+def get_csv_path(seq_id, base, custom_dir, tag, region_tag, suffix):
+    """
+    Full path to a sequence's gate-latch-ligand water bridge summary CSV,
+    matching gate_latch_water_bridge.py's own output path exactly (the
+    filename has no suffix, only the containing directory does).
+    """
+    dirname  = f"gate_latch_water_bridge_{tag}{region_tag}{suffix}"
+    filename = f"{seq_id}_gate_latch_bridge_{tag}{region_tag}.csv"
+
+    if custom_dir:
+        return os.path.join(custom_dir, dirname, filename)
+
+    if seq_id.endswith('_binder'):
+        subdir = 'binders'
+    elif seq_id.endswith('_nb'):
+        subdir = 'nonbinders'
+    elif seq_id.endswith('_low_pkt'):
+        subdir = 'neg_low_pkt'
+    elif seq_id.endswith('_fail_gate'):
+        subdir = 'neg_fail_gate'
+    else:
+        subdir = None
+
+    if subdir:
+        return os.path.join(base, subdir, seq_id, dirname, filename)
+
+    return os.path.join(base, seq_id, dirname, filename)
 
 
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
@@ -90,48 +126,51 @@ def main():
                              "these sequences (default: '', the standard directory). "
                              "Also appended to this script's own output filenames so "
                              "a _qfix run never overwrites the standard one.")
+    parser.add_argument('--base', default=results_base)
     args = parser.parse_args()
 
     TAG        = f"{int(args.start_ns)}_{int(args.end_ns)}ns"
     REGION_TAG = "" if args.ligand_region == "whole" else f"_{args.ligand_region}"
 
-    results_glob = os.path.join(
-        results_base, "*", "*", f"gate_latch_water_bridge_{TAG}{REGION_TAG}{args.suffix}",
-        f"*_gate_latch_bridge_{TAG}{REGION_TAG}.csv"
-    )
     combined_out = os.path.join(out_dir, f"gate_latch_bridge_all_{TAG}{REGION_TAG}{args.suffix}.csv")
     stats_out    = os.path.join(out_dir, f"gate_latch_bridge_binder_vs_fp_stats_{TAG}{REGION_TAG}{args.suffix}.csv")
 
     print(f"Window      : {args.start_ns:.0f}-{args.end_ns:.0f} ns  (tag: {TAG})")
     print(f"Region      : {args.ligand_region}")
-    print(f"Results glob: {results_glob}")
+    print(f"Seq list    : {args.seq_list}")
 
-    summary_files = sorted(glob.glob(results_glob))
-    print(f"Found {len(summary_files)} summary files")
-    if not summary_files:
+    # ── Build explicit per-sequence paths from seq_list (not a tree-wide glob) ──
+    # A glob over the whole results tree also picks up leftover output from
+    # any sequence that ever had this step run, including ones no longer in
+    # the current cohort (e.g. seq_ids_orig.txt's superseded 200-sequence
+    # list) -- explicit paths mean only what's actually in seq_list is read.
+    seq_list = load_seq_list(args.seq_list)
+
+    rows    = []
+    missing = []
+    for seq_id, seq_type, custom_dir in seq_list:
+        path = get_csv_path(seq_id, args.base, custom_dir, TAG, REGION_TAG, args.suffix)
+        if not os.path.exists(path):
+            print(f"  MISSING: {path}")
+            missing.append(seq_id)
+            continue
+        df = pd.read_csv(path)
+        df["seq_type"] = seq_type
+        rows.append(df)
+
+    print(f"Found {len(rows)} of {len(seq_list)} summary files")
+    if not rows:
         raise FileNotFoundError(
-            f"No summary CSVs found matching: {results_glob}\n"
+            f"No summary CSVs found for any sequence in {args.seq_list}.\n"
             f"Run submit_gate_latch_water_bridge.sh first and wait for jobs to finish."
         )
 
-    combined = pd.concat([pd.read_csv(f) for f in summary_files], ignore_index=True)
+    combined = pd.concat(rows, ignore_index=True)
 
-    seq_type_map = load_seq_type_map(args.seq_list)
-    combined["seq_type"] = combined["seq_id"].map(seq_type_map)
-
-    missing_type = combined[combined["seq_type"].isna()]
-    if len(missing_type):
-        print(f"WARNING: {len(missing_type)} sequences not found in {args.seq_list}: "
-              f"{missing_type['seq_id'].tolist()}")
-
-    if os.path.exists(args.seq_list):
-        with open(args.seq_list) as fh:
-            all_ids = [l.split()[0] for l in fh if l.strip() and not l.startswith('#')]
-        missing = set(all_ids) - set(combined["seq_id"])
-        if missing:
-            print(f"WARNING: {len(missing)} sequences missing water-bridge results: {missing}")
-        else:
-            print("All sequences accounted for.")
+    if missing:
+        print(f"\nWARNING: {len(missing)} sequences missing water-bridge results: {missing}")
+    else:
+        print("All sequences accounted for.")
 
     combined.to_csv(combined_out, index=False)
     print(f"\nSaved combined table: {combined_out}  (shape={combined.shape})")
