@@ -97,35 +97,57 @@ if [[ -z "$subdir" ]]; then
     exit 1
 fi
 
+ARCHIVE_BASE="/pl/active/shirts_archive/IvanaTang/biosensors"
+
 if [[ -n "$custom_base" ]]; then
     rundir="${custom_base}/${RUNREL}"
+    archive_flat_dir=""
+    archive_nested_dir=""
 else
     rundir="${BASE}/${subdir}/${folder_name}/${RUNREL}"
-fi
-
-# Newer pipeline runs write medoid_PL.pdb/PL_only_*.xtc under RUNREL/500ns/
-# instead of directly in RUNREL/ -- same layout quirk already handled in
-# contact_type_analysis.py's run_dir() and extract_rmsf_feats.py's
-# rmsf_run_dir(). Prefer the nested dir if it actually has medoid_PL.pdb,
-# since which layout a sequence uses doesn't map cleanly onto seq_id/batch.
-if [[ ! -f "${rundir}/medoid_PL.pdb" && -f "${rundir}/500ns/medoid_PL.pdb" ]]; then
-    rundir="${rundir}/500ns"
+    archive_flat_dir="${ARCHIVE_BASE}/${subdir}/${folder_name}/${RUNREL}"
+    archive_nested_dir="${archive_flat_dir}/500ns"
 fi
 
 echo "rundir: $rundir"
+mkdir -p "$rundir"
 
-if [[ ! -d "$rundir" ]]; then
-    echo "ERROR: directory not found — $rundir"
-    exit 1
-fi
+# medoid_PL.pdb/PL_only_*.xtc/index.ndx -- and Rg/SASA themselves, if already
+# computed -- are normally scratch-only pipeline artifacts (written by
+# post_processing_pipeline_worker.sh's Phase 3 into RUNREL/500ns/), but for
+# sequences processed a while ago they can have aged out of scratch's 90-day
+# window while still living in the PetaLibrary archive (flat RUNREL/, or its
+# own RUNREL/500ns/). Stage whatever's missing from scratch in from there --
+# same pattern as pkt_vol/pkt_vol_char.sh.
+stage_file() {
+    local filename="$1"
+    if [[ -f "${rundir}/${filename}" ]]; then
+        return 0
+    fi
+    [[ -z "$archive_flat_dir" ]] && return 1
+    for d in "$archive_flat_dir" "$archive_nested_dir"; do
+        if [[ -f "${d}/${filename}" ]]; then
+            cp "${d}/${filename}" "${rundir}/${filename}"
+            echo "  Staged from archive: ${d}/${filename} -> ${rundir}/${filename}"
+            return 0
+        fi
+    done
+    return 1
+}
 
-# ── Check required inputs ─────────────────────────────────────────────────────
+# If Rg/SASA were already computed (and archived) for this sequence, stage
+# the results directly instead of recomputing -- the SKIP checks below then
+# see them already in rundir and skip the GROMACS calls entirely.
+stage_file "$RG_OUT"
+stage_file "$SASA_OUT"
+
+# ── Check/stage required inputs ────────────────────────────────────────────────
 missing=""
 for f in "${REQUIRED_INPUTS[@]}"; do
-    [[ ! -f "${rundir}/${f}" ]] && missing+=" $f"
+    stage_file "$f" || missing+=" $f"
 done
 if [[ -n "$missing" ]]; then
-    echo "ERROR: missing inputs:$missing"
+    echo "ERROR: missing inputs (checked scratch, archive flat, archive/500ns):$missing"
     exit 1
 fi
 
