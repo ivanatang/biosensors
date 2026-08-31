@@ -113,9 +113,16 @@ def main():
     parser.add_argument("--early-late-frac", type=float, default=0.2,
                         help="Fraction of each sequence's own frames counted as "
                              "'early'/'late' for the drift comparison (default: 0.2).")
-    parser.add_argument("--output", default="water_density_feats.csv",
-                        help="Output CSV filename (default: water_density_feats.csv)")
+    parser.add_argument("--output", default=None,
+                        help="Output CSV filename (default: water_density_feats.csv, "
+                             "or water_density_feats{suffix}.csv if --suffix is set)")
     parser.add_argument("--base", default=BASE)
+    parser.add_argument("--suffix", default="",
+                        help="Run-directory suffix, e.g. '_qfix', matching whatever "
+                             "hydration_calc.py was run with for these sequences "
+                             "(default: '', the standard directory). Also folded into "
+                             "the default --output filename so a _qfix run never "
+                             "overwrites the standard one.")
     parser.add_argument("--structure-source", default="all",
                         choices=["ngs_observed", "designed_assumed", "all"],
                         help="Filter sequences by md_candidate_guide.csv's source column. "
@@ -124,6 +131,8 @@ def main():
                         default="/projects/ivta1597/biosensors/md_candidate_guide.csv",
                         help="Path to md_candidate_guide.csv (default: %(default)s)")
     args = parser.parse_args()
+    if args.output is None:
+        args.output = f"water_density_feats{args.suffix}.csv"
 
     if not os.path.exists(args.seq_list):
         print(f"ERROR: seq list not found: {args.seq_list}")
@@ -159,10 +168,10 @@ def main():
                 continue
 
             if custom_path:
-                run_dir = os.path.join(custom_path, f"water_density_{TAG}")
+                run_dir = os.path.join(custom_path, f"water_density_{TAG}{args.suffix}")
             else:
                 dir_type = TYPE_SUBDIR.get(seq_type, seq_type)
-                run_dir  = os.path.join(args.base, dir_type, seq_id, f"water_density_{TAG}")
+                run_dir  = os.path.join(args.base, dir_type, seq_id, f"water_density_{TAG}{args.suffix}")
 
             csv_file = os.path.join(run_dir, f"{seq_id}_hydration_{REGION_TAG}_{TAG}.csv")
 

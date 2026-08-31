@@ -65,6 +65,10 @@ def parse_args():
     parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], default='whole',
                         help='Ligand region the underlying R_score_calc.py runs were '
                              'restricted to (default: whole)')
+    parser.add_argument('--suffix', default='',
+                        help="Run-directory/output suffix, e.g. '_qfix', matching "
+                             "whatever R_score_calc.py was run with for these "
+                             "sequences (default: '', the standard directory)")
     return parser.parse_args()
 
 
@@ -93,20 +97,24 @@ def load_seq_list(args):
     raise ValueError("Provide either --seq_list or --seq_ids")
 
 
-def get_csv_path(seq_id, base, custom_dir, tag, region_tag=""):
+def get_csv_path(seq_id, base, custom_dir, tag, region_tag="", suffix=""):
     """
     Return the full path to the R_scores CSV for this sequence.
 
     For default paths, infers subdirectory from seq_id suffix and appends
-    water_contacts_{tag}{region_tag}/{seq_id}_R_scores_{tag}{region_tag}.csv.
+    water_contacts_{tag}{region_tag}{suffix}/{seq_id}_R_scores_{tag}{region_tag}.csv
+    -- matching R_score_calc.py's own output path exactly (the filename itself
+    has no suffix, only the containing directory does).
 
     For custom paths, custom_dir is the parent directory that CONTAINS
-    water_contacts_{tag}{region_tag}/ (i.e. the sequence-level or
+    water_contacts_{tag}{region_tag}{suffix}/ (i.e. the sequence-level or
     HMR/dodecahedron dir).
     """
+    dirname = f"water_contacts_{tag}{region_tag}{suffix}"
+    filename = f"{seq_id}_R_scores_{tag}{region_tag}.csv"
+
     if custom_dir:
-        return os.path.join(custom_dir, f"water_contacts_{tag}{region_tag}",
-                            f"{seq_id}_R_scores_{tag}{region_tag}.csv")
+        return os.path.join(custom_dir, dirname, filename)
 
     if seq_id.endswith('_binder'):
         subdir = 'binders'
@@ -120,11 +128,9 @@ def get_csv_path(seq_id, base, custom_dir, tag, region_tag=""):
         subdir = None
 
     if subdir:
-        return os.path.join(base, subdir, seq_id, f"water_contacts_{tag}{region_tag}",
-                            f"{seq_id}_R_scores_{tag}{region_tag}.csv")
+        return os.path.join(base, subdir, seq_id, dirname, filename)
 
-    return os.path.join(base, seq_id, f"water_contacts_{tag}{region_tag}",
-                        f"{seq_id}_R_scores_{tag}{region_tag}.csv")
+    return os.path.join(base, seq_id, dirname, filename)
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +153,7 @@ if __name__ == "__main__":
     missing      = []
 
     for seq_id, seq_type, custom_dir in seq_list:
-        path = get_csv_path(seq_id, args.base, custom_dir, TAG, REGION_TAG)
+        path = get_csv_path(seq_id, args.base, custom_dir, TAG, REGION_TAG, args.suffix)
 
         if not os.path.exists(path):
             print(f"  MISSING: {path}")

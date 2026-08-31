@@ -37,13 +37,19 @@ parser.add_argument('--end-ns',   type=float, default=500.0,
 parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], default='whole',
                     help='Ligand region the underlying contact_type_analysis.py runs '
                          'were restricted to (default: whole)')
+parser.add_argument('--suffix', default='',
+                    help="Run-directory/output suffix, e.g. '_qfix', matching "
+                         "whatever contact_type_analysis.py was run with for these "
+                         "sequences (default: '', the standard directory). Also "
+                         "appended to this script's own output filename so a _qfix "
+                         "run never overwrites the standard one.")
 args = parser.parse_args()
 seq_ids_file = args.seq_list
 
 TAG         = f"{int(args.start_ns)}_{int(args.end_ns)}ns"
 REGION_TAG  = "" if args.ligand_region == "whole" else f"_{args.ligand_region}"
-results_dir = os.path.join(out_dir, f"contact_type_results_{TAG}{REGION_TAG}")
-out_path    = os.path.join(out_dir, f"contact_features_all_{TAG}{REGION_TAG}.csv")
+results_dir = os.path.join(out_dir, f"contact_type_results_{TAG}{REGION_TAG}{args.suffix}")
+out_path    = os.path.join(out_dir, f"contact_features_all_{TAG}{REGION_TAG}{args.suffix}.csv")
 os.makedirs(out_dir, exist_ok=True)
 
 print(f"Window      : {args.start_ns:.0f}-{args.end_ns:.0f} ns  (tag: {TAG})")

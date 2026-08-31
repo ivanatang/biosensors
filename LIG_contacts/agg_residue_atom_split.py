@@ -83,13 +83,20 @@ def main():
     parser.add_argument('--start-ns', type=float, default=40.0)
     parser.add_argument('--end-ns',   type=float, default=500.0)
     parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], default='core')
+    parser.add_argument('--suffix', default='',
+                        help="Run-directory/output suffix, e.g. '_qfix', matching "
+                             "whatever residue_atom_split_contact.py was run with "
+                             "for these sequences (default: '', the standard "
+                             "directory). NOTE: residue_atom_split_contact.py "
+                             "itself does not currently have --suffix support, so "
+                             "this only works once that script does too.")
     args = parser.parse_args()
 
     TAG        = f"{int(args.start_ns)}_{int(args.end_ns)}ns"
     REGION_TAG = "" if args.ligand_region == "whole" else f"_{args.ligand_region}"
-    results_dir = os.path.join(out_dir, f"residue_atomsplit_results_{TAG}{REGION_TAG}")
-    combined_out = os.path.join(out_dir, f"residue{args.resseq}_atomsplit_all_{TAG}{REGION_TAG}.csv")
-    stats_out    = os.path.join(out_dir, f"residue{args.resseq}_atomsplit_binder_vs_fp_stats_{TAG}{REGION_TAG}.csv")
+    results_dir = os.path.join(out_dir, f"residue_atomsplit_results_{TAG}{REGION_TAG}{args.suffix}")
+    combined_out = os.path.join(out_dir, f"residue{args.resseq}_atomsplit_all_{TAG}{REGION_TAG}{args.suffix}.csv")
+    stats_out    = os.path.join(out_dir, f"residue{args.resseq}_atomsplit_binder_vs_fp_stats_{TAG}{REGION_TAG}{args.suffix}.csv")
 
     print(f"Residue     : {args.resseq}")
     print(f"Window      : {args.start_ns:.0f}-{args.end_ns:.0f} ns  (tag: {TAG})")

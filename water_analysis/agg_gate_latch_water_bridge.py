@@ -84,17 +84,23 @@ def main():
                              "(needed for first_appearance_ns to be meaningful).")
     parser.add_argument('--end-ns',   type=float, default=500.0)
     parser.add_argument('--ligand-region', choices=['whole', 'core', 'tail'], default='core')
+    parser.add_argument('--suffix', default='',
+                        help="Run-directory/output suffix, e.g. '_qfix', matching "
+                             "whatever gate_latch_water_bridge.py was run with for "
+                             "these sequences (default: '', the standard directory). "
+                             "Also appended to this script's own output filenames so "
+                             "a _qfix run never overwrites the standard one.")
     args = parser.parse_args()
 
     TAG        = f"{int(args.start_ns)}_{int(args.end_ns)}ns"
     REGION_TAG = "" if args.ligand_region == "whole" else f"_{args.ligand_region}"
 
     results_glob = os.path.join(
-        results_base, "*", "*", f"gate_latch_water_bridge_{TAG}{REGION_TAG}",
+        results_base, "*", "*", f"gate_latch_water_bridge_{TAG}{REGION_TAG}{args.suffix}",
         f"*_gate_latch_bridge_{TAG}{REGION_TAG}.csv"
     )
-    combined_out = os.path.join(out_dir, f"gate_latch_bridge_all_{TAG}{REGION_TAG}.csv")
-    stats_out    = os.path.join(out_dir, f"gate_latch_bridge_binder_vs_fp_stats_{TAG}{REGION_TAG}.csv")
+    combined_out = os.path.join(out_dir, f"gate_latch_bridge_all_{TAG}{REGION_TAG}{args.suffix}.csv")
+    stats_out    = os.path.join(out_dir, f"gate_latch_bridge_binder_vs_fp_stats_{TAG}{REGION_TAG}{args.suffix}.csv")
 
     print(f"Window      : {args.start_ns:.0f}-{args.end_ns:.0f} ns  (tag: {TAG})")
     print(f"Region      : {args.ligand_region}")
