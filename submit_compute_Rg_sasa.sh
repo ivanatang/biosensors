@@ -103,6 +103,15 @@ else
     rundir="${BASE}/${subdir}/${folder_name}/${RUNREL}"
 fi
 
+# Newer pipeline runs write medoid_PL.pdb/PL_only_*.xtc under RUNREL/500ns/
+# instead of directly in RUNREL/ -- same layout quirk already handled in
+# contact_type_analysis.py's run_dir() and extract_rmsf_feats.py's
+# rmsf_run_dir(). Prefer the nested dir if it actually has medoid_PL.pdb,
+# since which layout a sequence uses doesn't map cleanly onto seq_id/batch.
+if [[ ! -f "${rundir}/medoid_PL.pdb" && -f "${rundir}/500ns/medoid_PL.pdb" ]]; then
+    rundir="${rundir}/500ns"
+fi
+
 echo "rundir: $rundir"
 
 if [[ ! -d "$rundir" ]]; then
