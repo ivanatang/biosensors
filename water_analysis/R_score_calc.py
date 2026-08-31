@@ -104,23 +104,61 @@ LIG_RESNAME    = "LIG"
 WATER_RESNAMES = {"HOH", "WAT", "SOL"}
 ION_RESNAMES   = {"NA", "CL", "NA+", "CL-"}
 
-# LCA heavy-atom split between the C20-C24 pentanoic-acid tail (side chain
+# Ligand heavy-atom split between the C20-C24 pentanoic-acid tail (side chain
 # off the steroid D-ring, terminating in the carboxylate) and everything
-# else (the fused 4-ring core, 2 angular methyls, 3-OH oxygen).
+# else (the fused 4-ring core, angular methyls, ring hydroxyls/sulfate).
 #
 # This is expressed as 0-indexed ORDINAL POSITIONS among the ligand's heavy
 # atoms in topology order, not atom names: the production .itp/.gro use
 # generic per-element names ("O", "O", "O", "C", "C", ...), not the unique
-# names ("O41", "C44", ...) from the standalone ligand_pairXXXX.pdb used to
+# names ("O41", "C44", ...) from the standalone ligand_<seq_id>.pdb used to
 # derive this split, so name-based matching silently selects zero (or all)
-# atoms. Atom ORDER is preserved between the two, though: heavy atoms 0-2
-# are the 3 oxygens (O41,O42,O43) and 3-26 are the 24 carbons (C44-C67), in
-# that order, on every sequence (same ligand, same parameterization
-# pipeline). LIGAND_EXPECTED_ELEMENTS is checked at runtime so a future
-# sequence that breaks this assumption fails loudly instead of silently
-# mis-splitting.
-LIGAND_TAIL_ORDINALS     = {0, 1, 3, 4, 7, 9, 19}   # O41,O42,C44,C45,C48,C50,C60
-LIGAND_EXPECTED_ELEMENTS = ['O', 'O', 'O'] + ['C'] * 24
+# atoms. Atom ORDER is preserved between the standalone PDB and the .gro for
+# a given sequence, but NOT across different Boltz-2 prediction batches --
+# the original 95-seq LCA cohort and the 4-sequence new-ligand test batch
+# use two different orderings for the same LCA molecule -- and CDCA/GLCA/
+# LCA3S are chemically different ligands entirely (extra ring hydroxyl,
+# glycine conjugate, and a sulfate ester in place of the free 3-OH,
+# respectively). Each pattern below was derived once from that ligand's own
+# standalone PDB (with CONECT records) by pruning degree-1 leaves to
+# isolate the fused steroid-ring "2-core", then taking the largest
+# connected component hanging off it as the tail -- the solvent-facing side
+# chain (C20-C24 + carboxylate for LCA/CDCA/LCA3S; for GLCA, extended
+# through the amide and glycine conjugate, since the whole appendage is the
+# analogous solvent-facing terminus once LCA's free acid becomes an amide).
+# get_tail_ordinals() below is checked at runtime so a future sequence that
+# breaks all known patterns fails loudly instead of silently mis-splitting.
+LIGAND_PATTERNS = [
+    # (label, expected_elements, tail_ordinals)
+    ('LCA (original 95-seq cohort)',
+     ['O', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 3, 4, 7, 9, 19}),
+    ('LCA (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+    ('CDCA (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+    ('GLCA (new-ligand test batch, tail includes glycine conjugate)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'N', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
+    ('LCA3S (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'S', 'O', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+]
+
+
+def get_tail_ordinals(seq_id, got_elements):
+    for label, expected, tail_ordinals in LIGAND_PATTERNS:
+        if got_elements == expected:
+            return tail_ordinals
+    known = "\n".join(f"  {label}: {pat}" for label, pat, _ in LIGAND_PATTERNS)
+    raise ValueError(
+        f"[{seq_id}] Ligand heavy-atom element order doesn't match any known "
+        f"pattern (likely a new ligand, or a new Boltz-2 batch with yet "
+        f"another atom ordering -- derive its own pattern and add it to "
+        f"LIGAND_PATTERNS).\nGot: {got_elements}\nKnown patterns:\n{known}"
+    )
 
 HEAVY_CUT = 0.40   # nm (= 4.0 Å) — heavy-atom distance threshold
 R_DOM     = -0.70  # residues with R below this are "dominant" water-mediated
@@ -162,22 +200,18 @@ if not lig_res:
         "Check LIG_RESNAME in the CONFIG block.")
 
 # Ligand heavy atoms, in topology order, optionally restricted to the
-# core or tail region by ordinal position (see LIGAND_TAIL_ORDINALS above).
+# core or tail region by ordinal position (see LIGAND_PATTERNS above).
 lig_heavy_atoms_all = [a for r in lig_res for a in r.atoms if a.element.symbol != 'H']
 
 if ligand_region != "whole":
     got_elements = [a.element.symbol for a in lig_heavy_atoms_all]
-    if got_elements != LIGAND_EXPECTED_ELEMENTS:
-        raise ValueError(
-            f"Ligand heavy-atom element order doesn't match the expected "
-            f"LCA pattern (3xO then 24xC) that LIGAND_TAIL_ORDINALS was "
-            f"derived from. Got: {got_elements}")
+    tail_ordinals = get_tail_ordinals(seq_id, got_elements)
     if ligand_region == "core":
         lig_heavy_atoms_all = [a for i, a in enumerate(lig_heavy_atoms_all)
-                                if i not in LIGAND_TAIL_ORDINALS]
+                                if i not in tail_ordinals]
     elif ligand_region == "tail":
         lig_heavy_atoms_all = [a for i, a in enumerate(lig_heavy_atoms_all)
-                                if i in LIGAND_TAIL_ORDINALS]
+                                if i in tail_ordinals]
 
 lig_heavy = np.array([a.index for a in lig_heavy_atoms_all], dtype=int)
 

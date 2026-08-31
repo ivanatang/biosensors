@@ -138,8 +138,53 @@ GATE_RESIDUES  = set(range(84, 91))    # CLAUDE.md: Gate loop, residues 84-90
 LATCH_RESIDUES = set(range(114, 119))  # CLAUDE.md: Latch, residues 114-118
 
 # Same core/tail ligand-atom split as R_score_calc.py / contact_type_analysis.py.
-LIGAND_TAIL_ORDINALS     = {0, 1, 3, 4, 7, 9, 19}   # O41,O42,C44,C45,C48,C50,C60
-LIGAND_EXPECTED_ELEMENTS = ['O', 'O', 'O'] + ['C'] * 24
+#
+# Boltz-2 does not guarantee a stable heavy-atom order even for the same
+# ligand chemistry across different prediction batches (the original 95-seq
+# LCA cohort and the 4-sequence new-ligand test batch use two different
+# orderings for the same LCA molecule) -- and CDCA/GLCA/LCA3S are chemically
+# different ligands entirely (extra ring hydroxyl, glycine conjugate, and a
+# sulfate ester in place of the free 3-OH, respectively). Each pattern below
+# was derived once from that ligand's own standalone PDB (with CONECT
+# records) by pruning degree-1 leaves to isolate the fused steroid-ring
+# "2-core", then taking the largest connected component hanging off it as
+# the tail -- the solvent-facing side chain (C20-C24 + carboxylate for
+# LCA/CDCA/LCA3S; for GLCA, extended through the amide and glycine
+# conjugate, since the whole appendage is the analogous solvent-facing
+# terminus once LCA's free acid becomes an amide -- see scratchpad's
+# derive_tail_ordinals.py for the derivation script if a new ligand or a
+# new Boltz-2 batch needs its own pattern added).
+LIGAND_PATTERNS = [
+    # (label, expected_elements, tail_ordinals)
+    ('LCA (original 95-seq cohort)',
+     ['O', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 3, 4, 7, 9, 19}),
+    ('LCA (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+    ('CDCA (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+    ('GLCA (new-ligand test batch, tail includes glycine conjugate)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'N', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
+    ('LCA3S (new-ligand test batch)',
+     ['C', 'C', 'C', 'C', 'C', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'O', 'S', 'O', 'O', 'O', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C'],
+     {0, 1, 2, 3, 4, 5, 6}),
+]
+
+
+def get_tail_ordinals(seq_id, got_elements):
+    for label, expected, tail_ordinals in LIGAND_PATTERNS:
+        if got_elements == expected:
+            return tail_ordinals
+    known = "\n".join(f"  {label}: {pat}" for label, pat, _ in LIGAND_PATTERNS)
+    raise ValueError(
+        f"[{seq_id}] Ligand heavy-atom element order doesn't match any known "
+        f"pattern (likely a new ligand, or a new Boltz-2 batch with yet "
+        f"another atom ordering -- derive its own pattern and add it to "
+        f"LIGAND_PATTERNS).\nGot: {got_elements}\nKnown patterns:\n{known}"
+    )
 
 HEAVY_CUT = 0.40   # nm (= 4.0 A) -- same cutoff as R_score_calc.py's D/W terms
 STRIDE    = 10     # 37.5 ps * 10 = 375 ps spacing. Run-duration metrics are a
@@ -181,17 +226,13 @@ def main():
 
     if ligand_region != "whole":
         got = [a.element.symbol for a in lig_heavy_atoms_all]
-        if got != LIGAND_EXPECTED_ELEMENTS:
-            raise ValueError(
-                f"[{seq_id}] Ligand heavy-atom element order doesn't match the "
-                f"expected LCA pattern (3xO then 24xC). Got: {got}"
-            )
+        tail_ordinals = get_tail_ordinals(seq_id, got)
         if ligand_region == "core":
             lig_heavy_atoms_all = [a for i, a in enumerate(lig_heavy_atoms_all)
-                                    if i not in LIGAND_TAIL_ORDINALS]
+                                    if i not in tail_ordinals]
         else:
             lig_heavy_atoms_all = [a for i, a in enumerate(lig_heavy_atoms_all)
-                                    if i in LIGAND_TAIL_ORDINALS]
+                                    if i in tail_ordinals]
     lig_heavy = np.array([a.index for a in lig_heavy_atoms_all], dtype=int)
 
     wat_res_list = [r for r in top.residues if r.name in WATER_RESNAMES]
