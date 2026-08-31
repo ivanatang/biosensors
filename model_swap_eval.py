@@ -44,6 +44,14 @@ FLIPPED_LIGAND_NAMES = [
     "pair_1708_low_pkt", "nonb_012_nb", "nonb_020_nb", "nonb_055_nb",
 ]
 
+SEQ_SOURCE = "ngs_observed"   # "all" | "ngs_observed" -- matches ML_classification.ipynb cell 1
+MD_GROUP_SUFFIX = {
+    "binder":              "_binder",
+    "non_binder":          "_nb",
+    "negative_low_pocket": "_low_pkt",
+    "negative_fail_gate":  "_fail_gate",
+}
+
 TARGET_SEQ_IDS = ["bind_022_binder", "bind_019_binder", "bind_020_binder",
                    "nonb_006_nb", "nonb_008_nb", "nonb_009_nb"]
 
@@ -136,6 +144,16 @@ def load_baseline_df():
     df = df[~df["name"].isin(FLIPPED_LIGAND_NAMES)].reset_index(drop=True)
     n_base = len(df)
 
+    mcg = pd.read_csv("md_candidate_guide.csv")
+    mcg["name"] = mcg["pair_id"].astype(str) + mcg["md_group"].map(MD_GROUP_SUFFIX)
+    df = df.merge(mcg[["name", "source"]], on="name", how="left")
+
+    if SEQ_SOURCE == "ngs_observed":
+        df = df[df["source"] == "ngs_observed"].reset_index(drop=True)
+        n_base = len(df)
+    elif SEQ_SOURCE != "all":
+        raise ValueError(f"Unknown SEQ_SOURCE={SEQ_SOURCE!r}, expected 'all' or 'ngs_observed'")
+
     gl_cols = []
     for r in RMSD_REGIONS:
         gl_cols += [f"{r} RMSD mean (A)", f"{r} RMSD SD (A)", f"{r} drift100 (A)", f"{r} slope (A/ns)"]
@@ -194,7 +212,8 @@ def load_baseline_df():
         "water_bridge":     wb_cols,
     }
 
-    print(f"Baseline cohort: {n_base} sequences ({len(FLIPPED_LIGAND_NAMES)} flipped-ligand QC exclusions removed)")
+    print(f"Baseline cohort: {n_base} sequences (SEQ_SOURCE={SEQ_SOURCE!r}, "
+          f"{len(FLIPPED_LIGAND_NAMES)} flipped-ligand QC exclusions removed)")
     return df, feature_group_cols
 
 
