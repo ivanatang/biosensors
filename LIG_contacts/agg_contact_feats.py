@@ -11,7 +11,6 @@ Usage:
 """
 
 import os
-import glob
 import argparse
 import pandas as pd
 
@@ -58,33 +57,39 @@ print(f"Results dir : {results_dir}")
 print(f"Output dir  : {out_dir}")
 
 # ─────────────────────────────────────────────
-# LOAD
+# LOAD -- explicit per-sequence paths from seq_list, not a glob over the
+# whole shared results dir. A glob also picks up leftover output from any
+# sequence that ever had this step run, including ones no longer in the
+# current cohort (e.g. seq_ids_orig.txt's superseded 200-sequence list),
+# inflating the combined table with unlabeled rows. See the equivalent fix
+# in agg_gate_latch_water_bridge.py / agg_residue_atom_split.py.
 # ─────────────────────────────────────────────
-summary_files = sorted(glob.glob(
-    os.path.join(results_dir, f"*_contact_summary_{TAG}{REGION_TAG}.csv")
-))
-print(f"Found {len(summary_files)} summary files")
+with open(seq_ids_file) as fh:
+    all_ids = [l.split()[0] for l in fh if l.strip() and not l.startswith('#')]
 
-if not summary_files:
+dfs     = []
+missing = []
+for seq_id in all_ids:
+    path = os.path.join(results_dir, f"{seq_id}_contact_summary_{TAG}{REGION_TAG}.csv")
+    if not os.path.exists(path):
+        print(f"  MISSING: {path}")
+        missing.append(seq_id)
+        continue
+    dfs.append(pd.read_csv(path))
+
+print(f"Found {len(dfs)} of {len(all_ids)} summary files")
+if not dfs:
     raise FileNotFoundError(
-        f"No summary CSVs found in: {results_dir}\n"
-        f"Expected pattern: *_contact_summary_{TAG}{REGION_TAG}.csv"
+        f"No summary CSVs found for any sequence in {seq_ids_file}.\n"
+        f"Expected pattern: {results_dir}/<seq_id>_contact_summary_{TAG}{REGION_TAG}.csv"
     )
 
-dfs      = [pd.read_csv(f) for f in summary_files]
 combined = pd.concat(dfs, ignore_index=True)
 
-# ─────────────────────────────────────────────
-# CHECK COVERAGE vs seq_ids.txt
-# ─────────────────────────────────────────────
-if os.path.exists(seq_ids_file):
-    with open(seq_ids_file) as fh:
-        all_ids = [l.split()[0] for l in fh if l.strip() and not l.startswith('#')]
-    missing = set(all_ids) - set(combined["seq_id"])
-    if missing:
-        print(f"WARNING: {len(missing)} sequences missing results: {missing}")
-    else:
-        print("All sequences accounted for.")
+if missing:
+    print(f"\nWARNING: {len(missing)} sequences missing results: {missing}")
+else:
+    print("All sequences accounted for.")
 
 print(f"\nFeature table shape: {combined.shape}")
 print(combined.to_string())
