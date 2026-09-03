@@ -3,12 +3,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # For each sequence in a seq_ids_qfix_remaining_89.txt-style list (name,
 # prefix, id, dir_type, tab-separated), looks up that sequence's currently
-# running/queued initial production job (submitted by submit_prod_qfix_batch.sh
-# under job name "prod_qfix_<name>") and submits xtnd_prod_PYR1_LCA_qfix.sh
+# running/queued initial production job and submits xtnd_prod_PYR1_LCA_qfix.sh
 # with --dependency=afterany so it only starts once the initial chunk ends --
 # afterany, not afterok, since a 24h chunk is expected to be cut off by the
 # walltime (TIMEOUT), not exit cleanly, and the extension needs to run either
 # way to pick up from the checkpoint.
+#
+# submit_prod_qfix_batch.sh submits the job as "prod_qfix_<name>", but
+# prod_md_PYR1_LCA_qfix.sh renames itself mid-run via scontrol (its #SBATCH
+# job-name is static text set before ID/SEQ_TYPE/PREFIX are known, so it
+# relabels once they are) to "<prefix>_<id>_prod_qfix" -- sacct records the
+# renamed name, not the one it was submitted under, so that's what we search
+# for below.
 #
 # Usage:
 #   bash submit_xtnd_prod_qfix_batch.sh [seq_ids_qfix_remaining_89.txt]
@@ -38,7 +44,11 @@ while IFS=$'\t' read -r name prefix id dir_type; do
     # by name, unlike squeue which drops a job once it leaves the queue --
     # -X restricts to the main job record, excluding .batch/.extern substeps.
     # sort -n + tail -1 picks the most recent submission if there were retries.
-    jobid=$(sacct -u "$(whoami)" --name="prod_qfix_${name}" \
+    #
+    # Search by "<prefix>_<id>_prod_qfix", not "prod_qfix_<name>" -- see the
+    # header comment: prod_md_PYR1_LCA_qfix.sh renames the job mid-run, and
+    # sacct only ever has the renamed JobName on record.
+    jobid=$(sacct -u "$(whoami)" --name="${prefix}_${id}_prod_qfix" \
                   --format=JobID,State --noheader --parsable2 -X 2>/dev/null \
             | awk -F'|' '{print $1}' | grep -E '^[0-9]+$' | sort -n | tail -1)
 
