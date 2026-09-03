@@ -40,6 +40,14 @@ GROUP_ORDER = ["Binder", "False Positive", "Low Confidence", "Fail Geometry"]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def parse_xvg(path):
+    """Reads a GROMACS .xvg file's second column, skipping header lines.
+
+    Args:
+        path (str): Path to the .xvg file.
+
+    Returns:
+        numpy.ndarray: Values from column 2 of each data line.
+    """
     vals = []
     with open(path) as f:
         for line in f:
@@ -52,6 +60,17 @@ def parse_xvg(path):
 
 
 def read_seq_ids(path):
+    """Reads a tab-separated seq_ids.txt-style file.
+
+    Args:
+        path (str): Path to the file (columns: folder_name, label,
+            optional custom_base). Blank lines and lines starting with
+            "#" are skipped.
+
+    Returns:
+        list[tuple]: (folder_name, label, custom_base) per row; custom_base
+        is "" when absent.
+    """
     seqs = []
     with open(path) as f:
         for line in f:
@@ -67,8 +86,8 @@ def read_seq_ids(path):
 
 
 # md_candidate_guide.csv's md_group values use different suffixes than the
-# seq_id naming convention (pair_XXXX_binder / _nb / _low_pkt / _fail_gate)
-# used everywhere else in the repo.
+# seq_id naming convention (pair_XXXX_binder/_nb/_low_pkt/_fail_gate) used
+# elsewhere in the repo.
 MD_GROUP_SUFFIX = {
     "binder": "binder",
     "non_binder": "nb",
@@ -78,9 +97,17 @@ MD_GROUP_SUFFIX = {
 
 
 def load_source_ids(guide_path, source):
-    """seq_ids from md_candidate_guide.csv where source == `source` (e.g.
-    ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed)."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: seq_ids (pair_id + mapped md_group suffix) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["seq_id"] = matched.apply(
@@ -90,13 +117,34 @@ def load_source_ids(guide_path, source):
 
 
 def get_rundir(folder_name, label, custom_base):
+    """Resolves a sequence's run directory.
+
+    Args:
+        folder_name (str): seq_id / folder name.
+        label (str): Group label (key into TYPE_SUBDIR), used when
+            `custom_base` isn't given.
+        custom_base (str): Custom base path override; used as-is if
+            non-empty.
+
+    Returns:
+        str: Path to the sequence's production run directory.
+    """
     if custom_base:
         return os.path.join(custom_base, RUNREL)
     return os.path.join(BASE, TYPE_SUBDIR[label], folder_name, RUNREL)
 
 
 def collect_means(seqs, xvg_name):
-    """Return dict[label] -> list of per-trajectory mean values."""
+    """Collects each sequence's per-trajectory mean from one .xvg file.
+
+    Args:
+        seqs (list[tuple]): (folder_name, label, custom_base) rows (see
+            read_seq_ids).
+        xvg_name (str): .xvg filename to read from each run directory.
+
+    Returns:
+        dict: Maps group label to a list of per-trajectory mean values.
+    """
     data = {g: [] for g in GROUP_ORDER}
     for folder_name, label, custom_base in seqs:
         if label not in TYPE_SUBDIR:
@@ -113,6 +161,15 @@ def collect_means(seqs, xvg_name):
 
 
 def make_plot(data, ylabel, title, out_path):
+    """Draws a box-and-jitter plot of per-group values and saves it.
+
+    Args:
+        data (dict): Maps group label to a list of values (see
+            collect_means).
+        ylabel (str): Y-axis label.
+        title (str): Plot title.
+        out_path (str): Path to save the PNG to.
+    """
     groups = [g for g in GROUP_ORDER if data.get(g)]
     if not groups:
         print(f"  No data to plot for {title}")
@@ -159,6 +216,7 @@ def make_plot(data, ylabel, title, out_path):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
+    """Loads Rg/SASA data for all sequences and saves the group comparison plots."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--region", choices=["pocket", "whole"], default="whole",

@@ -1,17 +1,16 @@
-"""
-residue_atom_split_contact.py
-------------------------------
+"""Splits one residue's ligand contact into backbone vs side-chain.
+
 For a single protein residue (default: 116, the Arg on the latch flagged
-by Ryan), split its heavy atoms into backbone (N, CA, C, O) vs side chain
-and compute each group's contact occupancy with the ligand separately.
+by Ryan), splits its heavy atoms into backbone (N, CA, C, O) vs side chain
+and computes each group's contact occupancy with the ligand separately.
 
 Motivation: contact_type_analysis.py and R_score_calc.py both test contact
 at the whole-residue level (any heavy atom on the residue within cutoff of
-the ligand). That can't distinguish "this residue's backbone sits near the
-ligand" from "this residue's side chain reaches out to the ligand", which
+the ligand), which can't distinguish "this residue's backbone sits near the
+ligand" from "this residue's side chain reaches out to the ligand". That
 matters for residue 116: if its Arg side chain points away from the ligand
-in the Hab1-bound state (per Ryan), then a core-preferential contact
-signal at 116 is more likely a backbone/latch-positioning effect than a
+in the Hab1-bound state (per Ryan), a core-preferential contact signal at
+116 is more likely a backbone/latch-positioning effect than a
 side-chain-ligand interaction.
 
 seq_id is always passed as a positional CLI argument, either directly for
@@ -47,6 +46,20 @@ TYPE_SUBDIR = {
 }
 
 def get_type_subdir(seq_id):
+    """Maps a seq_id's naming suffix to its data subdirectory.
+
+    Checks two-token suffixes (low_pkt, fail_gate) before single-token ones
+    (binder, nb) to avoid partial matches.
+
+    Args:
+        seq_id (str): Sequence identifier.
+
+    Returns:
+        str: Subdirectory name (a value from TYPE_SUBDIR).
+
+    Raises:
+        ValueError: `seq_id` doesn't end with a recognized suffix.
+    """
     tokens = seq_id.split("_")
     if len(tokens) >= 2:
         two_token = "_".join(tokens[-2:])
@@ -61,8 +74,18 @@ def get_type_subdir(seq_id):
 
 
 def run_dir(seq_id):
-    """Mirrors contact_type_analysis.py's run_dir(): prefer the nested
-    500ns/ subdirectory if that's where medoid_PL.pdb actually lives."""
+    """Finds the directory containing a sequence's medoid_PL.pdb.
+
+    Mirrors contact_type_analysis.py's run_dir(): prefers the nested
+    500ns/ subdirectory if that's where medoid_PL.pdb actually lives.
+
+    Args:
+        seq_id (str): Sequence identifier.
+
+    Returns:
+        str: Path to the run directory (nested if medoid_PL.pdb is there,
+        otherwise flat).
+    """
     flat_dir   = os.path.join(base, get_type_subdir(seq_id), seq_id, runrel)
     nested_dir = os.path.join(flat_dir, "500ns")
     if os.path.exists(os.path.join(nested_dir, "medoid_PL.pdb")):
@@ -79,22 +102,21 @@ STRIDE          = 1
 
 BACKBONE_ATOM_NAMES = {"N", "CA", "C", "O"}
 
-# Same core/tail ligand-atom split as contact_type_analysis.py / R_score_calc.py /
-# gate_latch_water_bridge.py.
+# Same core/tail ligand-atom split as contact_type_analysis.py /
+# R_score_calc.py / gate_latch_water_bridge.py (see either for the full
+# derivation rationale).
 #
-# Boltz-2 does not guarantee a stable heavy-atom order even for the same
-# ligand chemistry across different prediction batches (the original 95-seq
-# LCA cohort and the 4-sequence new-ligand test batch use two different
-# orderings for the same LCA molecule) -- and CDCA/GLCA/LCA3S are chemically
-# different ligands entirely (extra ring hydroxyl, glycine conjugate, and a
-# sulfate ester in place of the free 3-OH, respectively). Each pattern below
-# was derived once from that ligand's own standalone PDB (with CONECT
-# records) by pruning degree-1 leaves to isolate the fused steroid-ring
-# "2-core", then taking the largest connected component hanging off it as
-# the tail -- the solvent-facing side chain (C20-C24 + carboxylate for
-# LCA/CDCA/LCA3S; for GLCA, extended through the amide and glycine
-# conjugate, since the whole appendage is the analogous solvent-facing
-# terminus once LCA's free acid becomes an amide).
+# Boltz-2 doesn't guarantee a stable heavy-atom order even for the same
+# ligand chemistry across prediction batches (the original 95-seq LCA
+# cohort and the 4-sequence new-ligand test batch order the same LCA
+# molecule differently), and CDCA/GLCA/LCA3S are chemically distinct
+# ligands (extra ring hydroxyl, glycine conjugate, sulfate ester in place
+# of the free 3-OH, respectively). Each pattern below was derived once from
+# that ligand's own standalone PDB (with CONECT records): prune degree-1
+# leaves to isolate the fused steroid-ring core, then take the largest
+# connected component off it as the tail (the solvent-facing side chain;
+# for GLCA this extends through the amide and glycine conjugate, the
+# analogous terminus once LCA's free acid becomes an amide).
 LIGAND_PATTERNS = [
     # (label, expected_elements, tail_ordinals)
     ('LCA (original 95-seq cohort)',
@@ -116,6 +138,20 @@ LIGAND_PATTERNS = [
 
 
 def get_tail_ordinals(seq_id, got_elements):
+    """Looks up the tail-atom ordinal positions for a ligand's element order.
+
+    Args:
+        seq_id (str): Sequence ID, used only in the error message.
+        got_elements (list[str]): Heavy-atom element symbols for this
+            ligand, in topology order.
+
+    Returns:
+        set[int]: Ordinal positions (0-indexed) of the tail's heavy atoms.
+
+    Raises:
+        ValueError: `got_elements` doesn't match any pattern in
+            LIGAND_PATTERNS (a new ligand or a new Boltz-2 atom ordering).
+    """
     for label, expected, tail_ordinals in LIGAND_PATTERNS:
         if got_elements == expected:
             return tail_ordinals
@@ -129,6 +165,12 @@ def get_tail_ordinals(seq_id, got_elements):
 
 
 def parse_args():
+    """Parses CLI arguments for a single-sequence atom-split run.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (seq_id, resseq, start_ns,
+        end_ns, ligand_region).
+    """
     parser = argparse.ArgumentParser(
         description="Split one residue's ligand contact into backbone vs side chain."
     )
@@ -144,6 +186,20 @@ def parse_args():
 
 
 def load_trajectory(seq_id, start_ps, end_ps):
+    """Loads and time-windows a sequence's medoid trajectory.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        start_ps (int): Start of the analysis window in ps.
+        end_ps (int): End of the analysis window in ps.
+
+    Returns:
+        mdtraj.Trajectory: Trajectory restricted to [start_ps, end_ps].
+
+    Raises:
+        FileNotFoundError: The expected topology or trajectory file is
+            missing.
+    """
     seq_dir  = run_dir(seq_id)
     top_path = os.path.join(seq_dir, "medoid_PL.pdb")
     xtc_path = os.path.join(seq_dir, "PL_only_40_500ns.xtc")
@@ -164,6 +220,20 @@ def load_trajectory(seq_id, start_ps, end_ps):
 
 
 def get_ligand_atoms(top, seq_id, ligand_region):
+    """Gets ligand heavy-atom indices, optionally restricted to a region.
+
+    Args:
+        top (mdtraj.Topology): Trajectory topology.
+        seq_id (str): Sequence identifier, used in error messages.
+        ligand_region (str): "whole", "core", or "tail"; see
+            get_tail_ordinals.
+
+    Returns:
+        list[int]: Atom indices for the selected ligand region.
+
+    Raises:
+        ValueError: No atoms found with residue name LIGAND_RESNAME.
+    """
     lig_heavy_atoms_all = [
         a for a in top.atoms
         if a.residue.name == LIGAND_RESNAME and a.element.symbol != "H"
@@ -188,6 +258,20 @@ def get_ligand_atoms(top, seq_id, ligand_region):
 
 
 def get_target_residue(top, seq_id, resseq):
+    """Finds the single protein residue matching a resSeq number.
+
+    Args:
+        top (mdtraj.Topology): Trajectory topology.
+        seq_id (str): Sequence identifier, used in error messages.
+        resseq (int): PDB residue number to find.
+
+    Returns:
+        mdtraj.core.topology.Residue: The matching residue.
+
+    Raises:
+        ValueError: No match, or more than one match (multi-chain
+            topology; this script assumes a single-chain protein).
+    """
     matches = [r for r in top.residues if r.is_protein and r.resSeq == resseq]
     if not matches:
         raise ValueError(f"[{seq_id}] No protein residue with resSeq={resseq} found.")
@@ -201,8 +285,20 @@ def get_target_residue(top, seq_id, resseq):
 
 
 def min_dist_occupancy(traj, atom_indices, lig_atoms):
-    """Per-frame min distance from atom_indices to lig_atoms, plus the
-    fraction of frames within CUTOFF_NM (occupancy)."""
+    """Computes occupancy and mean min-distance from atoms to the ligand.
+
+    Args:
+        traj (mdtraj.Trajectory): Trajectory to analyze.
+        atom_indices (list[int]): Candidate atom indices (e.g. a residue's
+            backbone or side-chain heavy atoms).
+        lig_atoms (list[int]): Ligand heavy-atom indices.
+
+    Returns:
+        tuple[float, float] | tuple[None, None]: (occupancy, mean min
+        distance in nm), where occupancy is the fraction of frames with a
+        min distance under CUTOFF_NM; (None, None) if `atom_indices` is
+        empty.
+    """
     if not atom_indices:
         return None, None
     pairs = np.array([[a, l] for a in atom_indices for l in lig_atoms], dtype=int)
@@ -213,6 +309,8 @@ def min_dist_occupancy(traj, atom_indices, lig_atoms):
 
 
 def main():
+    """Runs the backbone/side-chain atom-split contact analysis for one
+    sequence end to end."""
     args     = parse_args()
     seq_id   = args.seq_id
     resseq   = args.resseq

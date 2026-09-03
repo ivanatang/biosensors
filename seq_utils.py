@@ -39,7 +39,16 @@ BLOSUM62_SELFSCORES = np.array([BLOSUM62[i, i] for i in range(20)])
 
 
 def variable_positions(sequences, min_entropy=0.1):
-    """Positions (0-indexed) whose Shannon entropy across `sequences` is >= min_entropy."""
+    """Finds sequence positions with enough amino-acid diversity to matter.
+
+    Args:
+        sequences (list[str]): Equal-length amino-acid sequences.
+        min_entropy (float): Minimum Shannon entropy (bits) at a position
+            to be kept (default: 0.1).
+
+    Returns:
+        numpy.ndarray: 0-indexed positions with entropy >= min_entropy.
+    """
     L = len(sequences[0])
     entropies = []
     for pos in range(L):
@@ -54,9 +63,13 @@ def variable_positions(sequences, min_entropy=0.1):
 
 
 def hamming_distance_matrix(sequences):
-    """
-    Pairwise fractional Hamming distance between sequences of equal length.
-    Returns (n x n) matrix with values in [0, 1].
+    """Computes pairwise fractional Hamming distance between sequences.
+
+    Args:
+        sequences (list[str]): Equal-length amino-acid sequences.
+
+    Returns:
+        numpy.ndarray: (n, n) matrix with values in [0, 1].
     """
     n, L = len(sequences), len(sequences[0])
     S = np.array([[AA_INDEX.get(aa.upper(), -1) for aa in seq]
@@ -70,10 +83,16 @@ def hamming_distance_matrix(sequences):
 
 
 def blosum62_similarity_matrix(sequences):
-    """
-    Pairwise BLOSUM62-based similarity score, normalised to [0, 1].
-    Normalisation: score(i,j) / sqrt(score(i,i) * score(j,j))
-    so identical sequences -> 1.0, divergent -> lower values.
+    """Computes pairwise BLOSUM62-based similarity, normalized to [0, 1].
+
+    Normalization: score(i,j) / sqrt(score(i,i) * score(j,j)), so identical
+    sequences score 1.0 and divergent ones score lower.
+
+    Args:
+        sequences (list[str]): Equal-length amino-acid sequences.
+
+    Returns:
+        numpy.ndarray: (n, n) similarity matrix, values in [0, 1].
     """
     n, L = len(sequences), len(sequences[0])
     S = np.array([[AA_INDEX.get(aa.upper(), -1) for aa in seq]
@@ -100,13 +119,22 @@ def blosum62_similarity_matrix(sequences):
 
 
 def sequence_similarity_groups(sequences, identity_threshold=0.95, min_entropy=0.1):
-    """
-    Assign each sequence a group id such that sequences >= identity_threshold
-    identical (fraction of matching residues) on the variable positions fall
-    into the same group. Used to build GroupKFold groups so near-identical
-    designed variants don't split across train/test folds.
+    """Clusters sequences into groups of near-identical variants.
 
-    Returns an (n,) array of integer group ids.
+    Sequences >= identity_threshold identical (fraction of matching
+    residues on the variable positions) fall into the same group. Used to
+    build GroupKFold groups so near-identical designed variants don't
+    split across train/test folds.
+
+    Args:
+        sequences (list[str]): Equal-length amino-acid sequences.
+        identity_threshold (float): Minimum fractional identity (on
+            variable positions) for two sequences to share a group
+            (default: 0.95).
+        min_entropy (float): Passed to variable_positions (default: 0.1).
+
+    Returns:
+        numpy.ndarray: (n,) array of integer group ids.
     """
     from scipy.cluster.hierarchy import fcluster, linkage
     from scipy.spatial.distance import squareform

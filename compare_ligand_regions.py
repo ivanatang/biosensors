@@ -1,9 +1,7 @@
-"""
-compare_ligand_regions.py — Compare R-score and contact-type features across
-whole-ligand, core, and tail LCA regions.
+"""Compares R-score and contact-type features across whole/core/tail LCA regions.
 
-Tests the hypothesis (collaborator's suggestion) that the steroid core and
-the carboxylate tail interact with the PYR1 pocket differently, and that
+Tests the hypothesis (a collaborator's suggestion) that the steroid core and
+carboxylate tail interact with the PYR1 pocket differently, and that
 region-restricted metrics may separate Binders from nonbinders in ways the
 whole-ligand analysis misses.
 
@@ -12,8 +10,8 @@ Inputs (produced by aggregate_r_scores.py / agg_contact_feats.py with
     r_scores_all_sequences_{TAG}[_core|_tail].csv
     contact_features_all_{TAG}[_core|_tail].csv
 
-Any region that's missing is skipped with a warning rather than failing —
-you don't need all three to get a comparison out of whichever you have.
+A missing region is skipped with a warning rather than failing; all three
+aren't required to get a comparison out of whichever regions are present.
 
 Usage:
     python compare_ligand_regions.py \
@@ -23,9 +21,9 @@ Usage:
         --tag 40_500ns \
         --out-dir      /projects/ivta1597/biosensors/analysis/ligand_region
 
-All p-values reported here are uncorrected for multiple comparisons
-(exploratory / trend-finding, not a confirmatory test) — treat them as a
-ranking of candidates worth a closer look, not a final result.
+All p-values here are uncorrected for multiple comparisons (exploratory /
+trend-finding, not a confirmatory test) — treat them as a ranking of
+candidates worth a closer look, not a final result.
 """
 
 import argparse
@@ -53,10 +51,28 @@ GROUP_A, GROUP_B = "Binder", "False Positive"   # primary separation test
 
 # ── Loading ───────────────────────────────────────────────────────────────────
 def region_suffix(region):
+    """Maps a ligand region to its filename suffix.
+
+    Args:
+        region (str): "whole", "core", or "tail".
+
+    Returns:
+        str: "" for "whole", otherwise "_{region}".
+    """
     return "" if region == "whole" else f"_{region}"
 
 
 def load_seq_type_map(seq_list_path):
+    """Loads seq_id -> seq_type from a tab-separated seq_ids file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file (columns:
+            seq_id, seq_type, ...). Blank lines and lines starting with
+            "#" are skipped.
+
+    Returns:
+        dict: Maps seq_id to seq_type ("Unknown" if the column is missing).
+    """
     mapping = {}
     with open(seq_list_path) as f:
         for line in f:
@@ -71,6 +87,17 @@ def load_seq_type_map(seq_list_path):
 
 
 def load_r_scores(r_scores_dir, tag):
+    """Loads per-region R-score CSVs written by aggregate_r_scores.py.
+
+    Args:
+        r_scores_dir (str): Directory containing
+            r_scores_all_sequences_{tag}[_region].csv files.
+        tag (str): Run tag (e.g. "40_500ns").
+
+    Returns:
+        dict: Maps region ("whole"/"core"/"tail") to its DataFrame. Missing
+        files are skipped with a printed warning.
+    """
     out = {}
     for region in REGION_ORDER:
         path = os.path.join(r_scores_dir, f"r_scores_all_sequences_{tag}{region_suffix(region)}.csv")
@@ -83,6 +110,19 @@ def load_r_scores(r_scores_dir, tag):
 
 
 def load_contact_features(contact_dir, tag, seq_type_map):
+    """Loads per-region contact-feature CSVs written by agg_contact_feats.py.
+
+    Args:
+        contact_dir (str): Directory containing
+            contact_features_all_{tag}[_region].csv files.
+        tag (str): Run tag (e.g. "40_500ns").
+        seq_type_map (dict): seq_id -> seq_type, used to add a `seq_type`
+            column (see load_seq_type_map).
+
+    Returns:
+        dict: Maps region ("whole"/"core"/"tail") to its DataFrame. Missing
+        files are skipped with a printed warning.
+    """
     out = {}
     for region in REGION_ORDER:
         path = os.path.join(contact_dir, f"contact_features_all_{tag}{region_suffix(region)}.csv")
@@ -101,8 +141,8 @@ def load_contact_features(contact_dir, tag, seq_type_map):
 
 
 # md_candidate_guide.csv's md_group values use different suffixes than the
-# seq_id naming convention (pair_XXXX_binder / _nb / _low_pkt / _fail_gate)
-# used everywhere else in the repo.
+# seq_id naming convention (pair_XXXX_binder/_nb/_low_pkt/_fail_gate) used
+# elsewhere in the repo.
 MD_GROUP_SUFFIX = {
     "binder": "binder",
     "non_binder": "nb",
@@ -112,9 +152,17 @@ MD_GROUP_SUFFIX = {
 
 
 def load_source_ids(guide_path, source):
-    """seq_ids from md_candidate_guide.csv where source == `source` (e.g.
-    ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed)."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: seq_ids (pair_id + mapped md_group suffix) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["seq_id"] = matched.apply(
@@ -124,6 +172,18 @@ def load_source_ids(guide_path, source):
 
 
 def filter_to_source(data, source_ids, source, label):
+    """Filters each region's DataFrame to a set of seq_ids, in place.
+
+    Args:
+        data (dict): Maps region to DataFrame (as returned by the load_*
+            functions above). Modified and returned.
+        source_ids (set): seq_ids to keep (see load_source_ids).
+        source (str): Source name, used only in the printed summary.
+        label (str): Data-kind label, used only in the printed summary.
+
+    Returns:
+        dict: `data`, with each region's DataFrame filtered to `source_ids`.
+    """
     for region, df in data.items():
         before = len(df)
         data[region] = df[df["seq_id"].isin(source_ids)].reset_index(drop=True)
@@ -133,12 +193,38 @@ def filter_to_source(data, source_ids, source, label):
 
 
 def resid_columns(df):
+    """Lists a DataFrame's per-residue R-score columns, sorted by resSeq.
+
+    Args:
+        df: DataFrame with columns named "R_{resSeq}".
+
+    Returns:
+        list[str]: Matching column names, sorted numerically by resSeq.
+    """
     return sorted((c for c in df.columns if c.startswith("R_")),
                   key=lambda c: int(c.split("_")[1]))
 
 
 # ── R-score: per-residue region comparison ────────────────────────────────────
 def r_score_region_comparison(r_data, out_dir, top_n=6):
+    """Compares mean per-residue R-score between the core and tail regions.
+
+    Plots mean R-score per residue for each available region, ranks
+    residues by tail-minus-core delta, and runs a paired Wilcoxon test
+    (core vs tail) per residue.
+
+    Args:
+        r_data (dict): Region -> R-score DataFrame (see load_r_scores).
+            Requires both "core" and "tail".
+        out_dir (str): Directory to write the plot and stats CSVs to.
+        top_n (int): Number of most divergent residues to return from each
+            end of the delta ranking (default: 6).
+
+    Returns:
+        list[int] | None: resSeq values of the top_n most core/tail-
+        divergent residues (both directions), or None if "core" or "tail"
+        is missing from `r_data`.
+    """
     if "core" not in r_data or "tail" not in r_data:
         print("\n[R-score] Need both core and tail tables — skipping region comparison.")
         return None
@@ -223,7 +309,16 @@ def r_score_region_comparison(r_data, out_dir, top_n=6):
 
 
 def r_score_group_breakdown(r_data, resnums, out_dir):
-    """For the most region-divergent residues, box-plot R-score by group x region."""
+    """Box-plots R-score by group x region for the given residues.
+
+    One figure per residue in `resnums`, intended for the most
+    core/tail-divergent residues (see r_score_region_comparison).
+
+    Args:
+        r_data (dict): Region -> R-score DataFrame (see load_r_scores).
+        resnums (list[int]): resSeq values to plot.
+        out_dir (str): Directory to write each figure to.
+    """
     regions = [r for r in REGION_ORDER if r in r_data]
     for resSeq in resnums:
         col = f"R_{resSeq}"
@@ -268,7 +363,15 @@ def r_score_group_breakdown(r_data, resnums, out_dir):
 
 
 def r_score_group_separation(r_data, out_dir):
-    """Does Binder vs False Positive separate better under core/tail than whole?"""
+    """Tests whether Binder vs False Positive separates better by region.
+
+    Runs Mann-Whitney U per residue within each available region and flags
+    residues significant under core/tail but not under whole.
+
+    Args:
+        r_data (dict): Region -> R-score DataFrame (see load_r_scores).
+        out_dir (str): Directory to write the stats CSVs to.
+    """
     regions = [r for r in REGION_ORDER if r in r_data]
     if len(regions) < 2:
         return
@@ -311,6 +414,18 @@ def r_score_group_separation(r_data, out_dir):
 
 # ── Contact-type composition comparison ────────────────────────────────────────
 def contact_feature_region_comparison(contact_data, out_dir):
+    """Compares contact-type composition across regions.
+
+    Plots mean feature values by region, runs a paired Wilcoxon test
+    (core vs tail) per feature if both are present, and tests whether
+    Binder vs False Positive separation (Mann-Whitney U) differs by
+    region.
+
+    Args:
+        contact_data (dict): Region -> contact-feature DataFrame (see
+            load_contact_features). Needs at least two regions.
+        out_dir (str): Directory to write the plot and stats CSVs to.
+    """
     regions = [r for r in REGION_ORDER if r in contact_data]
     if len(regions) < 2:
         print("\n[Contact features] Need at least two regions — skipping.")
@@ -394,6 +509,7 @@ def contact_feature_region_comparison(contact_data, out_dir):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
+    """Runs the whole/core/tail region comparison end to end."""
     parser = argparse.ArgumentParser(description=__doc__,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--r-scores-dir", default="/projects/ivta1597/biosensors/water_analysis/agg_out",

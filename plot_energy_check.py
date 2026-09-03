@@ -45,8 +45,18 @@ DIR_TYPE = {
 
 
 def read_seq_list(path, name_filter):
-    """Parse a seq_ids.txt-style file into [(type_dir, seq_id), ...],
-    optionally restricted to seq_ids containing any of name_filter."""
+    """Parses a seq_ids.txt-style file into (type_dir, seq_id) pairs.
+
+    Args:
+        path (str): Path to the file. Blank lines and lines starting with
+            "#" are skipped.
+        name_filter (list[str] | None): If given, only keep seq_ids
+            containing any of these substrings.
+
+    Returns:
+        list[tuple]: (type_dir, seq_id) pairs, with type_dir mapped via
+        DIR_TYPE (or left as-is if not a known type).
+    """
     sequences = []
     with open(path) as f:
         for line in f:
@@ -62,7 +72,14 @@ def read_seq_list(path, name_filter):
 
 
 def read_xvg(path):
-    """Skip GROMACS .xvg header lines (# and @); return (x, y) arrays."""
+    """Reads a GROMACS .xvg file, skipping header lines (# and @).
+
+    Args:
+        path (str): Path to the .xvg file.
+
+    Returns:
+        tuple[numpy.ndarray, numpy.ndarray]: (x, y) columns 1 and 2.
+    """
     x, y = [], []
     with open(path) as f:
         for line in f:
@@ -76,10 +93,20 @@ def read_xvg(path):
 
 
 def second_half_stats(x, y):
-    """Mean/std/total-drift-fraction over the second half of the series
-    (post-plateau): drift_frac is the fitted trend's total change across
-    the window, as a fraction of the mean -- catches a slow monotonic
-    trend that a low std alone could miss."""
+    """Computes mean/std/drift over the second half of a series (post-plateau).
+
+    drift_frac is the fitted trend's total change across the window, as a
+    fraction of the mean, catching a slow monotonic trend that a low std
+    alone could miss.
+
+    Args:
+        x: X values (e.g. time).
+        y: Y values (e.g. temperature, density).
+
+    Returns:
+        tuple[float, float, float]: (mean, std, drift_frac) over the
+        second half of `y`.
+    """
     n = len(y)
     half = y[n // 2:]
     xhalf = x[n // 2:]
@@ -94,15 +121,39 @@ def second_half_stats(x, y):
 
 
 def verdict_temp(mean, std):
+    """Classifies NVT temperature stability against TARGET_TEMP_K.
+
+    Args:
+        mean (float): Second-half mean temperature (K).
+        std (float): Second-half temperature std (K).
+
+    Returns:
+        tuple[str, str]: ("stable" | "UNSTABLE", message). Unstable if the
+        mean is off target by >5 K or std exceeds 5 K.
+    """
     if abs(mean - TARGET_TEMP_K) > 5 or std > 5:
         return "UNSTABLE", f"mean={mean:.1f} K (target {TARGET_TEMP_K:.0f} K), std={std:.2f} K"
     return "stable", f"mean={mean:.1f} K, std={std:.2f} K"
 
 
 def verdict_plateau(label, mean, std, drift_frac, unit):
-    # relative std (noise) and total fitted drift (trend) over the second
-    # half of the series -- either one alone can miss instability the
-    # other catches.
+    """Classifies NPT density/volume stability from noise and drift.
+
+    Checks relative std (noise) and total fitted drift (trend) over the
+    second half of the series; either one alone can miss instability the
+    other catches.
+
+    Args:
+        label (str): Quantity name, used in the message (e.g. "density").
+        mean (float): Second-half mean.
+        std (float): Second-half std.
+        drift_frac (float): Second-half drift fraction (see second_half_stats).
+        unit (str): Unit string for the message.
+
+    Returns:
+        tuple[str, str]: ("stable" | "UNSTABLE", message). Unstable if
+        relative std > 2% or drift > 1% of the mean.
+    """
     rel_std = std / abs(mean) if mean else float("inf")
     if rel_std > 0.02 or drift_frac > 0.01:
         return "UNSTABLE", (f"{label} mean={mean:.2f} {unit}, std={std:.2f} "
@@ -112,6 +163,7 @@ def verdict_plateau(label, mean, std, drift_frac, unit):
 
 
 def parse_args():
+    """Parses CLI arguments for the EM/NVT/NPT stability check."""
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--seq-list", default="seq_ids.txt",
@@ -125,6 +177,7 @@ def parse_args():
 
 
 def main():
+    """Plots and prints an EM/NVT/NPT stability verdict for each sequence."""
     args = parse_args()
     sequences = read_seq_list(args.seq_list, args.filter)
     suffix = args.suffix

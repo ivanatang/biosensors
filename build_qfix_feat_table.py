@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""
-build_qfix_feat_table.py
+"""Builds a schema-matched feature table for the 6 qfix pilot sequences.
 
-Builds a schema-matched feature table for the 6 qfix pilot sequences
-(bind_022/019/020_binder, nonb_006/008/009_nb) from their bond-order-fixed
-reparameterization -- same feature columns as feat_table_500ns.xlsx, sourced
-from the _qfix-suffixed aggregated CSVs, for comparison against those same
-6 sequences' original (standard) feature values and for a model-swap CV
-evaluation. See build_new_ligand_feat_table.py for the sibling script this
-mirrors (same logic, different sequences/source paths).
+Covers bind_022/019/020_binder and nonb_006/008/009_nb, from their
+bond-order-fixed reparameterization: same feature columns as
+feat_table_500ns.xlsx, sourced from the _qfix-suffixed aggregated CSVs, for
+comparison against those same 6 sequences' original (standard) feature
+values and for a model-swap CV evaluation. Mirrors
+build_new_ligand_feat_table.py's logic, with different sequences and
+source paths.
 
 Usage:
     python build_qfix_feat_table.py --seq_list seq_ids_qfix_pilot.txt \
@@ -24,6 +23,11 @@ WB_TAG = "0_500ns"
 
 
 def parse_args():
+    """Parses CLI args for the qfix pilot sequence list and output path.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (seq_list, out).
+    """
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--seq_list", default="seq_ids_qfix_pilot.txt",
@@ -33,11 +37,20 @@ def parse_args():
 
 
 def report(df, cols, n_base, label):
+    """Prints a match-rate summary for one merged feature family.
+
+    Args:
+        df: Merged feature table.
+        cols (list[str]): Columns belonging to this feature family.
+        n_base (int): Total row count, for the match-rate denominator.
+        label (str): Feature-family name for the printed line.
+    """
     matched = df[cols[0]].notna().sum()
     print(f"  + {label:<22}: {matched}/{n_base} matched")
 
 
 def main():
+    """Builds the qfix pilot feature table and writes it to CSV."""
     args = parse_args()
 
     rows = []

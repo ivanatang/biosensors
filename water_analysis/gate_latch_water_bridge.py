@@ -1,86 +1,70 @@
 #!/usr/bin/env python3
-"""
-gate_latch_water_bridge.py
-----------------------------
+"""Tests whether a gate-latch-ligand water bridge forms in this apo simulation.
+
 Tests whether a water-mediated bridge connecting the gate loop (r84-90),
 the latch loop (r114-118), and the ligand forms in this apo (no HAB1)
 simulation. Motivated by published PYR1-HAB1-ligand structures showing a
-water network linking gate, latch, ligand, and a Trp on HAB1 (see Leonard
-et al., ACS Chem. Biol. 2024, the same paper R_score_calc.py's D/W/R
-framework is drawn from). HAB1 is not present in these simulations, so
-this can only test whether the gate-latch-ligand sub-network assembles on
-its own, not whether it reproduces the full published network -- state
-that limitation explicitly wherever these results are reported.
+water network linking gate, latch, ligand, and a Trp on HAB1 (Leonard et
+al., ACS Chem. Biol. 2024, the same paper R_score_calc.py's D/W/R
+framework is drawn from). HAB1 is not present here, so this can only test
+whether the gate-latch-ligand sub-network assembles on its own, not
+whether it reproduces the full published network; state that limitation
+explicitly wherever these results are reported.
 
-PERIODIC-BOUNDARY FIX (important, read this): an earlier version of this
-script computed distances with plain `np.linalg.norm` on raw coordinates,
-with no minimum-image correction. Verified directly on pair_3085_binder
-(40-500ns window): that method gives triple_bridge_occupancy=0.7832
-(exactly what's in the already-recorded lab notebook entry and the
-water_bridge ML feature group); the periodic-aware method below gives
-0.8704. 91.3% frame-by-frame agreement between the two methods, and of
-the disagreements, ALL are false negatives in the old method (107 frames
-where a real bridge existed but raw-coordinate distance missed it because
-the water was stored in a different periodic image) and there are ZERO
-false positives. This is a one-directional systematic UNDERCOUNT, not
-random noise -- it would affect every sequence in the cohort the same
-way. All distance calculations here now use mdtraj's compute_distances
-with periodic=True, which handles this repo's triclinic (dodecahedron)
-boxes correctly. Existing occupancy numbers computed before this fix
-should be treated as underestimates until recomputed; the direction of
-any Binder-vs-FP comparison is plausibly still valid since both groups
-would be similarly affected, but that has NOT been separately confirmed.
+Periodic-boundary fix: an earlier version computed distances with plain
+`np.linalg.norm` on raw coordinates, with no minimum-image correction.
+Verified on pair_3085_binder (40-500ns window): the old method gives
+triple_bridge_occupancy=0.7832 (matching the already-recorded lab
+notebook entry and the water_bridge ML feature group); the periodic-aware
+method below gives 0.8704. The two methods agree on 91.3% of frames, and
+every disagreement is a false negative in the old method (a real bridge
+missed because the water was stored in a different periodic image) with
+zero false positives -- a one-directional systematic undercount, not
+random noise, that would affect every sequence in the cohort the same
+way. All distances here use mdtraj's compute_distances with
+periodic=True, which handles this repo's triclinic (dodecahedron) boxes
+correctly. Occupancy numbers computed before this fix should be treated
+as underestimates until recomputed; a Binder-vs-FP comparison's direction
+is plausibly still valid since both groups would be similarly affected,
+but that has NOT been separately confirmed.
 
 Two related but distinct bridge definitions are computed per frame, both
-using the same 4 Angstrom heavy-atom distance cutoff R_score_calc.py uses
-for its D/W terms:
+using the same 4 Angstrom heavy-atom cutoff R_score_calc.py uses for its
+D/W terms:
 
-  triple_bridge : at least one SINGLE water molecule is simultaneously
-                   within the cutoff of the ligand, a gate heavy atom, AND
-                   a latch heavy atom at the same time -- the strict,
-                   literal "one water touches all three" reading of "the
-                   network is forming."
+    triple_bridge: at least one single water molecule is simultaneously
+        within the cutoff of the ligand, a gate heavy atom, and a latch
+        heavy atom -- the strict "one water touches all three" reading of
+        "the network is forming."
+    co_occurrence: a ligand-gate bridging water and a ligand-latch
+        bridging water are both present in the same frame, but not
+        necessarily the same water molecule.
 
-  co_occurrence : a ligand-gate bridging water AND a ligand-latch bridging
-                   water are BOTH present in the same frame, but not
-                   necessarily the same water molecule.
+Beyond aggregate occupancy, this also tracks per-sequence dynamics:
 
-DYNAMICS METRICS (new): beyond the aggregate occupancy, this now also
-tracks, per sequence:
+    first_appearance_ns: simulation time of the first frame with a triple
+        bridge present (NaN if it never appears).
+    n_runs: number of separate contiguous stretches where a triple bridge
+        is continuously present -- how many times it forms/breaks over
+        the trajectory (always there vs. flickering).
+    n_distinct_waters: number of different water molecules that ever fill
+        the bridging role -- whether it's the same water the whole time
+        or the specific molecule keeps changing.
+    mean_run_duration_ns, median_run_duration_ns: how long a given water
+        molecule typically holds the bridging position before being
+        replaced, estimated from run lengths (a lower bound on true
+        residence time, limited by STRIDE's temporal resolution).
 
-  first_appearance_ns : simulation time of the first frame where a triple
-                         bridge is present (NaN if it never appears).
+first_appearance_ns is only meaningful if the window starts at t=0, so
+START_NS defaults to 0.0 here (not the 40 ns equilibration cutoff used by
+convention elsewhere in this repo); override with --start-ns for the old
+40-500ns occupancy-only comparison window.
 
-  n_runs               : number of separate contiguous stretches where a
-                         triple bridge is continuously present (i.e. how
-                         many times it forms/breaks over the trajectory --
-                         "is it always there, or does it flicker").
+Output:
+    {out_dir}/{seq_id}_gate_latch_bridge_{TAG}{REGION_TAG}.csv: one-row
+        summary.
 
-  n_distinct_waters     : number of DIFFERENT water molecules that ever
-                         fill the bridging role over the trajectory (asks
-                         "is it the same water the whole time, or does the
-                         specific molecule doing the bridging keep
-                         changing").
-
-  mean_run_duration_ns,
-  median_run_duration_ns : how long a given water molecule typically holds
-                         the bridging position before being replaced,
-                         estimated from run lengths (a lower bound on true
-                         residence time -- limited by STRIDE's temporal
-                         resolution, see note below).
-
-Because first_appearance_ns is only meaningful if the window actually
-starts at t=0, START_NS defaults to 0.0 here (NOT the 40 ns equilibration
-cutoff used by convention elsewhere in this repo) -- override with
---start-ns if you specifically want the old 40-500ns occupancy-only
-comparison window.
-
-Output
-------
-  {out_dir}/{seq_id}_gate_latch_bridge_{TAG}{REGION_TAG}.csv  -- one-row summary
-
-Usage
------
+Usage:
     conda activate biosensors
     python gate_latch_water_bridge.py --seq_id pair_3059_binder --seq_type binders
     python gate_latch_water_bridge.py --seq_id pair_3059_binder --seq_type binders \
@@ -139,21 +123,19 @@ LATCH_RESIDUES = set(range(114, 119))  # CLAUDE.md: Latch, residues 114-118
 
 # Same core/tail ligand-atom split as R_score_calc.py / contact_type_analysis.py.
 #
-# Boltz-2 does not guarantee a stable heavy-atom order even for the same
-# ligand chemistry across different prediction batches (the original 95-seq
-# LCA cohort and the 4-sequence new-ligand test batch use two different
-# orderings for the same LCA molecule) -- and CDCA/GLCA/LCA3S are chemically
-# different ligands entirely (extra ring hydroxyl, glycine conjugate, and a
-# sulfate ester in place of the free 3-OH, respectively). Each pattern below
-# was derived once from that ligand's own standalone PDB (with CONECT
-# records) by pruning degree-1 leaves to isolate the fused steroid-ring
-# "2-core", then taking the largest connected component hanging off it as
-# the tail -- the solvent-facing side chain (C20-C24 + carboxylate for
-# LCA/CDCA/LCA3S; for GLCA, extended through the amide and glycine
-# conjugate, since the whole appendage is the analogous solvent-facing
-# terminus once LCA's free acid becomes an amide -- see scratchpad's
-# derive_tail_ordinals.py for the derivation script if a new ligand or a
-# new Boltz-2 batch needs its own pattern added).
+# Boltz-2 doesn't guarantee a stable heavy-atom order even for the same
+# ligand chemistry across prediction batches (the original 95-seq LCA
+# cohort and the 4-sequence new-ligand test batch order the same LCA
+# molecule differently), and CDCA/GLCA/LCA3S are chemically distinct
+# ligands (extra ring hydroxyl, glycine conjugate, sulfate ester in place
+# of the free 3-OH, respectively). Each pattern was derived once from that
+# ligand's own standalone PDB (with CONECT records): prune degree-1 leaves
+# to isolate the fused steroid-ring core, then take the largest connected
+# component off it as the tail (the solvent-facing side chain; for GLCA
+# this extends through the amide and glycine conjugate, the analogous
+# terminus once LCA's free acid becomes an amide). See scratchpad's
+# derive_tail_ordinals.py for the derivation script if a new ligand or
+# Boltz-2 batch needs its own pattern added.
 LIGAND_PATTERNS = [
     # (label, expected_elements, tail_ordinals)
     ('LCA (original 95-seq cohort)',
@@ -175,6 +157,20 @@ LIGAND_PATTERNS = [
 
 
 def get_tail_ordinals(seq_id, got_elements):
+    """Looks up the tail-atom ordinal positions for a ligand's element order.
+
+    Args:
+        seq_id (str): Sequence ID, used only in the error message.
+        got_elements (list[str]): Heavy-atom element symbols for this
+            ligand, in topology order.
+
+    Returns:
+        set[int]: Ordinal positions (0-indexed) of the tail's heavy atoms.
+
+    Raises:
+        ValueError: `got_elements` doesn't match any pattern in
+            LIGAND_PATTERNS (a new ligand or a new Boltz-2 atom ordering).
+    """
     for label, expected, tail_ordinals in LIGAND_PATTERNS:
         if got_elements == expected:
             return tail_ordinals
@@ -195,6 +191,7 @@ STRIDE    = 10     # 37.5 ps * 10 = 375 ps spacing. Run-duration metrics are a
 
 
 def main():
+    """Computes and writes the gate-latch-ligand water bridge summary for one sequence."""
     summary_out = os.path.join(
         out_dir, f"{seq_id}_gate_latch_bridge_{TAG}{REGION_TAG}.csv"
     )
@@ -268,11 +265,10 @@ def main():
           f"Latch: {len(latch_heavy)} heavy atoms")
 
     # ── 3. Per-frame bridge detection, periodic-aware, staged for speed ──
-    # Stage 1: which waters are EVER near the ligand core at all (periodic
-    # minimum-image distance) -- cuts the ~9000-water pool down to only the
-    # ones worth checking against gate/latch in stage 2, since computing
-    # gate/latch distances for every water in every frame is far more
-    # expensive than needed (most waters never come near the pocket at all).
+    # Stage 1: which waters are ever near the ligand core at all (periodic
+    # minimum-image distance). Cuts the ~9000-water pool down to only the
+    # ones worth checking against gate/latch in stage 2, since most waters
+    # never come near the pocket and checking them all would be wasteful.
     lig_pairs = np.array([[w, l] for w in wat_O for l in lig_heavy], dtype=int)
     d_lig = md.compute_distances(traj, lig_pairs, periodic=True).reshape(
         nf, len(wat_O), len(lig_heavy))
@@ -299,8 +295,8 @@ def main():
         near_lig_cand = near_lig_all[:, cand_idx]
 
     gate_bridge_frame  = near_lig_cand.any(axis=1) if near_lig_cand.shape[1] else np.zeros(nf, bool)
-    # Recompute gate/latch bridge (ligand<->gate, ligand<->latch) using the
-    # SAME candidate-water restriction for consistency across all metrics.
+    # Gate/latch bridge (ligand<->gate, ligand<->latch) uses the same
+    # candidate-water restriction as above, for consistency across metrics.
     gl = near_lig_cand & near_gate_cand
     ll = near_lig_cand & near_latch_cand
     glt = gl & near_latch_cand   # (nf, n_cand) -- triple bridge per candidate water

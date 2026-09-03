@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
+"""Finds the medoid frame of a trajectory (aligned, min sum of squared distances).
+
+Usage:
+    python get_medoid.py -s topol.tpr -f traj.xtc --out medoid_CA.txt
+"""
 import argparse
 import numpy as np
 
 def main():
+    """Aligns a trajectory window and writes its medoid frame's stats to a file."""
     p = argparse.ArgumentParser(
         description="Find medoid frame (min sum of squared distances) after aligning frames."
     )
@@ -60,10 +66,8 @@ def main():
     print(f"Analysis window        : {actual_start_ns:.4f}–{actual_end_ns:.4f} ns  "
           f"(frames {start_frame}–{end_frame})")
 
-    # ── Align ALL frames to first frame ───────────────────────────
-    # Full trajectory alignment for a consistent reference frame.
-    # Timestamps are reset to 0-based in the resulting MemoryReader;
-    # we use actual_times_ps (computed above) for all time reporting.
+    # Align all frames to the first frame (timestamps reset to 0-based by
+    # the resulting MemoryReader; actual_times_ps above is used for reporting).
     align.AlignTraj(u, u, select=args.select, in_memory=True).run()
 
     # ── Collect aligned coordinates for the window only ───────────

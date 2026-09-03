@@ -1,12 +1,10 @@
 #!/usr/bin/env python
-"""
-add_legend.py
--------------
-Post-process the rendered medoid comparison PNGs to add a gate/latch color
-legend via true pixel-space compositing (PIL), rather than PyMOL in-scene
-3D labels. Two prior attempts at camera-matrix-derived label/CGO placement
-either overlapped the structure or failed to render at all (get_view() row
-convention couldn't be verified without actually running PyMOL). This
+"""Adds a gate/latch color legend to the rendered medoid comparison PNGs.
+
+Composites the legend in pixel space (PIL) rather than as PyMOL in-scene 3D
+labels. Two prior attempts at camera-matrix-derived label/CGO placement
+either overlapped the structure or failed to render at all (get_view()'s
+row convention couldn't be verified without actually running PyMOL). This
 sidesteps that entirely by drawing directly onto the finished PNG.
 
 Usage:
@@ -34,6 +32,11 @@ MARGIN = 40
 
 
 def add_legend(path):
+    """Draws the gate/latch legend onto one PNG, in place.
+
+    Args:
+        path (str): Path to the PNG to modify and overwrite.
+    """
     img = Image.open(path).convert("RGBA")
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
@@ -81,6 +84,7 @@ def add_legend(path):
 
 
 def main():
+    """Adds the legend to every PNG in IMAGES."""
     for name in IMAGES:
         add_legend(os.path.join(OUT_DIR, name))
 

@@ -1,20 +1,19 @@
 #!/usr/bin/env python
-"""
-add_contact_residue_labels.py
---------------------------------
-Labels the SPECIFIC gate/latch residues found to be nearest the bridging
-water (e.g. "Ala89", "His115") -- not just the "Gate (84-90)"/"Latch
-(114-118)" region labels add_water_network_labels.py already adds.
+"""Labels the specific gate/latch residues nearest the bridging water.
 
-Since gate/latch residues are all colored the same orange/purple, there's
-no per-residue color cluster to detect the way add_region_labels.py does
-for whole regions. Instead, gate_latch_water_network.py renders a
-throwaway MARKER pass with a small unique-cyan pseudoatom placed exactly
-at each contact residue's atom position, alongside the real (clean,
-marker-free) output pass. This script finds the cyan markers' pixel
-positions in the marker pass, then writes plain TEXT-ONLY labels (no
-dot/leader line, per the established preference in this project) onto
-the real image at those positions.
+Labels individual residues (e.g. "Ala89", "His115"), not just the whole
+"Gate (84-90)"/"Latch (114-118)" regions add_water_network_labels.py
+already labels.
+
+Gate/latch residues are all colored the same orange/purple, so there's no
+per-residue color cluster to detect the way add_region_labels.py does for
+whole regions. Instead, gate_latch_water_network.py renders a throwaway
+marker pass with a small unique-cyan pseudoatom placed exactly at each
+contact residue's atom position, alongside the real (clean, marker-free)
+output pass. This script finds the cyan markers' pixel positions in the
+marker pass, then writes plain text-only labels (no dot/leader line, per
+this project's established preference) onto the real image at those
+positions.
 
 Usage:
     python add_contact_residue_labels.py
@@ -30,9 +29,8 @@ MARKER_IMAGE = "pair_3085_binder_water_network_MARKERS_tmp.png"
 # (label text, marker color to find, side to prefer if ambiguous)
 MARKERS = [
     ("Ala89", (0, 255, 255)),   # gate contact residue, cyan marker
-    ("His115", (0, 255, 255)),  # latch contact residue, cyan marker (same
-                                  # color -- distinguished by which cluster
-                                  # is which, see main())
+    ("His115", (0, 255, 255)),  # latch contact residue, same cyan marker
+                                 # color -- distinguished by cluster, see main()
 ]
 HUE_TOL_DEG = 10
 MIN_SAT = 0.5
@@ -47,15 +45,37 @@ TEXT_COLOR = (30, 30, 30)
 
 
 def rgb_to_hue_deg(r, g, b):
+    """Converts 0-255 RGB to (hue in degrees, saturation, value).
+
+    Args:
+        r (int): Red channel, 0-255.
+        g (int): Green channel, 0-255.
+        b (int): Blue channel, 0-255.
+
+    Returns:
+        tuple[float, float, float]: (hue_deg, saturation, value), each in
+        their native HSV ranges (hue in [0, 360), sat/value in [0, 1]).
+    """
     h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
     return h * 360, s, v
 
 
 def find_marker_clusters(img, target_rgb):
-    """Cyan markers are small and there are two of them -- find ALL
-    matching pixels, then split into up-to-two spatial clusters by
-    simple x-position gap (gate marker and latch marker are far apart
-    in this figure's layout), rather than assuming a single blob."""
+    """Finds spatial clusters of pixels matching a target hue.
+
+    Matches all pixels within HUE_TOL_DEG of `target_rgb`'s hue (subject to
+    MIN_SAT/MIN_VAL), then splits them into clusters by x-position gaps
+    rather than assuming a single blob, since the two cyan contact markers
+    (gate and latch) sit far apart in this figure's layout.
+
+    Args:
+        img: PIL Image (RGB) to scan.
+        target_rgb (tuple[int, int, int]): RGB color to match by hue.
+
+    Returns:
+        list[dict]: One dict per cluster (x_center, y_center, n), in the
+        order clusters were encountered while scanning top-to-bottom.
+    """
     target_hue, _, _ = rgb_to_hue_deg(*target_rgb)
     w, h = img.size
     px = img.load()
@@ -89,6 +109,7 @@ def find_marker_clusters(img, target_rgb):
 
 
 def main():
+    """Labels Ala89/His115 on the real image using the marker pass, in place."""
     marker_path = os.path.join(OUT_DIR, MARKER_IMAGE)
     real_path = os.path.join(OUT_DIR, REAL_IMAGE)
 

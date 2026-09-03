@@ -1,24 +1,21 @@
-"""
-extract_rmsf_feats.py
+"""Extracts per-sequence RMSF features from gmx rmsf outputs.
 
-Extracts per-sequence RMSF features for the regions of interest (gate, latch,
-Lb7a5 loop, C-terminal recoil helix, plus individual pocket residues) from
-gmx rmsf outputs, for every sequence in seq_ids.txt. Reads directly from the
-PetaLibrary archive (BASE, matching config.yaml's paths.base and every
-sibling extraction script) and writes into REPO_DIR/analysis/, so this runs
-entirely on Alpine's login node -- no local Mac / OneDrive sync needed.
+Covers the regions of interest (gate, latch, Lb7a5 loop, C-terminal recoil
+helix, plus individual pocket residues) for every sequence in seq_ids.txt.
+Reads directly from the PetaLibrary archive (BASE, matching config.yaml's
+paths.base and every sibling extraction script) and writes into
+REPO_DIR/analysis/, so this runs entirely on Alpine's login node, no local
+Mac / OneDrive sync needed.
 
 Two tables are produced:
-    rmsf_single_residues_per_seq{TAG}.csv
-        Per-residue RMSF for single pocket residues of interest.
-        Source: rmsf_PL.xvg (full per-residue RMSF)
+    rmsf_single_residues_per_seq{TAG}.csv: per-residue RMSF for single
+        pocket residues of interest, from rmsf_PL.xvg (full per-residue
+        RMSF).
+    rmsf_ca_per_seq_summary{TAG}.csv: mean +/- SD RMSF per structural
+        region (Ca atoms only), from rmsf_PL_ca_{gate,latch,Lb7a5,recoil}.xvg.
 
-    rmsf_ca_per_seq_summary{TAG}.csv
-        Mean +/- SD RMSF per structural region (Ca atoms only).
-        Source: rmsf_PL_ca_{gate,latch,Lb7a5,recoil}.xvg
-
-TAG defaults to "_500ns" and is set once at the top of the CONFIG block
-(or via --tag), so re-running against a different analysis window only
+TAG defaults to "_500ns" and is set once at the top of the CONFIG block (or
+via --tag), so re-running against a different analysis window only
 requires changing that one value. --end-ns controls which windowed
 subdirectory (e.g. "250ns") the source .xvg files are read from, and is
 independent of --tag (which only affects output filenames).
@@ -37,9 +34,8 @@ import pandas as pd
 # BASE mirrors config.yaml's paths.base and every sibling script
 # (contact_type_analysis.py, extract_gate_latch_rmsd_feats.py,
 # salt_bridge_analysis.py): rmsf_PL*.xvg is written here by
-# post_processing_pipeline_worker.sh, on the durable PetaLibrary archive, not
-# scratch (auto-deletes after 90 days) or OneDrive. Runs on Alpine's login
-# node directly, no local Mac / OneDrive sync step needed.
+# post_processing_pipeline_worker.sh, on the durable PetaLibrary archive,
+# not scratch (auto-deletes after 90 days) or OneDrive.
 BASE     = "/pl/active/shirts_archive/IvanaTang/biosensors"
 REPO_DIR = "/projects/ivta1597/biosensors"
 RUNREL = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
@@ -73,12 +69,24 @@ SINGLE_RESIDUES = {
 
 
 def rmsf_run_dir(seq_id, group_label, end_ns):
-    """Directory containing a sequence's rmsf_*.xvg outputs. Newer pipeline
-    runs write outputs under runrel/{end_ns}ns/; older ones write directly
-    into runrel/. Prefer whichever location actually has rmsf_PL.xvg rather
-    than guessing from seq_id, since the two layouts don't map cleanly onto
-    naming prefix or pair ID (e.g. pair_0482_low_pkt uses the flat layout
-    despite matching the "resubmitted with new pipeline" ID list)."""
+    """Resolves the directory containing a sequence's rmsf_*.xvg outputs.
+
+    Newer pipeline runs write outputs under runrel/{end_ns}ns/; older ones
+    write directly into runrel/. Checks whichever location actually has
+    rmsf_PL.xvg rather than guessing from seq_id, since the two layouts
+    don't map cleanly onto naming prefix or pair ID (e.g. pair_0482_low_pkt
+    uses the flat layout despite matching the "resubmitted with new
+    pipeline" ID list).
+
+    Args:
+        seq_id (str): Sequence ID.
+        group_label (str): Group label, used to look up TYPE_SUBDIR.
+        end_ns (float): End of the analysis window in ns.
+
+    Returns:
+        str: Path to the directory containing this sequence's rmsf_*.xvg
+        files.
+    """
     run_dir = os.path.join(BASE, TYPE_SUBDIR[group_label], seq_id, RUNREL)
     nested_dir = os.path.join(run_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "rmsf_PL.xvg")):
@@ -87,7 +95,14 @@ def rmsf_run_dir(seq_id, group_label, end_ns):
 
 
 def get_data(filepath):
-    """Parse a GROMACS .xvg file, skipping comment/annotation lines."""
+    """Parses a GROMACS .xvg file, skipping comment/annotation lines.
+
+    Args:
+        filepath (str): Path to the .xvg file.
+
+    Returns:
+        tuple[numpy.ndarray, numpy.ndarray]: (x_data, y_data) columns.
+    """
     x_data, y_data = [], []
     with open(filepath) as f:
         for line in f:
@@ -101,7 +116,16 @@ def get_data(filepath):
 
 
 def load_seq_ids(seq_list_path):
-    """Yields (seq_id, group_label) tuples from a seq_ids.txt-style file."""
+    """Yields (seq_id, group_label) tuples from a seq_ids.txt-style file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file. Blank lines
+            and lines starting with "#" are skipped.
+
+    Yields:
+        tuple[str, str]: (seq_id, group_label). group_label is "" if the
+        file has no second column for that row.
+    """
     with open(seq_list_path) as f:
         for line in f:
             line = line.rstrip("\n")
@@ -114,6 +138,7 @@ def load_seq_ids(seq_list_path):
 
 
 def main():
+    """Extracts single-residue and per-region Ca RMSF tables and writes CSVs."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list", nargs="?", default="seq_ids.txt")
@@ -194,9 +219,10 @@ def main():
             any_found = True
             _, rmsf_nm = get_data(xvg)
             if rmsf_nm.size == 0:
-                # File exists (gmx wrote it) but has zero data rows, i.e. the
-                # underlying index group had zero atoms for this sequence --
-                # NaN, not an np.mean()-on-empty-array warning with no context.
+                # File exists (gmx wrote it) but has zero data rows, i.e.
+                # the underlying index group had zero atoms for this
+                # sequence: record as NaN rather than an unexplained
+                # np.mean()-on-empty-array warning.
                 empty_ca.append((seq_id, region_name, xvg))
                 row[f"{region_name} mean (A)"] = np.nan
                 row[f"{region_name} SD (A)"]   = np.nan

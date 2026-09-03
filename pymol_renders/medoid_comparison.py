@@ -1,67 +1,63 @@
 #!/usr/bin/env python
-"""
-medoid_comparison.py
+"""Renders side-by-side binder vs nonbinder medoid comparison figures.
 
-Render publication-quality figures comparing a PYR1+LCA biosensor "binder"
-medoid structure against a "nonbinder" medoid structure, for use in a
-research talk.
+Publication-quality figures comparing a PYR1+LCA biosensor "binder" medoid
+structure against a "nonbinder" medoid structure, for a research talk.
 
-Mechanistic story being illustrated: in binders, the gate loop (resi 84-90)
-and latch (resi 114-118) close down over the bound ligand (LIG); in
-nonbinders/false positives this gate-latch closure is disrupted even though
-the ligand may still occupy the pocket.
+Mechanistic story being illustrated: in binders, the gate loop (resi
+84-90) and latch (resi 114-118) close down over the bound ligand (LIG); in
+nonbinders/false positives this gate-latch closure is disrupted even
+though the ligand may still occupy the pocket.
 
 Run non-interactively with the local PyMOL build:
 
     /opt/homebrew/bin/pymol -cq /Users/ivanatang/Developer/biosensors/pymol_renders/medoid_comparison.py
 
-Produces two ray-traced PNGs (one per structure, NOT a single composited
+Produces two ray-traced PNGs (one per structure, not a single composited
 side-by-side image) in pymol_renders/output/:
 
     binder_pair_3059_medoid.png
     nonbinder_pair_0052_medoid.png
 
-SHARED CAMERA (important): both structures are loaded into the SAME PyMOL
+Shared camera (important): both structures load into the same PyMOL
 session. The nonbinder is structurally aligned onto the binder first
-(cmd.align, CA atoms of the stable scaffold, EXCLUDING the gate/latch
-resi ranges from the fit so the alignment doesn't force the very loops
-we're comparing to superimpose). ONE camera view (orientation + zoom) is
-then derived from the binder's gate+latch+ligand region and applied
-identically (cmd.set_view with the same matrix) to both renders, so a
-side-by-side comparison of gate/latch closure reflects a real
-conformational difference, not an artifact of two independently
-auto-oriented cameras.
+(cmd.align, CA atoms of the stable scaffold, excluding the gate/latch resi
+ranges from the fit so the alignment doesn't force the very loops we're
+comparing to superimpose). One camera view (orientation + zoom) is then
+derived from the binder's gate+latch+ligand region and applied identically
+(cmd.set_view with the same matrix) to both renders, so a side-by-side
+comparison of gate/latch closure reflects a real conformational
+difference, not an artifact of two independently auto-oriented cameras.
 
 Background is plain white in both panels (talk-slide friendly, no group
-tint) -- panel identity (binder vs. nonbinder) is conveyed instead by:
-  1. Filename (binder_... / nonbinder_...).
-  2. An in-scene text label (e.g. "Binder (pair_3059)") placed at ONE
-     shared anchor point computed from BOTH structures' pocket geometry
-     (average ligand centroid, offset outward from the average protein
-     centroid by the larger of the two ligands' radius plus a margin).
-     Using one shared anchor for both panels means the same "is this
-     position clear of the structure" bounding logic applies to both,
-     rather than each panel getting its own independently-computed
-     (and independently risky) position.
+tint) -- panel identity (binder vs. nonbinder) is conveyed instead by (1)
+filename (binder_... / nonbinder_...) and (2) an in-scene text label (e.g.
+"Binder (pair_3059)") placed at one shared anchor point computed from both
+structures' pocket geometry together (average ligand centroid, offset
+outward from the average protein centroid by the larger of the two
+ligands' radius plus a margin). Using one shared anchor for both panels
+means the same "is this position clear of the structure" bounding logic
+applies to both, rather than each panel getting its own independently
+computed (and independently risky) position.
 
-Gate (orange, #FE6100) and latch (purple, #785EF0) use ONE consistent
-color each across BOTH panels, since the gate/latch are structural
-landmarks, not themselves a binder/nonbinder label. Binder-vs-nonbinder is
-conveyed only via in-scene label / filename, as above.
+Gate (orange, #FE6100) and latch (purple, #785EF0) use one consistent
+color each across both panels, since gate/latch are structural landmarks,
+not themselves a binder/nonbinder label. Binder-vs-nonbinder is conveyed
+only via in-scene label/filename, as above.
 
-GATE/LATCH LABELS: this script only renders the colored structure: gate
+Gate/latch labels: this script only renders the colored structure; gate
 and latch region labels are added afterward, in true pixel space, by
-add_region_labels.py (run it on the PNGs this script produces). An
-earlier version of this script tried to draw the legend in-scene via CGO
-squares anchored on cmd.get_view()'s decoded camera axes; that approach
-could not be verified without executing PyMOL (no way to preview the
-render) and turned out not to render at all, so it was replaced with the
-pixel-space post-processing script instead, which is directly checkable.
+add_region_labels.py (run it on the PNGs this script produces). An earlier
+version tried to draw the legend in-scene via CGO squares anchored on
+cmd.get_view()'s decoded camera axes; that approach couldn't be verified
+without executing PyMOL (no way to preview the render) and turned out not
+to render at all, so it was replaced with the pixel-space post-processing
+script instead, which is directly checkable.
 
-Re-running on a different sequence pair: edit the STRUCTURES list below.
-Note the alignment/shared-view logic assumes exactly two structures named
+To re-run on a different sequence pair, edit the STRUCTURES list below.
+The alignment/shared-view logic assumes exactly two structures named
 "binder" and "nonbinder" (via each dict's "group" key); adapt
-align_structures()/compute_shared_view() if you add more panels.
+align_structures()/compute_shared_view() to add more panels.
 """
 
 import os
@@ -127,19 +123,30 @@ LABEL_MARGIN = 10.0        # Angstrom beyond the ligand radius for the shared la
 # Small color / vector helpers (pure python, no numpy dependency)
 # --------------------------------------------------------------------------
 def hex_to_rgb01(hex_code):
+    """Converts a "#RRGGBB" hex color to a 0-1 RGB tuple for PyMOL.
+
+    Args:
+        hex_code (str): Hex color, with or without leading "#".
+
+    Returns:
+        tuple[float, float, float]: (r, g, b), each in [0, 1].
+    """
     hex_code = hex_code.lstrip("#")
     return tuple(int(hex_code[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
 def _sub(a, b):
+    """Returns the 3-vector difference a - b."""
     return tuple(a[i] - b[i] for i in range(3))
 
 
 def _add(a, b, scale=1.0):
+    """Returns a + b * scale for 3-vectors a, b."""
     return tuple(a[i] + b[i] * scale for i in range(3))
 
 
 def _norm(v):
+    """Normalizes a 3-vector; returns (0, 0, 1) if v is near-zero length."""
     length = (v[0] ** 2 + v[1] ** 2 + v[2] ** 2) ** 0.5
     if length < 1e-6:
         return (0.0, 0.0, 1.0)
@@ -147,6 +154,14 @@ def _norm(v):
 
 
 def _centroid(model):
+    """Returns the mean atomic coordinate of a PyMOL chempy model.
+
+    Args:
+        model: PyMOL chempy Indexed/Storable model (has a .atom list).
+
+    Returns:
+        tuple[float, float, float]: (x, y, z) centroid.
+    """
     n = len(model.atom)
     sx = sum(a.coord[0] for a in model.atom) / n
     sy = sum(a.coord[1] for a in model.atom) / n
@@ -155,6 +170,15 @@ def _centroid(model):
 
 
 def _max_radius(model, center):
+    """Returns the max distance from `center` to any atom in `model`.
+
+    Args:
+        model: PyMOL chempy Indexed/Storable model (has a .atom list).
+        center (tuple[float, float, float]): Reference point.
+
+    Returns:
+        float: Maximum atom-to-center distance (Angstrom).
+    """
     return max(
         (
             (a.coord[0] - center[0]) ** 2
@@ -170,6 +194,7 @@ def _max_radius(model, center):
 # Scene construction
 # --------------------------------------------------------------------------
 def setup_global_render_settings():
+    """Resets the PyMOL session and applies the global render/style settings."""
     cmd.reinitialize()
     cmd.bg_color("white")
     cmd.set("ray_trace_mode", 0)
@@ -186,10 +211,14 @@ def setup_global_render_settings():
 
 
 def load_and_style(struct):
-    """Load one structure into an object named after its group
-    ("binder"/"nonbinder") and build per-object-prefixed named selections
-    so both structures can coexist in the same session without name
-    collisions.
+    """Loads one structure and builds its cartoon/sticks styling.
+
+    Loads into an object named after its group ("binder"/"nonbinder") and
+    builds per-object-prefixed named selections so both structures can
+    coexist in the same session without name collisions.
+
+    Args:
+        struct (dict): One entry of STRUCTURES.
     """
     obj = struct["group"]
     cmd.load(struct["pdb"], obj)
@@ -243,11 +272,12 @@ def load_and_style(struct):
 
 
 def align_structures():
-    """Structurally align every non-reference structure onto REFERENCE_GROUP
-    using CA atoms of the stable scaffold, EXCLUDING the gate/latch resi
-    ranges from the fit. Excluding gate/latch is deliberate: those are
-    exactly the regions being compared, so forcing them into the fit would
-    bias the "closure" comparison towards looking identical.
+    """Aligns every non-reference structure onto REFERENCE_GROUP.
+
+    Uses CA atoms of the stable scaffold, excluding the gate/latch resi
+    ranges from the fit -- deliberate, since those are exactly the regions
+    being compared, so forcing them into the fit would bias the "closure"
+    comparison toward looking identical.
     """
     exclude = f"(resi {GATE_RESI} or resi {LATCH_RESI})"
     ref = REFERENCE_GROUP
@@ -271,11 +301,17 @@ def align_structures():
 
 
 def compute_shared_label_anchor():
-    """One label anchor position, shared by both panels, computed from
-    BOTH structures' ligand + protein geometry together (post-alignment).
-    Because it is the SAME 3D point used for both renders, and computed
-    from the union of both structures, it is guaranteed to clear both
-    ligands' immediate footprint by construction, not just one panel's.
+    """Computes one label anchor position, shared by both panels.
+
+    Computed from both structures' ligand + protein geometry together
+    (post-alignment). Because it's the same 3D point used for both
+    renders, and computed from the union of both structures, it's
+    guaranteed to clear both ligands' immediate footprint by construction,
+    not just one panel's.
+
+    Returns:
+        tuple[float, float, float] | None: The shared anchor position, or
+        None if either selection matched no atoms.
     """
     protein_sel = " or ".join(
         f"({s['group']} and chain {PROTEIN_CHAIN} and polymer and name CA)"
@@ -297,6 +333,16 @@ def compute_shared_label_anchor():
 
 
 def add_group_label(struct, position):
+    """Adds a colored text label pseudoatom for one structure at a fixed position.
+
+    Args:
+        struct (dict): One entry of STRUCTURES.
+        position (tuple[float, float, float]): Label anchor position, from
+            compute_shared_label_anchor.
+
+    Returns:
+        str: Name of the created pseudoatom object.
+    """
     obj = struct["group"]
     anchor = f"{obj}_label_anchor"
     cmd.pseudoatom(anchor, pos=list(position))
@@ -312,11 +358,20 @@ def add_group_label(struct, position):
 
 
 def compute_shared_view(anchor_names):
-    """Orient using the REFERENCE structure's gate+latch+ligand region (a
-    stable, reproducible reference direction), then zoom tightly on the
-    union of BOTH structures' gate+latch+ligand atoms plus both label
-    anchors, so the resulting single camera keeps everything relevant
-    in-frame (no ligand cropping) without excess dead canvas.
+    """Computes the one camera view (orient + zoom) shared by both panels.
+
+    Orients using the reference structure's gate+latch+ligand region (a
+    stable, reproducible reference direction), then zooms tightly on the
+    union of both structures' gate+latch+ligand atoms plus both label
+    anchors, so the resulting camera keeps everything relevant in-frame
+    (no ligand cropping) without excess dead canvas.
+
+    Args:
+        anchor_names (list[str]): Label pseudoatom names from
+            add_group_label, included in the zoom selection.
+
+    Returns:
+        The PyMOL view matrix from cmd.get_view(), for cmd.set_view().
     """
     ref_landmark = f"{REFERENCE_GROUP}_landmark"
     cmd.orient(ref_landmark)
@@ -329,9 +384,16 @@ def compute_shared_view(anchor_names):
 
 
 def render_panel(struct, shared_view, group_to_obj_names):
-    """Render exactly one structure + its own label, with every other
-    structure/label object disabled, using the identical shared_view for
-    every panel.
+    """Renders exactly one structure + its own label, using the shared camera.
+
+    Every other structure/label object is disabled first.
+
+    Args:
+        struct (dict): One entry of STRUCTURES; the panel to render.
+        shared_view: View matrix from compute_shared_view, applied
+            identically to every panel.
+        group_to_obj_names (dict): Maps group name to the tuple of PyMOL
+            object/pseudoatom names to enable for that panel.
     """
     this_group = struct["group"]
     for group, names in group_to_obj_names.items():
@@ -339,9 +401,9 @@ def render_panel(struct, shared_view, group_to_obj_names):
         for name in names:
             (cmd.enable if enable else cmd.disable)(name)
 
-    # re-apply the shared camera explicitly right before each render as a
-    # safety net (enable/disable should not perturb the view, but this
-    # guarantees both panels are bit-for-bit the same camera)
+    # Re-applied explicitly right before each render as a safety net:
+    # enable/disable shouldn't perturb the view, but this guarantees both
+    # panels are bit-for-bit the same camera.
     cmd.set_view(shared_view)
 
     cmd.bg_color("white")
@@ -352,6 +414,7 @@ def render_panel(struct, shared_view, group_to_obj_names):
 
 
 def main():
+    """Runs the full pipeline: load, align, label, frame camera, render both panels."""
     os.makedirs(OUT_DIR, exist_ok=True)
     setup_global_render_settings()
 

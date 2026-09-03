@@ -1,25 +1,21 @@
-"""
-rmsd_to_ref_significance.py — Which RMSD-to-Boltz-reference regions
-significantly separate Binder from False Positive (nonbinder) sequences?
+"""Tests which RMSD-to-Boltz-reference regions separate Binder from False
+Positive sequences.
 
 Reads the per-sequence summary CSV produced by extract_gate_latch_rmsd_feats.py
-(Gate, Latch, Lb7a5, Recoil, and Whole-protein Ca RMSD-to-reference) and tests,
-for each region, its three recommended ML features (mean, wide-window late
-mean, full-trajectory regression slope) against a Binder vs False Positive
-split, following this repo's established significance-screening convention
-(core_vs_tail_regions.py / water_density_analysis.py):
-
-  1. Mann-Whitney U test per region/feature, plus a Cohen's d effect size and
-     a rank-AUC (0.5 = no separation, 1.0 = perfect separation, <0.5 = False
-     Positive has the higher value).
-  2. Benjamini-Hochberg FDR correction across ALL region/feature tests
-     together (5 regions x 3 features = 15 tests here, so this matters far
-     more than it did for the original 2-column Gate/Latch-only Welch
-     t-test in plot_gate_latch_rmsd_to_ref.ipynb -- a handful of
-     uncorrected "hits" is expected by chance alone across 15 tests).
-  3. Plots: one figure per feature kind (mean / late window mean / slope),
-     with one panel per region, plus a per-region-per-feature significance
-     summary and a plain verdict table.
+(Gate, Latch, Lb7a5, Recoil, and Whole-protein Ca RMSD-to-reference) and, for
+each region, tests its three recommended ML features (mean, wide-window
+late mean, full-trajectory regression slope) against a Binder vs False
+Positive split, following this repo's established significance-screening
+convention (core_vs_tail_regions.py / water_density_analysis.py):
+(1) Mann-Whitney U per region/feature, with a Cohen's d effect size and a
+rank-AUC alongside the p-value; (2) a Benjamini-Hochberg FDR correction
+across all region/feature tests together (5 regions x 3 features = 15
+tests, so this matters far more than it did for the original 2-column
+Gate/Latch-only Welch t-test in plot_gate_latch_rmsd_to_ref.ipynb, since a
+handful of uncorrected "hits" is expected by chance alone across 15 tests);
+and (3) plots, one figure per feature kind (mean / late window mean /
+slope) with one panel per region, plus a significance summary and a plain
+verdict table.
 
 Input (produced by extract_gate_latch_rmsd_feats.py, which now runs on Alpine
 against the PetaLibrary archive -- pull its output CSV back to this local
@@ -78,6 +74,16 @@ MD_GROUP_SUFFIX = {
 
 # ── Stats helpers (mirrors core_vs_tail_regions.py) ───────────────────────────
 def cohens_d(a, b):
+    """Computes Cohen's d effect size between two samples.
+
+    Args:
+        a: First sample (array-like).
+        b: Second sample (array-like).
+
+    Returns:
+        float: Standardized mean difference (a - b), pooled SD. 0.0 if
+        pooled variance is non-positive.
+    """
     na, nb = len(a), len(b)
     pooled_var = ((na - 1) * a.var(ddof=1) + (nb - 1) * b.var(ddof=1)) / (na + nb - 2)
     if pooled_var <= 0:
@@ -86,15 +92,30 @@ def cohens_d(a, b):
 
 
 def rank_auc(a, b):
-    """AUC of using the feature value to separate group a (label 1) from
-    group b (label 0). 0.5 = no separation; >0.5 = a tends higher."""
+    """Computes the AUC of using the feature value to separate two groups.
+
+    Args:
+        a: Sample treated as the positive class (label 1).
+        b: Sample treated as the negative class (label 0).
+
+    Returns:
+        float: ROC-AUC. 0.5 means no separation, >0.5 means `a` tends
+        higher, <0.5 means `b` tends higher.
+    """
     y = np.r_[np.ones(len(a)), np.zeros(len(b))]
     scores = np.r_[a, b]
     return roc_auc_score(y, scores)
 
 
 def bh_fdr(pvals):
-    """Benjamini-Hochberg FDR-adjusted q-values."""
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -108,6 +129,20 @@ def bh_fdr(pvals):
 
 
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
+    """Runs a Mann-Whitney U test between two groups for one column.
+
+    Args:
+        df: DataFrame containing `col` and a `Group` column.
+        col: Name of the column to compare.
+        group_a: `Group` value for the first group (default: GROUP_A).
+        group_b: `Group` value for the second group (default: GROUP_B).
+        min_n (int): Minimum non-NaN samples required per group; returns
+            None below this (default: 5).
+
+    Returns:
+        dict | None: n, mean, Cohen's d, rank-AUC, and p-value for each
+        group, or None if either group has fewer than `min_n` samples.
+    """
     a = df.loc[df["Group"] == group_a, col].dropna().values
     b = df.loc[df["Group"] == group_b, col].dropna().values
     if len(a) < min_n or len(b) < min_n:
@@ -119,10 +154,20 @@ def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
 
 # ── Loading / optional sequencing-confirmed restriction ───────────────────────
 def load_source_ids(guide_path, source):
-    """Sequence names (matching the summary CSV's 'Sequence' column, e.g.
-    pair_3098_binder) from md_candidate_guide.csv where source == `source`
-    (e.g. ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed). Mirrors core_vs_tail_regions.py's load_source_ids."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Mirrors core_vs_tail_regions.py's load_source_ids.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: Sequence names (matching the summary CSV's "Sequence" column,
+        e.g. pair_3098_binder) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["Sequence"] = matched.apply(
@@ -133,6 +178,17 @@ def load_source_ids(guide_path, source):
 
 # ── Box + jitter helper (matches the repo's plot_Rg_sasa.py / core_vs_tail_regions.py style)
 def box_jitter(ax, df, col, groups, rng=None):
+    """Draws a box-and-jitter plot for one column, one box per group.
+
+    Args:
+        ax: Matplotlib Axes to draw on.
+        df: DataFrame containing `col` and a `Group` column.
+        col (str): Column to plot.
+        groups (list[str]): `Group` values to plot, in order, each colored
+            via GROUP_COLOR.
+        rng: numpy Generator for jitter; a fixed-seed default is used if
+            None.
+    """
     rng = rng or np.random.default_rng(42)
     xpos = 0
     for group in groups:
@@ -153,10 +209,23 @@ def box_jitter(ax, df, col, groups, rng=None):
 
 # ── Raw stats for all region x feature-kind combinations (no FDR yet) ─────────
 def compute_all_stats(df, window):
-    """Every (region, feature_kind) combination's Mann-Whitney/Cohen's d/AUC,
-    with no FDR correction applied yet -- that has to happen ONCE, across
-    every row this function returns together, not per feature-kind, since
-    all of them compete for the same false-discovery budget."""
+    """Runs Mann-Whitney/Cohen's d/AUC for every (region, feature_kind)
+    combination, with no FDR correction applied yet.
+
+    FDR correction has to happen once, across every row this function
+    returns together, not per feature-kind, since all of them compete for
+    the same false-discovery budget.
+
+    Args:
+        df: Summary DataFrame with one column per region/feature-kind
+            combination (see FEATURE_TEMPLATES) and a `Group` column.
+        window (float): Wide-window size in ns, used to resolve the
+            "late_mean" column names.
+
+    Returns:
+        pandas.DataFrame: One row per (feature_kind, region) with stats
+        from compare_groups, uncorrected.
+    """
     rows = []
     for feature_kind, template in FEATURE_TEMPLATES.items():
         for region in REGIONS:
@@ -172,9 +241,24 @@ def compute_all_stats(df, window):
 
 # ── Per-feature-kind plot, using already globally-FDR-corrected stats ────────
 def plot_feature_kind(df, stats_df, feature_kind, out_dir, sig_threshold):
-    """One figure, this feature kind only: every region, Binder vs FP.
-    stats_df must already carry a 'q' column from the single global BH-FDR
-    correction computed in main(), so stars here match the final verdict."""
+    """Plots one feature kind across all regions, Binder vs False Positive.
+
+    `stats_df` must already carry a 'q' column from the single global
+    BH-FDR correction computed in main(), so stars here match the final
+    verdict.
+
+    Args:
+        df: Summary DataFrame (see compute_all_stats).
+        stats_df: FDR-corrected stats DataFrame (see compute_all_stats;
+            must have a "q" column).
+        feature_kind (str): Key of FEATURE_TEMPLATES to plot.
+        out_dir (str): Directory to write the figure to.
+        sig_threshold (float): FDR q-value significance threshold.
+
+    Returns:
+        dict | None: Summary (feature_kind, n tested/significant, top
+        region) for the verdict table, or None if there wasn't enough data.
+    """
     kind_df = stats_df[stats_df["feature_kind"] == feature_kind]
     if kind_df.empty:
         print(f"\n[{feature_kind}] Not enough Binder/False Positive data -- skipping.")
@@ -217,6 +301,7 @@ def plot_feature_kind(df, stats_df, feature_kind, out_dir, sig_threshold):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
+    """Runs the RMSD-to-reference Binder vs False Positive analysis end to end."""
     parser = argparse.ArgumentParser(description=__doc__,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--summary-csv",

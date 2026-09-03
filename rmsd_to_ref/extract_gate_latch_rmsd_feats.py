@@ -1,7 +1,6 @@
-"""
-extract_gate_latch_rmsd_feats.py
+"""Computes per-region Ca RMSD-to-own-Boltz-reference for every sequence.
 
-Computes Ca RMSD-to-own-Boltz-reference (protein_<ID>.pdb), independently
+Computes Ca RMSD-to-own-Boltz-reference (protein_<ID>.pdb) independently
 for each region, for every sequence in seq_ids.txt. Regions covered: gate
 (84-90), latch (114-118), loop Lb7a5 (148-155), the C-terminal recoil helix
 (154-166), and the whole protein.
@@ -10,31 +9,30 @@ This is a different axis from the existing gate-latch pairwise distance
 (which conflates gate and latch motion into one relative coordinate) and
 from per-region RMSF (which measures spread around a trajectory's own mean
 structure, blind to where that mean sits). Two separate superpositions are
-used here:
-  - A "core" alignment (protein Ca atoms excluding gate, latch, Lb7a5, and
-    the recoil helix) so none of those four regions' own motion can
-    contaminate the alignment used to score them. Gate/Latch/Lb7a5/Recoil
-    Ca RMSD are all scored against this one alignment.
-  - A separate whole-protein alignment (every common Ca atom, no exclusions)
-    -- the conventional global-drift metric, answering a different question
-    than the four region-specific scores above and so deliberately not
-    reusing their alignment.
-Both test whether a region's (or the whole structure's) average position
-drifts toward or away from its modeled starting pose over the trajectory.
+used: a "core" alignment (protein Ca atoms excluding gate, latch, Lb7a5,
+and the recoil helix), so none of those four regions' own motion can
+contaminate the alignment used to score them, against which Gate/Latch/
+Lb7a5/Recoil Ca RMSD are all scored; and a separate whole-protein alignment
+(every common Ca atom, no exclusions), the conventional global-drift
+metric, which deliberately doesn't reuse the core alignment since it
+answers a different question. Both test whether a region's (or the whole
+structure's) average position drifts toward or away from its modeled
+starting pose over the trajectory.
 
 Outputs:
-    <run_dir>/gate_rmsd_to_ref.xvg           per-frame gate Ca RMSD to reference
-    <run_dir>/latch_rmsd_to_ref.xvg          per-frame latch Ca RMSD to reference
-    <run_dir>/lb7a5_rmsd_to_ref.xvg          per-frame Lb7a5 Ca RMSD to reference
-    <run_dir>/recoil_rmsd_to_ref.xvg         per-frame recoil helix Ca RMSD to reference
-    <run_dir>/whole_protein_rmsd_to_ref.xvg  per-frame whole-protein Ca RMSD to reference
-    <REPO_DIR>/analysis/gate_latch_rmsd_to_ref_summary{TAG}.csv   per-sequence summary,
-        including early/late window means (default 100 ns) and a
-        full-trajectory linear regression slope (A/ns) for every region -
-        the recommended ML features are the wide-window late mean and/or
-        the regression slope, since those were the most robust
-        binder/nonbinder discriminators found for gate/latch in this
-        analysis.
+    <run_dir>/gate_rmsd_to_ref.xvg: per-frame gate Ca RMSD to reference.
+    <run_dir>/latch_rmsd_to_ref.xvg: per-frame latch Ca RMSD to reference.
+    <run_dir>/lb7a5_rmsd_to_ref.xvg: per-frame Lb7a5 Ca RMSD to reference.
+    <run_dir>/recoil_rmsd_to_ref.xvg: per-frame recoil helix Ca RMSD to
+        reference.
+    <run_dir>/whole_protein_rmsd_to_ref.xvg: per-frame whole-protein Ca
+        RMSD to reference.
+    <REPO_DIR>/analysis/gate_latch_rmsd_to_ref_summary{TAG}.csv:
+        per-sequence summary, including early/late window means (default
+        100 ns) and a full-trajectory linear regression slope (A/ns) for
+        every region. The recommended ML features are the wide-window late
+        mean and/or the regression slope, the most robust binder/nonbinder
+        discriminators found for gate/latch in this analysis.
 
 Runs on Alpine (not locally), since inputs are read from the PetaLibrary
 archive rather than scratch. After running, pull the resulting summary CSV
@@ -105,9 +103,22 @@ for _lo, _hi in (GATE, LATCH, LB7A5, RECOIL):
 
 
 def seq_run_dir(seq_id, group_label, end_ns):
-    """Directory containing a sequence's per-frame trajectory outputs.
+    """Finds the directory containing a sequence's per-frame trajectory
+    outputs.
+
     Mirrors extract_rmsf_feats.py's rmsf_run_dir: newer pipeline runs write
-    under runrel/{end_ns}ns/, older ones write directly into runrel/."""
+    under runrel/{end_ns}ns/, older ones write directly into runrel/.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        group_label (str): seq_type label, a key of TYPE_SUBDIR.
+        end_ns (float): End of the analysis window in ns, used to build the
+            nested subdirectory name.
+
+    Returns:
+        str: Path to the run directory (nested if medoid_PL.pdb is there,
+        otherwise flat).
+    """
     run_dir = os.path.join(BASE, TYPE_SUBDIR[group_label], seq_id, RUNREL)
     nested_dir = os.path.join(run_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "medoid_PL.pdb")):
@@ -116,10 +127,19 @@ def seq_run_dir(seq_id, group_label, end_ns):
 
 
 def find_reference_pdb(seq_id, group_label):
-    """Per-sequence Boltz-predicted protein-only structure, protein_<ID>.pdb.
-    Naming isn't fully uniform across naming conventions (e.g. protein_019.pdb,
-    protein_pair3061.pdb, protein_seq10_binder.pdb), so glob rather than
-    parse the ID out of seq_id."""
+    """Finds a sequence's Boltz-predicted protein-only reference structure.
+
+    Naming isn't fully uniform across naming conventions (e.g.
+    protein_019.pdb, protein_pair3061.pdb, protein_seq10_binder.pdb), so
+    this globs rather than parses the ID out of seq_id.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        group_label (str): seq_type label, a key of TYPE_SUBDIR.
+
+    Returns:
+        str | None: Path to protein_<ID>.pdb, or None if not found.
+    """
     seq_dir = os.path.join(BASE, TYPE_SUBDIR[group_label], seq_id)
     candidates = sorted(
         p for p in glob.glob(os.path.join(seq_dir, "protein_*.pdb"))
@@ -129,7 +149,14 @@ def find_reference_pdb(seq_id, group_label):
 
 
 def ca_index_map(topology):
-    """resSeq -> atom index, for protein Ca atoms only."""
+    """Maps resSeq to atom index for protein Ca atoms only.
+
+    Args:
+        topology (mdtraj.Topology): Topology to index.
+
+    Returns:
+        dict: Maps resSeq (int) to Ca atom index.
+    """
     return {
         res.resSeq: atom.index
         for res in topology.residues
@@ -140,18 +167,52 @@ def ca_index_map(topology):
 
 
 def region_indices(ca_map, lo, hi):
+    """Gets Ca atom indices for a resSeq range.
+
+    Args:
+        ca_map (dict): resSeq -> atom index (see ca_index_map).
+        lo (int): First resSeq, inclusive.
+        hi (int): Last resSeq, inclusive.
+
+    Returns:
+        list[int]: Atom indices for resSeqs in [lo, hi] present in `ca_map`.
+    """
     return [ca_map[r] for r in range(lo, hi + 1) if r in ca_map]
 
 
 def _rmsd_to_ref(traj_super, traj_idx, ref, ref_idx):
-    """Per-frame RMSD (Angstrom) between traj_super's atoms at traj_idx and
-    ref's atoms at ref_idx, given a trajectory already superposed onto ref
-    using whatever alignment atom set the caller chose."""
+    """Computes per-frame RMSD between a superposed trajectory and a reference.
+
+    Args:
+        traj_super (mdtraj.Trajectory): Trajectory already superposed onto
+            `ref` using whatever alignment atom set the caller chose.
+        traj_idx (list[int]): Atom indices to score, in `traj_super`.
+        ref (mdtraj.Trajectory): Single-frame reference structure.
+        ref_idx (list[int]): Atom indices to score, in `ref` (same order/
+            length as `traj_idx`).
+
+    Returns:
+        numpy.ndarray: Per-frame RMSD in Angstrom.
+    """
     diff = traj_super.xyz[:, traj_idx, :] - ref.xyz[0, ref_idx, :]
     return np.sqrt(np.mean(np.sum(diff ** 2, axis=2), axis=1)) * NM_TO_ANG
 
 
 def compute_all_rmsd(seq_id, group_label, end_ns):
+    """Computes per-region and whole-protein Ca RMSD-to-reference for one
+    sequence.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        group_label (str): seq_type label, a key of TYPE_SUBDIR.
+        end_ns (float): End of the analysis window in ns.
+
+    Returns:
+        tuple[numpy.ndarray, dict] | None: (time in ns, {region: per-frame
+        RMSD array}) for Gate/Latch/Lb7a5/Recoil/Whole, or None if the
+        reference, topology, or trajectory is missing, or no common
+        residues are found for a required alignment/region.
+    """
     ref_pdb = find_reference_pdb(seq_id, group_label)
     run_dir = seq_run_dir(seq_id, group_label, end_ns)
     top_pdb = os.path.join(run_dir, "medoid_PL.pdb")
@@ -183,18 +244,18 @@ def compute_all_rmsd(seq_id, group_label, end_ns):
             return None
         region_rmsd[name] = _rmsd_to_ref(traj_core, traj_idx, ref, ref_idx)
 
-    # ── Whole-protein alignment: a SEPARATE superposition on every common Ca
-    # atom (no exclusions) -- the conventional global-drift metric, not the
+    # Whole-protein alignment: a SEPARATE superposition on every common Ca
+    # atom (no exclusions), the conventional global-drift metric, not the
     # core alignment above. mdtraj's Trajectory has no public .copy(), but
     # re-superposing traj_core (== traj; superpose() mutates in place and
-    # returns self) is safe here regardless: Kabsch superposition always
-    # finds the globally optimal fit for whatever atom_indices are given,
-    # independent of the trajectory's current orientation, so re-running it
-    # with a different atom selection produces the same result as superposing
-    # fresh from the original coordinates. This is only correct because the
-    # four core-aligned region_rmsd arrays above were already computed (as
-    # independent numpy arrays) before this second, whole-protein-atom
-    # superposition mutates traj_core's coordinates again. ──
+    # returns self) is safe: Kabsch superposition always finds the globally
+    # optimal fit for whatever atom_indices are given, independent of the
+    # trajectory's current orientation, so re-running it with a different
+    # atom selection gives the same result as superposing fresh from the
+    # original coordinates. This is only correct because the four
+    # core-aligned region_rmsd arrays above were already computed (as
+    # independent numpy arrays) before this second superposition mutates
+    # traj_core's coordinates again.
     whole_resids = sorted(set(ref_ca) & set(traj_ca))
     if not whole_resids:
         return None
@@ -208,6 +269,14 @@ def compute_all_rmsd(seq_id, group_label, end_ns):
 
 
 def write_xvg(path, time_ns, values, ylabel):
+    """Writes a per-frame time series to a GROMACS-style .xvg file.
+
+    Args:
+        path (str): Output file path.
+        time_ns (array-like): Per-frame time in ns.
+        values (array-like): Per-frame values, same length as `time_ns`.
+        ylabel (str): Y-axis label written into the file header.
+    """
     with open(path, "w") as f:
         f.write('@    xaxis label "Time (ns)"\n')
         f.write(f'@    yaxis label "{ylabel}"\n')
@@ -216,7 +285,15 @@ def write_xvg(path, time_ns, values, ylabel):
 
 
 def load_seq_ids(seq_list_path):
-    """Yields (seq_id, group_label) tuples from a seq_ids.txt-style file."""
+    """Yields (seq_id, group_label) tuples from a seq_ids.txt-style file.
+
+    Args:
+        seq_list_path (str): Path to the seq_ids file. Blank lines and
+            lines starting with "#" are skipped.
+
+    Yields:
+        tuple[str, str]: (seq_id, group_label) for each entry.
+    """
     with open(seq_list_path) as f:
         for line in f:
             line = line.rstrip("\n")
@@ -229,6 +306,7 @@ def load_seq_ids(seq_list_path):
 
 
 def main():
+    """Computes per-region RMSD-to-reference for every sequence in a seq list."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list", nargs="?", default="seq_ids.txt")

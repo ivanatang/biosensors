@@ -1,14 +1,12 @@
 #!/usr/bin/env python
-"""
-add_region_labels.py
----------------------
-Label the gate and latch regions directly next to where they actually
-render, instead of a corner legend. Finds each region's stick-color pixel
-cluster by HSV hue matching (robust to ray-traced shading/anti-aliasing,
-unlike exact RGB matching), then places a plain text label (no pointer
-line or marker) in the nearest clear side margin, vertically centered on
-the cluster. Pure PIL pixel-space work -- no PyMOL camera-matrix
-guessing, so it's directly verifiable here.
+"""Labels the gate and latch regions directly next to where they render.
+
+Labels next to the actual rendered geometry instead of a corner legend.
+Finds each region's stick-color pixel cluster by HSV hue matching (robust
+to ray-traced shading/anti-aliasing, unlike exact RGB matching), then
+places a plain text label (no pointer line or marker) in the nearest clear
+side margin, vertically centered on the cluster. Pure PIL pixel-space work,
+so no PyMOL camera-matrix guessing is needed.
 
 Usage:
     python add_region_labels.py
@@ -38,11 +36,35 @@ SAMPLE_STEP = 3    # subsample pixels for speed
 
 
 def rgb_to_hue_deg(r, g, b):
+    """Converts 0-255 RGB to (hue in degrees, saturation, value).
+
+    Args:
+        r (int): Red channel, 0-255.
+        g (int): Green channel, 0-255.
+        b (int): Blue channel, 0-255.
+
+    Returns:
+        tuple[float, float, float]: (hue_deg, saturation, value), each in
+        their native HSV ranges (hue in [0, 360), sat/value in [0, 1]).
+    """
     h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
     return h * 360, s, v
 
 
 def find_cluster(img, target_rgb):
+    """Finds the pixel cluster matching a target hue.
+
+    Args:
+        img: PIL Image (RGB) to scan.
+        target_rgb (tuple[int, int, int]): RGB color to match by hue.
+
+    Returns:
+        dict: Bounding box and center (x_min, x_max, y_min, y_max,
+        x_center, y_center) of matching pixels.
+
+    Raises:
+        RuntimeError: No pixels matched the target hue.
+    """
     target_hue, _, _ = rgb_to_hue_deg(*target_rgb)
     w, h = img.size
     px = img.load()
@@ -66,6 +88,11 @@ def find_cluster(img, target_rgb):
 
 
 def label_image(path):
+    """Labels the gate and latch regions on one PNG, in place.
+
+    Args:
+        path (str): Path to the PNG to modify and overwrite.
+    """
     img = Image.open(path).convert("RGB")
     w, h = img.size
     draw = ImageDraw.Draw(img)
@@ -74,13 +101,12 @@ def label_image(path):
     gate = find_cluster(img, GATE_RGB)
     latch = find_cluster(img, LATCH_RGB)
 
-    # Gate cluster sits left-of-center in these renders -> label to its left.
-    # Latch cluster sits right-of-center -> label to its right.
-    # Decide per-image from actual centers rather than assuming, in case a
-    # future re-render flips the composition.
+    # Decided per-image from actual cluster centers, not assumed layout, in
+    # case a future re-render flips gate/latch left-right.
     gate_is_left = gate["x_center"] <= latch["x_center"]
 
     def place(label_text, cluster, color, side):
+        """Draws one label at the clear-margin side of its cluster."""
         bbox = draw.textbbox((0, 0), label_text, font=font)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
         anchor_y = cluster["y_center"]
@@ -106,6 +132,7 @@ def label_image(path):
 
 
 def main():
+    """Labels every PNG in IMAGES."""
     for name in IMAGES:
         label_image(os.path.join(OUT_DIR, name))
 

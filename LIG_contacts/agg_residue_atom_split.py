@@ -1,11 +1,11 @@
-"""
-agg_residue_atom_split.py
----------------------------
-After all residue_atom_split_worker.sh SLURM jobs finish, run this on the
-login node to (1) collect per-sequence *_res{RESSEQ}_atomsplit_{TAG}.csv
-files into one table, and (2) test whether backbone_occupancy and
-sidechain_occupancy separate Binder from False Positive, following this
-repo's established significance-screening convention (core_vs_tail_regions.py /
+"""Aggregates per-residue backbone/side-chain contact splits and tests
+Binder vs False Positive separation.
+
+Run on the login node after all residue_atom_split_worker.sh SLURM jobs
+finish. Collects per-sequence *_res{RESSEQ}_atomsplit_{TAG}.csv files into
+one table, then tests whether backbone_occupancy and sidechain_occupancy
+separate Binder from False Positive, following this repo's established
+significance-screening convention (core_vs_tail_regions.py /
 rmsd_to_ref_significance.py): Mann-Whitney U, Cohen's d, rank-AUC, BH-FDR
 across the two tests.
 
@@ -27,6 +27,16 @@ GROUP_A, GROUP_B = "Binder", "False Positive"
 
 
 def cohens_d(a, b):
+    """Computes Cohen's d effect size between two samples.
+
+    Args:
+        a: First sample (array-like).
+        b: Second sample (array-like).
+
+    Returns:
+        float: Standardized mean difference (a - b), pooled SD. 0.0 if
+        pooled variance is non-positive.
+    """
     na, nb = len(a), len(b)
     pooled_var = ((na - 1) * a.var(ddof=1) + (nb - 1) * b.var(ddof=1)) / (na + nb - 2)
     if pooled_var <= 0:
@@ -35,12 +45,30 @@ def cohens_d(a, b):
 
 
 def rank_auc(a, b):
+    """Computes the AUC of using the feature value to separate two groups.
+
+    Args:
+        a: Sample treated as the positive class (label 1).
+        b: Sample treated as the negative class (label 0).
+
+    Returns:
+        float: ROC-AUC. 0.5 means no separation, >0.5 means `a` tends
+        higher, <0.5 means `b` tends higher.
+    """
     y = np.r_[np.ones(len(a)), np.zeros(len(b))]
     scores = np.r_[a, b]
     return roc_auc_score(y, scores)
 
 
 def bh_fdr(pvals):
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -54,6 +82,16 @@ def bh_fdr(pvals):
 
 
 def load_seq_type_map(seq_list_path):
+    """Loads seq_id -> seq_type from a tab-separated seq_ids file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file (columns:
+            seq_id, seq_type, ...). Blank lines and lines starting with
+            "#" are skipped.
+
+    Returns:
+        dict: Maps seq_id to seq_type ("Unknown" if the column is missing).
+    """
     mapping = {}
     with open(seq_list_path) as f:
         for line in f:
@@ -66,12 +104,35 @@ def load_seq_type_map(seq_list_path):
 
 
 def load_seq_ids(seq_list_path):
+    """Loads the seq_id column from a seq_ids.txt-style file.
+
+    Args:
+        seq_list_path (str): Path to the seq_ids file. Blank lines and
+            lines starting with "#" are skipped.
+
+    Returns:
+        list[str]: seq_ids in file order.
+    """
     with open(seq_list_path) as f:
         return [line.split()[0] for line in f
                 if line.strip() and not line.startswith("#")]
 
 
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
+    """Runs a Mann-Whitney U test between two groups for one column.
+
+    Args:
+        df: DataFrame containing `col` and a `seq_type` column.
+        col: Name of the column to compare.
+        group_a: `seq_type` value for the first group (default: GROUP_A).
+        group_b: `seq_type` value for the second group (default: GROUP_B).
+        min_n (int): Minimum non-NaN samples required per group; returns
+            None below this (default: 5).
+
+    Returns:
+        dict | None: n, mean, Cohen's d, rank-AUC, and p-value for each
+        group, or None if either group has fewer than `min_n` samples.
+    """
     a = df.loc[df["seq_type"] == group_a, col].dropna().values
     b = df.loc[df["seq_type"] == group_b, col].dropna().values
     if len(a) < min_n or len(b) < min_n:
@@ -82,6 +143,7 @@ def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
 
 
 def main():
+    """Aggregates one residue's atom-split results and tests Binder vs FP."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--seq_list', default="/projects/ivta1597/biosensors/seq_ids_orig.txt")
     parser.add_argument('--resseq', type=int, default=116)

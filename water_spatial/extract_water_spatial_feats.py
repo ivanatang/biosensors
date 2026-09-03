@@ -1,58 +1,53 @@
-"""
-extract_water_spatial_feats.py
+"""Extracts a per-sequence scalar pocket water density from gmx spatial output.
 
 Parses each sequence's water_density_{seq_id}.cube (a Gaussian cube file
-produced by `gmx spatial` — a 3D spatial density function of water-oxygen
-occupancy, in the water_spatial_prep.sh/water_spatial_run.sh fitted-trajectory
-reference frame) and computes a per-sequence scalar pocket water density: the
-mean voxel density within a fixed radius of the ligand's mean position.
+produced by `gmx spatial`: a 3D spatial density function of water-oxygen
+occupancy, in the water_spatial_prep.sh/water_spatial_run.sh fitted-
+trajectory reference frame) and computes the mean voxel density within a
+fixed radius of the ligand's mean position.
 
-A first pass at this (the plain `pocket_water_density_*` columns) averages
-over every voxel in that flat 8 A sphere, including voxels that are simply
-inside the ligand or a pocket-lining side chain -- both physically exclude
-water regardless of whether the sequence is a binder, so a large chunk of
-the "depletion" that produced was just anatomy, not a hydrophobic-exclusion
-signal, and it diluted whatever real group difference might exist. The
-`pocket_water_density_accessible_*` columns restrict the same sphere to
-voxels that are NOT within a protein/ligand heavy atom's van der Waals
-radius (mdtraj Element.radius, Bondi-based) for most of a sampled set of
-frames -- i.e. genuinely solvent-accessible space near the ligand, not
-atom-occupied volume.
+The plain `pocket_water_density_*` columns average over every voxel in
+that flat 8 A sphere, including voxels simply inside the ligand or a
+pocket-lining side chain, both of which physically exclude water
+regardless of whether the sequence is a binder -- so a chunk of any
+"depletion" there is anatomy, not a hydrophobic-exclusion signal, diluting
+any real group difference. The `pocket_water_density_accessible_*`
+columns restrict the same sphere to voxels not within a protein/ligand
+heavy atom's van der Waals radius (mdtraj Element.radius, Bondi-based) for
+most of a sampled set of frames, i.e. genuinely solvent-accessible space
+near the ligand, not atom-occupied volume.
 
 Ligand centroid is computed directly from this pipeline's own
 fit_trim.xtc + fit_trim_ref.pdb (mean LIG heavy-atom position across the
-fitted trajectory) rather than from the separate RMSD pipeline's
-medoid_PL.pdb, to avoid depending on two independently-computed least-squares
-fits staying bit-identical -- everything needed to place the region of
-interest comes from this pipeline's own output.
+fitted trajectory) rather than the separate RMSD pipeline's medoid_PL.pdb,
+so everything needed to place the region of interest comes from this
+pipeline's own output, without depending on two independently-computed
+least-squares fits staying bit-identical.
 
-Cube file format (Gaussian cube, as written by gmx spatial):
-    Line 1-2   : comments
-    Line 3     : NATOMS, origin_x, origin_y, origin_z   (bohr)
-    Line 4-6   : NX/NY/NZ voxel counts + per-axis step vectors (bohr)
-    Next NATOMS lines : atom records (ignored here)
-    Remaining  : NX*NY*NZ density values, whitespace-separated across
-        however many values-per-line gmx spatial happens to write (observed:
-        one full Z-row per line, i.e. NZ values/line, not the 6-per-line
-        convention some cube writers use) -- parse_cube() flattens all
-        remaining whitespace-separated tokens regardless of line breaks, so
-        this doesn't matter for correctness, only worth knowing if you're
-        eyeballing the raw file.
+Cube file format (Gaussian cube, as written by gmx spatial): lines 1-2 are
+comments; line 3 is NATOMS and origin_x/y/z (bohr); lines 4-6 are the
+NX/NY/NZ voxel counts and per-axis step vectors (bohr); the next NATOMS
+lines are atom records (ignored here); the remainder is NX*NY*NZ density
+values, whitespace-separated across however many values-per-line gmx
+spatial writes (observed: one full Z-row per line, not the 6-per-line
+convention some cube writers use). parse_cube() flattens all remaining
+whitespace-separated tokens regardless of line breaks, so this only
+matters if you're eyeballing the raw file.
 
 1 bohr = 0.529177 Angstrom. Voxel step vectors are assumed axis-aligned
 (gmx spatial writes an orthogonal grid); off-diagonal step components are
-ignored. This whole parser (units, atom-record skip count, Z-fastest/Y/X
-reshape order) was verified against a real GROMACS 2025.3 `gmx spatial`
-run (bind_019_binder): computed mean/min/max of the parsed density array
-matched gmx spatial's own reported "Raw data: average ..., min ..., max ..."
-line exactly.
+ignored. This parser (units, atom-record skip count, Z-fastest/Y/X reshape
+order) was verified against a real GROMACS 2025.3 `gmx spatial` run
+(bind_019_binder): the parsed density array's mean/min/max matched gmx
+spatial's own reported "Raw data: average ..., min ..., max ..." line
+exactly.
 
-water_spatial_run.sh runs `gmx spatial -nodiv`, so voxel values here are raw
-per-frame occupancy counts (not already normalized to bulk-water density --
-`-div` turned out to be a boolean visualization-only flag, not a numeric
-divisor, see water_spatial_run.sh). This script does the actual bulk-water
-normalization below, in Angstrom^3 units for consistency with the rest of
-the repo (everything else here uses Angstrom, not nm).
+water_spatial_run.sh runs `gmx spatial -nodiv`, so voxel values here are
+raw per-frame occupancy counts, not already normalized to bulk-water
+density (`-div` turned out to be a boolean visualization-only flag, not a
+numeric divisor; see water_spatial_run.sh). This script does the bulk-
+water normalization below, in Angstrom^3 units for consistency with the
+rest of the repo (everything else here uses Angstrom, not nm).
 
 Output: water_spatial_feats.csv
 
@@ -108,7 +103,16 @@ RUNREL = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 
 def parse_cube(cube_path):
-    """Returns (origin_ang (3,), step_ang (3,), dims (3,) int, density (NX,NY,NZ))."""
+    """Parses a Gaussian cube file written by `gmx spatial`.
+
+    Args:
+        cube_path (str): Path to the .cube file.
+
+    Returns:
+        tuple: (origin_ang (3,), step_ang (3,), dims (3,) int, density
+        (NX,NY,NZ)), all distances in Angstroms (see module docstring for
+        the cube format and unit conversion).
+    """
     with open(cube_path) as f:
         lines = f.readlines()
 
@@ -142,12 +146,24 @@ def parse_cube(cube_path):
 
 
 def ligand_centroid_ang(traj, lig_resname="LIG"):
-    """Mean position (Angstrom) of the ligand's heavy atoms across the fitted,
-    production-windowed trajectory -- the same reference frame the cube grid
-    was generated in. Takes an already-loaded mdtraj Trajectory (see main())
-    rather than loading fit_trim.xtc itself, since solvent_accessible_mask()
-    needs the same ~4 GB trajectory loaded too -- loading it once and sharing
-    it avoids doubling memory/IO cost per sequence."""
+    """Computes the ligand's mean heavy-atom position, in the cube grid's frame.
+
+    Takes an already-loaded mdtraj Trajectory (see main()) rather than
+    loading fit_trim.xtc itself, since solvent_accessible_mask() needs the
+    same ~4 GB trajectory loaded too; loading it once and sharing it avoids
+    doubling memory/IO cost per sequence.
+
+    Args:
+        traj: mdtraj Trajectory, fitted and production-windowed (the same
+            reference frame the cube grid was generated in).
+        lig_resname (str): Ligand residue name (default: "LIG").
+
+    Returns:
+        numpy.ndarray: (3,) mean ligand heavy-atom position, in Angstroms.
+
+    Raises:
+        ValueError: No residue named `lig_resname` is found.
+    """
     top = traj.topology
     lig_atoms = [a.index for r in top.residues if r.name == lig_resname
                  for a in r.atoms if a.element.symbol != 'H']
@@ -158,9 +174,23 @@ def ligand_centroid_ang(traj, lig_resname="LIG"):
 
 
 def _local_index_bounds(dims, origin_ang, step_ang, centroid_ang, cutoff_ang):
-    """Index range (inclusive) of the small local sub-box within `cutoff_ang`
-    of `centroid_ang`, clamped to the grid. Shared by pocket_density() and
-    solvent_accessible_mask() so both operate over the exact same sub-box."""
+    """Computes the local sub-box index range around a centroid.
+
+    Shared by pocket_density() and solvent_accessible_mask() so both
+    operate over the exact same sub-box.
+
+    Args:
+        dims (numpy.ndarray): (3,) voxel grid dimensions (NX, NY, NZ).
+        origin_ang (numpy.ndarray): (3,) grid origin, in Angstroms.
+        step_ang (numpy.ndarray): (3,) per-axis voxel step, in Angstroms.
+        centroid_ang (numpy.ndarray): (3,) center of the sub-box, in
+            Angstroms.
+        cutoff_ang (float): Half-width of the sub-box, in Angstroms.
+
+    Returns:
+        tuple[numpy.ndarray, numpy.ndarray]: (lo_idx, hi_idx), each (3,)
+        inclusive index bounds, clamped to the grid.
+    """
     lo_idx = np.zeros(3, dtype=int)
     hi_idx = np.zeros(3, dtype=int)
     for axis in range(3):
@@ -173,21 +203,35 @@ def _local_index_bounds(dims, origin_ang, step_ang, centroid_ang, cutoff_ang):
 
 def pocket_density(origin_ang, step_ang, density, centroid_ang, cutoff_ang,
                     accessible_mask=None):
-    """Mean raw per-frame occupancy count within `cutoff_ang` of
-    `centroid_ang`, plus the voxel volume (Angstrom^3) needed to convert
-    that into an actual number density.
+    """Computes mean voxel occupancy within a radius of the ligand centroid.
 
     Restricts the meshgrid/distance computation to a small index sub-box
     around the centroid instead of the full (NX,NY,NZ) grid. The full-grid
     version OOM'd in production: -nab 300 (needed to fix a separate
-    `gmx spatial` "item outside of allocated memory" error) pads the cube's
-    bounding box well beyond the pocket region actually needed here, so a
-    full-grid meshgrid could be tens of GB even though only a few thousand
-    voxels near the ligand are ever used.
+    `gmx spatial` "item outside of allocated memory" error) pads the
+    cube's bounding box well beyond the pocket region actually needed
+    here, so a full-grid meshgrid could be tens of GB even though only a
+    few thousand voxels near the ligand are ever used.
 
-    If `accessible_mask` (from solvent_accessible_mask(), same sub-box shape)
-    is given, voxels it marks as atom-occupied are excluded from the mean in
-    addition to the flat distance cutoff -- see module docstring."""
+    Args:
+        origin_ang (numpy.ndarray): (3,) grid origin, in Angstroms.
+        step_ang (numpy.ndarray): (3,) per-axis voxel step, in Angstroms.
+        density (numpy.ndarray): (NX,NY,NZ) raw per-frame occupancy counts.
+        centroid_ang (numpy.ndarray): (3,) ligand centroid, in Angstroms.
+        cutoff_ang (float): Sphere radius around the centroid, in
+            Angstroms.
+        accessible_mask (numpy.ndarray | None): Same-shape boolean mask
+            from solvent_accessible_mask(); if given, voxels it marks
+            atom-occupied are excluded from the mean in addition to the
+            flat distance cutoff (see module docstring).
+
+    Returns:
+        tuple[float, int, float]: (mean_count, n_voxels, voxel_volume_ang3)
+        -- mean raw per-frame occupancy count within the cutoff (NaN if no
+        voxel qualifies), the number of voxels averaged, and the voxel
+        volume in Angstrom^3 needed to convert the mean into a number
+        density.
+    """
     dims = density.shape
     lo_idx, hi_idx = _local_index_bounds(dims, origin_ang, step_ang, centroid_ang, cutoff_ang)
 
@@ -216,22 +260,43 @@ def pocket_density(origin_ang, step_ang, density, centroid_ang, cutoff_ang,
 def solvent_accessible_mask(traj, dims, origin_ang, step_ang, centroid_ang, cutoff_ang,
                              n_sample_frames=DEFAULT_N_ACCESSIBILITY_FRAMES,
                              occupied_frame_frac=DEFAULT_OCCUPIED_FRAME_FRAC):
-    """Boolean array, same shape as pocket_density()'s local sub-box, True
-    where a voxel is "solvent-accessible": NOT within a protein/ligand heavy
-    atom's van der Waals radius in at least `occupied_frame_frac` of
-    `n_sample_frames` evenly-strided frames from `traj`.
+    """Builds a solvent-accessibility mask over pocket_density()'s sub-box.
 
-    Only protein + ligand heavy atoms count as occluding -- water/ions are
-    exactly what pocket_density() is measuring, not something to exclude.
-    Nearest-atom-only check (via a per-frame KD-tree): for atoms this close
-    in size (~1.5-1.8 A heavy-atom radii), a voxel within a *farther* atom's
-    radius while just outside its nearest atom's radius is a rare edge case,
-    not worth the cost of an exact multi-atom overlap test.
-
-    Cheap because it only runs over the same small local sub-box
+    A voxel is "solvent-accessible" (True) if it is NOT within a
+    protein/ligand heavy atom's van der Waals radius in at least
+    `occupied_frame_frac` of `n_sample_frames` evenly-strided frames from
+    `traj`. Only protein and ligand heavy atoms count as occluding; water/
+    ions are exactly what pocket_density() is measuring, not something to
+    exclude. Uses a nearest-atom-only check (per-frame KD-tree): for atoms
+    this close in size (~1.5-1.8 A heavy-atom radii), a voxel within a
+    farther atom's radius while just outside its nearest atom's radius is
+    a rare edge case, not worth the cost of an exact multi-atom overlap
+    test. Cheap because it only runs over the same small local sub-box
     pocket_density() restricts to (a few thousand voxels), not the full
-    padded cube grid -- same OOM concern that motivated that restriction
-    would apply here too otherwise."""
+    padded cube grid, avoiding the same OOM concern that motivated that
+    restriction.
+
+    Args:
+        traj: mdtraj Trajectory.
+        dims (numpy.ndarray): (3,) voxel grid dimensions (NX, NY, NZ).
+        origin_ang (numpy.ndarray): (3,) grid origin, in Angstroms.
+        step_ang (numpy.ndarray): (3,) per-axis voxel step, in Angstroms.
+        centroid_ang (numpy.ndarray): (3,) ligand centroid, in Angstroms.
+        cutoff_ang (float): Sphere radius around the centroid, in
+            Angstroms.
+        n_sample_frames (int): Number of evenly-strided frames to sample
+            (default: DEFAULT_N_ACCESSIBILITY_FRAMES).
+        occupied_frame_frac (float): Fraction of sampled frames a voxel
+            must be atom-occupied in to be excluded (default:
+            DEFAULT_OCCUPIED_FRAME_FRAC).
+
+    Returns:
+        numpy.ndarray: Boolean array, same shape as pocket_density()'s
+        local sub-box (empty if the sub-box is empty).
+
+    Raises:
+        ValueError: No protein/LIG heavy atoms are found in the topology.
+    """
     top = traj.topology
     atom_indices = [a.index for a in top.atoms
                     if a.element.symbol != 'H'
@@ -274,6 +339,7 @@ def solvent_accessible_mask(traj, dims, origin_ang, step_ang, centroid_ang, cuto
 
 
 def main():
+    """Extracts pocket water density features for every sequence in a seq list."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list", nargs="?",
@@ -348,7 +414,7 @@ def main():
                     origin_ang, step_ang, density, centroid_ang, args.pocket_cutoff)
 
                 # mean_count is a raw per-frame occupancy count per voxel
-                # (gmx spatial -nodiv). Convert to an actual number density
+                # (gmx spatial -nodiv). Convert to a number density
                 # (waters/Angstrom^3) by dividing by voxel volume, then
                 # express as a fraction of bulk for interpretability.
                 density_per_ang3 = (mean_count / voxel_vol_ang3

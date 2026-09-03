@@ -30,7 +30,17 @@ DIR_RE = re.compile(r"^prod_md_benchmark_(\d+)np_.*_rep(\d+)$")
 PERF_RE = re.compile(r"^\s*Performance:\s*([0-9]*\.?[0-9]+)\s+([0-9]*\.?[0-9]+)\s*$")
 
 def extract_ns_per_day(log_path: Path) -> float:
-    """Return ns/day as float from a GROMACS log file, or raise ValueError."""
+    """Extracts the ns/day performance value from a GROMACS log file.
+
+    Args:
+        log_path: Path to a prod_md.log file.
+
+    Returns:
+        ns/day, from the log's last "Performance:" line.
+
+    Raises:
+        ValueError: No "Performance:" line was found in the log.
+    """
     ns_day = None
     with log_path.open("r", errors="ignore") as f:
         for line in f:
@@ -42,6 +52,7 @@ def extract_ns_per_day(log_path: Path) -> float:
     return ns_day
 
 def main():
+    """Scans TARGET_ROOT for benchmark logs and prints ns/day per core count/rep."""
     if not TARGET_ROOT.exists():
         raise SystemExit(f"TARGET_ROOT does not exist: {TARGET_ROOT}")
 
@@ -80,6 +91,7 @@ def main():
     np_values = np.array(all_np, dtype=int)
 
     def build_rep_array(rep: int) -> np.ndarray:
+        """Builds a per-np_values performance array for one rep (NaN where missing)."""
         arr = np.full(len(np_values), np.nan, dtype=float)
         rep_map = perf_by_rep.get(rep, {})
         for i, npv in enumerate(np_values):

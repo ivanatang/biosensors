@@ -1,13 +1,11 @@
 #!/usr/bin/env python
-"""
-add_water_network_labels.py
------------------------------
+"""Labels Gate and Latch on the gate-latch-ligand water network figure.
+
 Same pixel-space HSV-cluster-detection labeling approach as
-add_region_labels.py / add_residue_labels_5.py, applied to the
-gate-latch-ligand water network figure. Labels Gate and Latch only
-(the explicit ask); the ligand's water-interacting oxygen and the
-bridging water are already visually distinguished by color in the
-render itself and don't need a text label to be legible.
+add_region_labels.py / add_residue_labels_5.py. Labels Gate and Latch only
+(the explicit ask); the ligand's water-interacting oxygen and the bridging
+water are already visually distinguished by color in the render itself and
+don't need a text label to be legible.
 
 Usage:
     python add_water_network_labels.py
@@ -35,11 +33,33 @@ SAMPLE_MARGIN = 10
 
 
 def rgb_to_hue_deg(r, g, b):
+    """Converts 0-255 RGB to (hue in degrees, saturation, value).
+
+    Args:
+        r (int): Red channel, 0-255.
+        g (int): Green channel, 0-255.
+        b (int): Blue channel, 0-255.
+
+    Returns:
+        tuple[float, float, float]: (hue_deg, saturation, value), each in
+        their native HSV ranges (hue in [0, 360), sat/value in [0, 1]).
+    """
     h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
     return h * 360, s, v
 
 
 def find_cluster(img, target_rgb):
+    """Finds the pixel cluster matching a target hue.
+
+    Args:
+        img: PIL Image (RGB) to scan.
+        target_rgb (tuple[int, int, int]): RGB color to match by hue.
+
+    Returns:
+        dict | None: Bounding box and center (x_min, x_max, y_min, y_max,
+        x_center, y_center) of matching pixels, or None if no pixels
+        matched.
+    """
     target_hue, _, _ = rgb_to_hue_deg(*target_rgb)
     w, h = img.size
     px = img.load()
@@ -63,6 +83,7 @@ def find_cluster(img, target_rgb):
 
 
 def main():
+    """Labels Gate and Latch on IMAGE, in place."""
     path = os.path.join(OUT_DIR, IMAGE)
     img = Image.open(path).convert("RGB")
     w, h = img.size

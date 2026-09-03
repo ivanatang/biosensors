@@ -39,6 +39,15 @@ RUNREL = "prod_md_0p9_cutoff_3dt_64x1_16PME_642dd"
 
 
 def get_dir_type(seq_type):
+    """Maps a seq_type label to its data subdirectory.
+
+    Args:
+        seq_type (str): One of "Binder", "False Positive", "Low
+            Confidence", "Fail Geometry".
+
+    Returns:
+        str: Subdirectory name, or `seq_type` unchanged if unrecognized.
+    """
     mapping = {
         "Binder":         "binders",
         "False Positive": "nonbinders",
@@ -49,14 +58,22 @@ def get_dir_type(seq_type):
 
 
 def resolve_input_file(candidate_dirs, filename):
-    """Look up a file across an ordered list of candidate directories,
-    returning the first match found, or None. Directories don't necessarily
-    hold every file for a sequence -- e.g. some files landed directly in
-    runrel/ while others for that same sequence live under runrel/500ns/, and
-    scratch-only pipeline outputs older than 90 days may only survive in the
-    archive snapshot. Check each candidate independently rather than
-    resolving one shared directory. Matches pkt_vol_prep.sh's
-    resolve_input_file."""
+    """Finds a file across an ordered list of candidate directories.
+
+    Directories don't necessarily hold every file for a sequence: some
+    files landed directly in runrel/ while others for that same sequence
+    live under runrel/500ns/, and scratch-only pipeline outputs older than
+    90 days may only survive in the archive snapshot. Checks each candidate
+    independently rather than resolving one shared directory. Matches
+    pkt_vol_prep.sh's resolve_input_file.
+
+    Args:
+        candidate_dirs (list[str]): Directories to check, in order.
+        filename (str): Filename to look for in each directory.
+
+    Returns:
+        str | None: Path to the first match found, or None.
+    """
     for d in candidate_dirs:
         path = os.path.join(d, filename)
         if os.path.exists(path):
@@ -65,7 +82,17 @@ def resolve_input_file(candidate_dirs, filename):
 
 
 def parse_pdb_atoms(pdb_path, record_types=("ATOM", "HETATM")):
-    """Return (n,3) coordinate array and list of raw lines."""
+    """Parses atom coordinates from a PDB file.
+
+    Args:
+        pdb_path (str): Path to the PDB file.
+        record_types (tuple[str]): Record types to include (default:
+            ("ATOM", "HETATM")).
+
+    Returns:
+        tuple[numpy.ndarray, list[str]]: (n, 3) coordinate array (empty if
+        no matching atoms) and the corresponding raw PDB lines.
+    """
     coords = []
     lines  = []
     with open(pdb_path) as f:
@@ -82,7 +109,18 @@ def parse_pdb_atoms(pdb_path, record_types=("ATOM", "HETATM")):
 
 
 def get_ligand_coords(pdb_path, ligand_resname):
-    """Extract coordinates of all ligand atoms matching resname."""
+    """Extracts coordinates of all ligand atoms matching a residue name.
+
+    Args:
+        pdb_path (str): Path to the PDB file.
+        ligand_resname (str): Residue name identifying the ligand.
+
+    Returns:
+        numpy.ndarray: (n, 3) coordinate array of matching atoms.
+
+    Raises:
+        ValueError: No atoms with `ligand_resname` found.
+    """
     coords = []
     with open(pdb_path) as f:
         for line in f:
@@ -103,8 +141,23 @@ def get_ligand_coords(pdb_path, ligand_resname):
 
 
 def process_sequence(seq_id, archive_flat_dir, run_dir, cutoff, ligand_resname, overwrite=False):
-    """Run pocket selection for a single sequence. Returns 'ok', 'skip', or 'fail'."""
+    """Selects the binding pocket for a single sequence and writes it out.
 
+    Args:
+        seq_id (str): Sequence identifier, used in log messages.
+        archive_flat_dir (str): PetaLibrary archive directory holding
+            medoid_PL.pdb (and, as a fallback, the freq_iso PDB).
+        run_dir (str): scratch directory holding the freq_iso PDB and
+            where selected_pocket.pdb is written.
+        cutoff (float): Distance cutoff (A) from the ligand centroid.
+        ligand_resname (str): Residue name identifying the ligand.
+        overwrite (bool): Regenerate selected_pocket.pdb even if it already
+            exists (default: False).
+
+    Returns:
+        str: "ok", "skip" (already done, or a required input is missing),
+        or "fail" (an input was invalid, or no spheres passed the cutoff).
+    """
     out_pdb = os.path.join(run_dir, "selected_pocket.pdb")
 
     archive_nested_dir = os.path.join(archive_flat_dir, "500ns")
@@ -177,6 +230,7 @@ def process_sequence(seq_id, archive_flat_dir, run_dir, cutoff, ligand_resname, 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    """Selects the binding pocket for every sequence in a seq list."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list",        nargs="?",

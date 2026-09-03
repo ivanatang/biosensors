@@ -1,36 +1,30 @@
-"""
-Aggregate contact features into wide-format CSVs
-=================================================
-Reads {seq_id}_R_scores_{TAG}.csv for each sequence and produces two output CSVs:
+"""Aggregates per-sequence R_score_calc.py output into wide-format CSVs.
 
-  r_scores_all_sequences_{TAG}.csv
-      Rows: one per sequence
-      Columns: seq_id, seq_type, R_{resSeq} for all 181 residues
-      NaN (no contact) written as empty cell.
+Reads {seq_id}_R_scores_{TAG}.csv for each sequence and writes:
 
-  dw_scores_all_sequences_{TAG}.csv
-      Rows: one per sequence
-      Columns: seq_id, seq_type, D_{resSeq}, W_{resSeq} for all 181 residues
-      Residues with no contact (I == 0) are written as 0.0 since zero
-      occupancy is an unambiguous measurement, not a missing value.
+    r_scores_all_sequences_{TAG}.csv: one row per sequence, columns
+        seq_id, seq_type, R_{resSeq} for all 181 residues. NaN (no
+        contact) is written as an empty cell.
+    dw_scores_all_sequences_{TAG}.csv: one row per sequence, columns
+        seq_id, seq_type, D_{resSeq}, W_{resSeq} for all 181 residues.
+        Residues with no contact (I == 0) are written as 0.0, since zero
+        occupancy is an unambiguous measurement, not a missing value.
 
-Usage
------
+Usage:
     python aggregate_r_scores.py --seq_list seq_ids.txt --out_dir /path/to/output
     python aggregate_r_scores.py --seq_list seq_ids.txt --out_dir /path/to/output --start-ns 40 --end-ns 250
 
-seq_ids.txt -- tab or comma separated, one sequence per line.
+seq_ids.txt is tab- or comma-separated, one sequence per line.
+
 Two-column format (default path construction):
     pair_3069_binder    Binder
     pair_3070_binder    Binder
 
-Three-column format (custom base directory — parent of water_contacts_{TAG}):
+Three-column format (custom base directory, the parent of
+water_contacts_{TAG}; the script appends water_contacts_{TAG} itself, so
+the same seq_ids.txt works for any time window):
     seq14_binder    Binder    /scratch/alpine/ivta1597/LCA_boltz_models/binders/seq14_binder/HMR/dodecahedron
     seq1_nb         False Positive    /scratch/alpine/ivta1597/LCA_boltz_models/nonbinders/seq1_nb/HMR/dodecahedron
-
-NOTE: the third column should be the directory CONTAINING water_contacts_{TAG}/,
-not the water_contacts directory itself. The script appends water_contacts_{TAG}
-automatically so the same seq_ids.txt works for any time window.
 """
 
 import os
@@ -49,6 +43,12 @@ BASE = "/scratch/alpine/ivta1597/LCA_boltz_models"
 # ARGUMENTS
 # ---------------------------------------------------------------------------
 def parse_args():
+    """Parses command-line arguments for the aggregation run.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (seq_list/seq_ids/seq_types,
+        out_dir, base, start/end-ns, ligand-region, suffix).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--seq_list', default="/projects/ivta1597/biosensors/seq_ids_orig.txt",
                         help='Text file with seq_id, seq_type, and optional '
@@ -73,10 +73,18 @@ def parse_args():
 
 
 def load_seq_list(args):
-    """
-    Returns a list of (seq_id, seq_type, custom_dir_or_None) tuples.
-    custom_dir is the full path to the water_contacts directory, or None
-    to use the default path construction.
+    """Builds the sequence list from --seq_ids/--seq_types or --seq_list.
+
+    Args:
+        args (argparse.Namespace): Parsed arguments (see parse_args).
+
+    Returns:
+        list[tuple]: (seq_id, seq_type, custom_dir_or_None) per sequence.
+        custom_dir is the full path to the water_contacts directory's
+        parent, or None to use the default path construction.
+
+    Raises:
+        ValueError: Neither --seq_list nor --seq_ids was provided.
     """
     if args.seq_ids:
         types = args.seq_types or ['Unknown'] * len(args.seq_ids)
@@ -98,17 +106,28 @@ def load_seq_list(args):
 
 
 def get_csv_path(seq_id, base, custom_dir, tag, region_tag="", suffix=""):
-    """
-    Return the full path to the R_scores CSV for this sequence.
+    """Builds the path to a sequence's R_scores CSV.
 
-    For default paths, infers subdirectory from seq_id suffix and appends
-    water_contacts_{tag}{region_tag}{suffix}/{seq_id}_R_scores_{tag}{region_tag}.csv
-    -- matching R_score_calc.py's own output path exactly (the filename itself
-    has no suffix, only the containing directory does).
+    For default paths, infers the subdirectory from the seq_id suffix and
+    appends water_contacts_{tag}{region_tag}{suffix}/{seq_id}_R_scores_
+    {tag}{region_tag}.csv, matching R_score_calc.py's own output path
+    exactly (the filename carries no suffix, only the containing directory
+    does). For custom paths, `custom_dir` is the parent directory
+    containing water_contacts_{tag}{region_tag}{suffix}/ (i.e. the
+    sequence-level or HMR/dodecahedron dir).
 
-    For custom paths, custom_dir is the parent directory that CONTAINS
-    water_contacts_{tag}{region_tag}{suffix}/ (i.e. the sequence-level or
-    HMR/dodecahedron dir).
+    Args:
+        seq_id (str): Sequence ID, used to infer the subdirectory from its
+            naming suffix when no custom directory is given.
+        base (str): Root results directory.
+        custom_dir (str | None): Explicit base path override; used instead
+            of `base`/inferred subdir if set.
+        tag (str): Run tag (e.g. "40_500ns").
+        region_tag (str): Ligand-region suffix ("" or "_core"/"_tail").
+        suffix (str): Run-directory/output suffix (e.g. "_qfix").
+
+    Returns:
+        str: Full path to the R_scores CSV.
     """
     dirname = f"water_contacts_{tag}{region_tag}{suffix}"
     filename = f"{seq_id}_R_scores_{tag}{region_tag}.csv"

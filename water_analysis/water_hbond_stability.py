@@ -1,44 +1,34 @@
 #!/usr/bin/env python3
-"""
-Water-mediated H-bond stability analysis
-=========================================
-Implements the R-score and H-bond stability methodology from:
-  Leonard et al., ACS Chem. Biol. 2024, 19, 1757-1772.
+"""Computes water-mediated H-bond stability for dominant pocket residues.
 
-Key quantities
---------------
-R-score  = (D - W) * I
-  D  = per-residue occupancy of *direct*        heavy-atom contacts  (<4 Å)
-  W  = per-residue occupancy of *water-mediated* heavy-atom contacts  (<4 Å water bridge)
-  I  = occupancy of either contact type (union, not sum — avoids double-counting
-       frames where both contact types co-occur simultaneously)
-  → R = +1  : purely direct;   R = -1 : purely water-mediated
-  → R =  0  : equal direct and water-mediated (D == W), or no contact at all
-  Threshold: R < -0.7 → "dominant" water-mediated interaction (Figure 5A/B)
+Implements the R-score and H-bond stability methodology from Leonard et
+al., ACS Chem. Biol. 2024, 19, 1757-1772.
 
-H-bond stability (for dominant residues, Figure 5 C/D)
-  "Strong" : STRONG_MIN <= mean H-acceptor distance <= STRONG_MAX
-  "Stable" : std  H-acceptor distance  < STABLE_STD
-  Thresholds are derived from control residue distributions
-  (hbond_threshold_calibration.py, Figure S4 workflow).
-  Both criteria must hold for a water-mediated H-bond to be
-  classified as functionally significant (Methods, paper).
+R-score = (D - W) * I, where D is per-residue occupancy of direct
+heavy-atom contacts (<4 A), W is occupancy of water-mediated heavy-atom
+contacts (<4 A water bridge), and I is occupancy of either contact type
+(union, not sum, to avoid double-counting frames where both co-occur).
+R = +1 is purely direct, R = -1 is purely water-mediated, R = 0 is equal
+direct/water-mediated (D == W) or no contact at all. R < -0.7 marks a
+"dominant" water-mediated interaction (Figure 5A/B).
 
-Usage  (two-step workflow matching the paper)
------
-Step 1 — R-scores:
-    Set seq_id and paths in CONFIG, then:
-        conda activate IS_env && python water_hbond_stability.py
-    This produces {seq_id}_R_scores.csv identifying dominant residues.
+H-bond stability, for dominant residues (Figure 5C/D): "strong" means
+STRONG_MIN <= mean H-acceptor distance <= STRONG_MAX; "stable" means std
+H-acceptor distance < STABLE_STD. Thresholds are derived from control
+residue distributions (hbond_threshold_calibration.py, Figure S4
+workflow). Both criteria must hold for a water-mediated H-bond to be
+classified as functionally significant (Methods, paper).
 
-Step 2 — Calibrate thresholds (Figure S4):
-        python hbond_threshold_calibration.py
-    This finds control residues, plots KDE distributions, and writes
-    {seq_id}_thresholds.json.
-
-Step 3 — H-bond stability classification (Figure 5C/D):
-    Re-run water_hbond_stability.py (it reads the thresholds JSON automatically)
-    and produces the final stability results and plots.
+Usage (three-step workflow matching the paper):
+    1. R-scores: set seq_id and paths in CONFIG, then
+       `conda activate IS_env && python water_hbond_stability.py`. Produces
+       {seq_id}_R_scores.csv identifying dominant residues.
+    2. Calibrate thresholds (Figure S4): `python hbond_threshold_calibration.py`.
+       Finds control residues, plots KDE distributions, writes
+       {seq_id}_thresholds.json.
+    3. H-bond stability classification (Figure 5C/D): re-run
+       water_hbond_stability.py (it reads the thresholds JSON
+       automatically) to produce the final stability results and plots.
 """
 
 import os
@@ -103,6 +93,16 @@ STRIDE = 10    # stride for main analysis; use 1 for publication quality
 # 1. LOAD TRAJECTORY
 # ─────────────────────────────────────────────────────────────────────────────
 def load_trajectory(traj_path, top_path, stride):
+    """Loads a strided MD trajectory.
+
+    Args:
+        traj_path (str): Path to the trajectory file (e.g. .xtc).
+        top_path (str): Path to the topology file (e.g. .gro).
+        stride (int): Load every `stride`-th frame.
+
+    Returns:
+        mdtraj.Trajectory: The loaded trajectory.
+    """
     print(f"Loading trajectory (stride={stride})…")
     traj = md.load(traj_path, top=top_path, stride=stride)
     print(f"  {traj.n_frames} frames  |  {traj.n_atoms} atoms")
@@ -113,15 +113,49 @@ def load_trajectory(traj_path, top_path, stride):
 # 2. ATOM-INDEX HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 def heavy(indices, top):
-    """Return subset of indices that are heavy (non-H) atoms."""
+    """Filters atom indices down to heavy (non-hydrogen) atoms.
+
+    Args:
+        indices: Atom indices to filter.
+        top: mdtraj Topology to look up elements in.
+
+    Returns:
+        list[int]: Indices whose element isn't hydrogen.
+    """
     return [i for i in indices if top.atom(i).element.symbol != 'H']
 
 def acceptors(indices, top):
-    """Return subset of indices that are H-bond acceptors (O or N)."""
+    """Filters atom indices down to H-bond acceptor atoms (O or N).
+
+    Args:
+        indices: Atom indices to filter.
+        top: mdtraj Topology to look up elements in.
+
+    Returns:
+        list[int]: Indices whose element is O or N.
+    """
     return [i for i in indices if top.atom(i).element.symbol in ('O', 'N')]
 
 def parse_topology(top, LIG_RESNAME, WATER_RESNAMES, ION_RESNAMES):
-    """Extract ligand, water, and protein atom index arrays."""
+    """Splits a topology into ligand, water, and protein atom index arrays.
+
+    Args:
+        top: mdtraj Topology.
+        LIG_RESNAME (str): Ligand residue name.
+        WATER_RESNAMES (set[str]): Water residue names.
+        ION_RESNAMES (set[str]): Ion residue names, excluded from the
+            protein residue set.
+
+    Returns:
+        tuple: (lig_heavy_idx, lig_acc_idx, wat_O_idx, wat_H_idx, prot_res,
+        prot_heavy_by_res, prot_acc_by_res) — ligand heavy/acceptor atom
+        indices, water oxygen indices with parallel (H1, H2) index tuples,
+        the list of protein mdtraj Residues, and per-residue heavy/acceptor
+        index arrays keyed by residue topology index.
+
+    Raises:
+        ValueError: No residue named `LIG_RESNAME` is found.
+    """
     all_residues = list(top.residues)
 
     lig_res   = [r for r in all_residues if r.name == LIG_RESNAME]
@@ -174,17 +208,25 @@ def parse_topology(top, LIG_RESNAME, WATER_RESNAMES, ION_RESNAMES):
 def compute_contact_occupancies(traj, lig_heavy_idx, wat_O_idx,
                                 prot_res, prot_heavy_by_res,
                                 HEAVY_CUT):
-    """
-    For each protein residue, compute per-frame boolean arrays for:
-      direct[res_idx] → bool (F,) : direct heavy-atom contact with ligand
-      wmed[res_idx]   → bool (F,) : water-mediated contact with ligand
+    """Computes per-frame direct and water-mediated contact booleans.
 
-    Strategy (vectorised per frame):
-      1. Find waters whose O is within HEAVY_CUT of ANY ligand heavy atom.
-      2. For each protein residue, check:
-           direct : any res heavy atom within HEAVY_CUT of any lig heavy atom
-           wmed   : any of the above bridging waters within HEAVY_CUT of any
-                    res heavy atom
+    For each frame: finds waters whose O is within HEAVY_CUT of any ligand
+    heavy atom, then for each protein residue checks direct contact (any
+    residue heavy atom within HEAVY_CUT of any ligand heavy atom) and
+    water-mediated contact (any of those bridging waters within HEAVY_CUT
+    of any residue heavy atom).
+
+    Args:
+        traj: mdtraj Trajectory.
+        lig_heavy_idx: Ligand heavy-atom indices.
+        wat_O_idx: Water oxygen atom indices.
+        prot_res: List of protein mdtraj Residues.
+        prot_heavy_by_res (dict): Maps residue index to heavy-atom indices.
+        HEAVY_CUT (float): Heavy-atom contact distance cutoff, in nm.
+
+    Returns:
+        tuple[dict, dict]: (direct_occ, wmed_occ), each mapping residue
+        index to a (n_frames,) boolean array.
     """
     nf = traj.n_frames
     n_lig = len(lig_heavy_idx)
@@ -238,10 +280,23 @@ def compute_contact_occupancies(traj, lig_heavy_idx, wat_O_idx,
 def compute_wmed_occ_for_residues(traj, lig_heavy_idx, wat_O_idx,
                                    target_res_indices, prot_heavy_by_res,
                                    HEAVY_CUT):
-    """Compute water-mediated contact booleans only for a specific list of
-    residue topology indices.  Used when dominant residues are already known
-    from R_scores.csv, avoiding a full scan of all residues and skipping
-    direct contact computation since only wmed_occ is needed downstream.
+    """Computes water-mediated contact booleans for specific residues only.
+
+    Used when dominant residues are already known from R_scores.csv, so
+    this can skip a full scan of all residues and skip direct-contact
+    computation entirely, since only wmed_occ is needed downstream.
+
+    Args:
+        traj: mdtraj Trajectory.
+        lig_heavy_idx: Ligand heavy-atom indices.
+        wat_O_idx: Water oxygen atom indices.
+        target_res_indices: Residue topology indices to compute for.
+        prot_heavy_by_res (dict): Maps residue index to heavy-atom indices.
+        HEAVY_CUT (float): Heavy-atom contact distance cutoff, in nm.
+
+    Returns:
+        dict: Maps residue index to a (n_frames,) boolean water-mediated
+        contact array.
     """
     nf       = traj.n_frames
     lig_xyz  = traj.xyz[:, lig_heavy_idx, :]   # (F, L, 3)
@@ -277,18 +332,25 @@ def compute_wmed_occ_for_residues(traj, lig_heavy_idx, wat_O_idx,
 # 4. COMPUTE R-SCORES
 # ─────────────────────────────────────────────────────────────────────────────
 def compute_R_scores(prot_res, direct_occ, wmed_occ):
-    """
-    R = (D - W) * I
+    """Computes R = (D - W) * I per residue (Leonard et al. ACS Chem. Biol. 2024).
 
-    As stated in the paper (Leonard et al. ACS Chem. Biol. 2024):
-      D = occupancy of direct nonbonded interactions (heavy atom < 4 Å)
-      W = occupancy of water-mediated nonbonded interactions
-      I = total occupancy of either direct OR water-mediated (union, not sum)
+    D is occupancy of direct nonbonded interactions (heavy atom < 4 A), W
+    is occupancy of water-mediated nonbonded interactions, and I is total
+    occupancy of either (boolean union across frames, not sum, to avoid
+    double-counting frames where both are simultaneously present). R is 0
+    when D == W (balanced direct/water-mediated contact), since the
+    numerator (D - W) is 0 directly.
 
-    R returns 0 when D == W because the numerator (D - W) = 0 directly,
-    which is the correct behaviour for balanced direct/water-mediated contact.
-    I is the boolean union across frames to avoid double-counting frames
-    where both contact types are simultaneously present.
+    Args:
+        prot_res: List of protein mdtraj Residues.
+        direct_occ (dict): Maps residue index to a (n_frames,) direct-
+            contact boolean array (see compute_contact_occupancies).
+        wmed_occ (dict): Maps residue index to a (n_frames,) water-mediated
+            contact boolean array.
+
+    Returns:
+        pandas.DataFrame: One row per residue, with res_index, chain,
+        resSeq, resname, D, W, I, R.
     """
     records = []
     for r in prot_res:
@@ -318,14 +380,20 @@ def compute_R_scores(prot_res, direct_occ, wmed_occ):
 # 5a. LOAD THRESHOLDS  (derived by hbond_threshold_calibration.py / Figure S4)
 # ─────────────────────────────────────────────────────────────────────────────
 def load_thresholds(thresh_path):
-    """
-    Read STRONG_MIN, STRONG_MAX, STABLE_STD from the JSON file written by
-    hbond_threshold_calibration.py.
+    """Loads STRONG_MIN/STRONG_MAX/STABLE_STD from hbond_threshold_calibration.py's output.
 
-    Raises a descriptive RuntimeError if the file is missing, so the user
-    knows they need to run the calibration script first — matching the paper's
-    workflow where Figure S4 (control residue distributions) is generated
-    before the water-contact classifications in Figure 5C/D.
+    Args:
+        thresh_path (str): Path to the thresholds JSON.
+
+    Returns:
+        tuple[float, float, float]: (STRONG_MIN, STRONG_MAX, STABLE_STD).
+
+    Raises:
+        RuntimeError: The thresholds file doesn't exist yet, meaning
+            hbond_threshold_calibration.py (Figure S4) hasn't been run,
+            matching the paper's workflow where control-residue
+            distributions are generated before the Figure 5C/D
+            classifications.
     """
     import json
     if not os.path.exists(thresh_path):
@@ -354,29 +422,51 @@ def compute_hbond_stability(traj, df_dominant, wmed_occ,
                             lig_heavy_idx,
                             HEAVY_CUT,
                             STRONG_MIN, STRONG_MAX, STABLE_STD):
-    """
-    For each dominant residue (R < R_DOM), compute H-acceptor distance
+    """Computes H-acceptor distance distributions for dominant residues.
+
+    For each dominant residue (R < R_DOM), computes H-acceptor distance
     distributions separately for the ligand and the protein residue,
-    matching Figure 5C/D of the paper which shows two curves per panel.
+    matching Figure 5C/D of the paper (two curves per panel): for each
+    bridging frame, ha_dists_lig is the minimum H-acceptor distance from
+    bridging water H atoms to any ligand acceptor, and ha_dists_res is the
+    same to any acceptor on the protein residue. This separation reveals
+    which end of the water bridge is the stronger, more stable
+    interaction, information lost if the two were combined into a single
+    minimum. Classification itself uses the combined (ligand+residue)
+    minimum, consistent with the paper's Methods description, but both
+    curves are stored for plotting.
 
-    For each bridging frame:
-      ha_dists_lig : min H-acceptor distance from bridging water H atoms
-                     to any acceptor atom on the LIGAND
-      ha_dists_res : min H-acceptor distance from bridging water H atoms
-                     to any acceptor atom on the PROTEIN RESIDUE
+    Classification: strong means STRONG_MIN <= mean H-acceptor dist <=
+    STRONG_MAX; stable means std H-acceptor dist < STABLE_STD; significant
+    means strong and stable.
 
-    This separation reveals which end of the water bridge is the stronger
-    and more stable interaction — information lost when the two are combined
-    into a single minimum.
+    Args:
+        traj: mdtraj Trajectory.
+        df_dominant: DataFrame of dominant residues (res_index, resname,
+            resSeq, R columns; see compute_R_scores).
+        wmed_occ (dict): Maps residue index to a (n_frames,) water-mediated
+            contact boolean array (see compute_wmed_occ_for_residues).
+        lig_acc_idx: Ligand acceptor atom indices.
+        wat_O_idx: Water oxygen atom indices.
+        wat_H_idx: Parallel list of (H1, H2) index tuples for each water
+            oxygen.
+        prot_heavy_by_res (dict): Maps residue index to heavy-atom indices.
+        prot_acc_by_res (dict): Maps residue index to acceptor-atom
+            indices.
+        lig_heavy_idx: Ligand heavy-atom indices.
+        HEAVY_CUT (float): Heavy-atom contact distance cutoff, in nm.
+        STRONG_MIN (float): Minimum mean H-acceptor distance for "strong",
+            in Angstroms.
+        STRONG_MAX (float): Maximum mean H-acceptor distance for "strong",
+            in Angstroms.
+        STABLE_STD (float): Maximum std H-acceptor distance for "stable",
+            in Angstroms.
 
-    Classification uses the combined (ligand+residue) minimum, consistent
-    with the paper's Methods description, but both curves are stored for
-    plotting.
-
-    Classification:
-      Strong : STRONG_MIN <= mean H-acceptor dist <= STRONG_MAX
-      Stable : std  H-acceptor dist < STABLE_STD
-      Significant : strong AND stable
+    Returns:
+        tuple[dict, pandas.DataFrame]: `results` maps each residue label
+        to its distance arrays and classification; the DataFrame is the
+        same data in tabular summary form (one row per residue with
+        bridging frames).
     """
     nf = traj.n_frames
     lig_xyz  = traj.xyz[:, lig_heavy_idx, :]   # (F, L, 3)
@@ -504,7 +594,19 @@ def compute_hbond_stability(traj, df_dominant, wmed_occ,
 # 6. PLOTTING
 # ─────────────────────────────────────────────────────────────────────────────
 def plot_R_scores(df, seq_id, out_dir, R_DOM):
-    """Bar chart of R-scores for all residues with non-trivial contact (I > 0.02)."""
+    """Plots a bar chart of R-scores for residues with I > 0.02 contact.
+
+    Args:
+        df: R-score DataFrame (see compute_R_scores).
+        seq_id (str): Sequence ID, used in the title and output filename.
+        out_dir (str): Directory to save the figure to.
+        R_DOM (float): Dominant-interaction R-score threshold, marked with
+            a dashed line.
+
+    Returns:
+        None. Saves a PNG to `out_dir` (no-op if no residue clears the
+        I > 0.02 contact filter).
+    """
     df_plot = df[df['I'] > 0.02].dropna(subset=['R']).sort_values('resSeq')
     if df_plot.empty:
         print("No residues with contact occupancy > 0.02 — skipping R-score plot.")
@@ -536,21 +638,24 @@ def plot_R_scores(df, seq_id, out_dir, R_DOM):
     print(f"Saved → {out}")
 
 
-def plot_HA_distributions(results, seq_id, out_dir,
-                          STRONG_MIN, STRONG_MAX, STABLE_STD):
-    """
-    Replicates Figure 5C/D from the paper.
+def plot_HA_distributions(results, seq_id, out_dir):
+    """Plots H-acceptor distance KDEs per dominant residue (Figure 5C/D).
 
-    Each dominant residue gets one panel showing TWO curves:
-      - ligand    (pink)  : H-acceptor distance from bridging water H
-                            to acceptors on the LIGAND
-      - residue   (teal)  : H-acceptor distance from bridging water H
-                            to acceptors on the PROTEIN RESIDUE
+    Each dominant residue gets one panel with two curves: H-acceptor
+    distance from bridging water H atoms to ligand acceptors, and to
+    protein-residue acceptors, making clear which end of the water bridge
+    is the stronger, more stable interaction. Which residues are "dominant"
+    is decided upstream by compute_hbond_stability's STRONG_MIN/STRONG_MAX/
+    STABLE_STD classification; this function only plots.
 
-    This matches the paper's Figure 5C/D layout and makes clear which end
-    of the water bridge is the stronger/more stable interaction.
-    The green shaded region marks the strong H-bond range [STRONG_MIN, STRONG_MAX].
-    The orange dotted line marks STRONG_MAX + STABLE_STD as a visual stability guide.
+    Args:
+        results (dict): Per-residue distance arrays and classification
+            (see compute_hbond_stability).
+        seq_id (str): Sequence ID, used in the title and output filename.
+        out_dir (str): Directory to save the figure to.
+
+    Returns:
+        None. Saves a PNG to `out_dir` (no-op if no residue has data).
     """
     dom = {k: v for k, v in results.items() if len(v['ha_dists']) > 0}
     if not dom:
@@ -572,7 +677,16 @@ def plot_HA_distributions(results, seq_id, out_dir,
     for ax, (label, d) in zip(axes, dom.items()):
 
         def _kde_curve(arr, color, curve_label):
-            """KDE with fixed bandwidth, plotted over the data range."""
+            """Plots a fixed-bandwidth KDE curve with a mean marker.
+
+            Args:
+                arr: Distance samples, in Angstroms.
+                color: Matplotlib color for the curve/fill/mean line.
+                curve_label (str): Legend label for the curve.
+
+            Returns:
+                None. No-op if `arr` has fewer than 5 samples.
+            """
             if len(arr) < 5:
                 return
             try:
@@ -626,9 +740,19 @@ def plot_HA_distributions(results, seq_id, out_dir,
 
 
 def plot_pocket_overview(df, seq_id, out_dir):
-    """
-    2D scatter of D vs W occupancy, coloured by R-score — gives a quick
-    overview of the direct/water contact balance across the binding pocket.
+    """Plots D vs W occupancy for all pocket residues, colored by R-score.
+
+    Gives a quick overview of the direct/water contact balance across the
+    binding pocket; dominant residues (R < -0.7) are annotated by label.
+
+    Args:
+        df: R-score DataFrame (see compute_R_scores).
+        seq_id (str): Sequence ID, used in the title and output filename.
+        out_dir (str): Directory to save the figure to.
+
+    Returns:
+        None. Saves a PNG to `out_dir` (no-op if no residue clears the
+        I > 0.02 contact filter).
     """
     df_c = df[df['I'] > 0.02].dropna(subset=['R'])
     if df_c.empty:
@@ -669,8 +793,8 @@ if __name__ == "__main__":
             "Run compute_r_scores.py first (Step 1) to generate this file.")
 
     df_R   = pd.read_csv(rscores_path)
-    # Run H-acceptor analysis on all key pocket residues
-    # regardless of R-score, to get the full water network picture
+    # Run H-acceptor analysis on all key pocket residues regardless of
+    # R-score, to get the full water network picture.
     POCKET_RESIDUES = [58, 59, 62, 83, 87, 88, 89, 92, 110, 115, 116, 117, 120, 122, 159, 160, 163, 164]
 
     df_dom = df_R[df_R['resSeq'].isin(POCKET_RESIDUES)].dropna(subset=['R'])
@@ -724,8 +848,7 @@ if __name__ == "__main__":
 
     # 6. Plot
     print("\nGenerating plots...")
-    plot_HA_distributions(results, seq_id, out_dir,
-                          STRONG_MIN, STRONG_MAX, STABLE_STD)
+    plot_HA_distributions(results, seq_id, out_dir)
 
     print("\n=== Done ===")
     print("Significant water-mediated H-bonds (strong AND stable):")

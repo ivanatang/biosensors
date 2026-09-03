@@ -1,23 +1,21 @@
-"""
-aggregate_salt_bridge_feats.py
-===============================
-Aggregate per-sequence salt-bridge occupancy tables (output of salt_bridge_analysis.py)
-into a single wide-format CSV, one row per sequence, ready to merge into the ML
-feature table on seq_id.
+"""Aggregates per-sequence salt-bridge occupancy tables into one feature CSV.
 
-Mirrors the seq_ids.txt-driven path-construction / config.yaml conventions used by
+Aggregates per-sequence salt-bridge occupancy tables (output of
+salt_bridge_analysis.py) into a single wide-format CSV, one row per
+sequence, ready to merge into the ML feature table on seq_id. Mirrors the
+seq_ids.txt-driven path-construction / config.yaml conventions used by
 water_analysis/aggregate_r_scores.py.
 
 Per-sequence output columns:
-    max_saltbridge_occupancy_pct  -- occupancy of the single most-contacted basic residue
-    n_saltbridges_gt50pct         -- count of residues with occupancy >= 50%
-    mean_top3_occupancy_pct       -- mean occupancy of the top-3 most-contacted residues
-                                      (missing slots treated as 0% occupancy, so this
-                                      stays comparable across sequences with fewer than
-                                      3 detected salt bridges)
+    max_saltbridge_occupancy_pct: occupancy of the single most-contacted
+        basic residue.
+    n_saltbridges_gt50pct: count of residues with occupancy >= 50%.
+    mean_top3_occupancy_pct: mean occupancy of the top-3 most-contacted
+        residues (missing slots treated as 0% occupancy, so this stays
+        comparable across sequences with fewer than 3 detected salt
+        bridges).
 
-Usage
------
+Usage:
     python aggregate_salt_bridge_feats.py --config config.yaml --seq_list seq_ids.txt \
         --out_csv salt_bridge/saltbridge_features_all_seqs.csv
 """
@@ -29,6 +27,12 @@ import yaml
 
 
 def parse_args():
+    """Parses CLI arguments for the salt-bridge feature aggregation run.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (config, seq_list, out_csv,
+        start_ns, end_ns).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default="config.yaml",
                         help='Path to config.yaml (default: config.yaml in repo root)')
@@ -46,6 +50,18 @@ def parse_args():
 
 
 def load_seq_list(seq_list_path):
+    """Loads (seq_id, seq_type, custom_path) entries from a seq_ids file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file. Accepts
+            tab- or comma-separated columns. Blank lines and lines
+            starting with "#" are skipped.
+
+    Returns:
+        list[tuple[str, str, str | None]]: (seq_id, seq_type, custom_path)
+        per entry; seq_type defaults to "Unknown" and custom_path to None
+        when absent.
+    """
     entries = []
     with open(seq_list_path) as f:
         for line in f:
@@ -61,11 +77,25 @@ def load_seq_list(seq_list_path):
 
 
 def get_occupancy_path(seq_id, seq_type, custom_dir, cfg, tag):
+    """Resolves the path to a sequence's salt-bridge occupancy CSV.
+
+    Mirrors salt_bridge_analysis.py: the default window (40-500ns) reads
+    from the original, untagged directory; any other window reads from its
+    own tagged subdirectory.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        seq_type (str): seq_type label, used only if `seq_id` doesn't carry
+            a recognized suffix.
+        custom_dir (str | None): Custom base path from seq_ids.txt, if any.
+        cfg (dict): Parsed config.yaml.
+        tag (str): Window tag, e.g. "40_500ns".
+
+    Returns:
+        str: Path to the occupancy CSV for this sequence/window.
+    """
     sb_cfg = cfg["salt_bridge"]
     occ_file = sb_cfg["output_files"]["occupancy"]
-    # Mirrors salt_bridge_analysis.py: default window (40-500ns) reads from the
-    # original, untagged directory; any other window reads from its own tagged
-    # subdirectory.
     subdir = sb_cfg["output_subdir"] if tag == "40_500ns" else f"{sb_cfg['output_subdir']}_{tag}"
 
     if custom_dir:
@@ -89,6 +119,17 @@ def get_occupancy_path(seq_id, seq_type, custom_dir, cfg, tag):
 
 
 def summarize(occ_df):
+    """Summarizes a sequence's per-residue salt-bridge occupancy table.
+
+    Args:
+        occ_df (pandas.DataFrame): Occupancy table with an
+            "occupancy_pct" column (one row per residue).
+
+    Returns:
+        tuple[float, int, float]: (max occupancy %, count of residues with
+        occupancy >= 50%, mean occupancy % of the top 3 residues, missing
+        slots treated as 0%). (0.0, 0, 0.0) if `occ_df` is empty.
+    """
     if occ_df.empty:
         return 0.0, 0, 0.0
 

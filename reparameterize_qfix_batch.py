@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""
-reparameterize_qfix_batch.py
+"""Backfills the _qfix topology on sequences missed by earlier qfix batches.
 
-Standalone (non-notebook) reparameterization script for backfilling the
-_qfix topology on sequences that were missed by the earlier qfix batches.
-Mirrors protein_ligand_prep_pipeline.ipynb's Step 2 (bond-order fix) and
-Step 3 (parameterize/solvate/export) exactly, driven by a plain ID list
-instead of manual notebook cell edits.
+Standalone (non-notebook) reparameterization script. Mirrors
+protein_ligand_prep_pipeline.ipynb's Step 2 (bond-order fix) and Step 3
+(parameterize/solvate/export) exactly, driven by a plain ID list instead of
+manual notebook cell edits.
 
 Reuses each sequence's existing protein_<prefix><id>_fixed_H.pdb (protein
 topology is unaffected by the ligand bond-order fix, so Step 1/PDBFixer is
@@ -19,9 +17,8 @@ already-completed bind_022_binder pilot sequence):
     packed_<box_shape>_<prefix>_<id>_<suffix>_qfix.pdb
     <prefix>_<id>_<suffix>_<box_shape>_HMR_qfix.{top,gro,*.itp,*.mdp}
 
-Writes to the same OneDrive-mounted path the notebook does -- NOT the git
-repo -- since that's the shared location production Alpine jobs are synced
-from.
+Writes to the same OneDrive-mounted path the notebook does, not the git
+repo, since that's the shared location production Alpine jobs sync from.
 
 Usage:
     python reparameterize_qfix_batch.py --ids 3069 3070 --seq-type binder
@@ -47,25 +44,25 @@ SEQ_TYPE_INFO = {
     "neg_fail_gate":("neg_fail_gate","fail_gate"),
 }
 
-# Reference chemistry for the bond-order fix -- identical to
-# protein_ligand_prep_pipeline.ipynb's LCA_TEMPLATE. RDKit's PDB parser has
-# no bond-order information to work from (a PDB file only stores atom
-# positions and raw CONECT connectivity, never bond order or formal
-# charge), so it defaults every bond to SINGLE and fills remaining valence
-# with implicit H. For LCA's C24 carboxylic acid this silently produces a
-# neutral geminal diol (-CH(OH)(OH)) instead of the deprotonated
-# carboxylate (LCA-, pKa ~5, so deprotonated at the pH 7.4 this system is
-# modeled at -- the same ionization state fed into the Boltz-2 structure
+# Reference chemistry for the bond-order fix, identical to
+# protein_ligand_prep_pipeline.ipynb's LCA_TEMPLATE. A PDB file stores only
+# atom positions and raw CONECT connectivity, never bond order or formal
+# charge, so RDKit's PDB parser defaults every bond to single and fills
+# remaining valence with implicit H. For LCA's C24 carboxylic acid this
+# silently produces a neutral geminal diol (-CH(OH)(OH)) instead of the
+# deprotonated carboxylate (LCA-, pKa ~5, so deprotonated at the modeled pH
+# 7.4 -- the same ionization state fed into the Boltz-2 structure
 # prediction as SMILES). AssignBondOrdersFromTemplate maps the correct bond
 # orders/charge from this reference SMILES onto the PDB-derived 3D
-# coordinates; the coordinates themselves are untouched by this fix.
-# Source: PubChem CID 9903 (lithocithic acid), deprotonated at the acid.
+# coordinates, leaving the coordinates themselves untouched.
+# Source: PubChem CID 9903 (lithocholic acid), deprotonated at the acid.
 LCA_TEMPLATE = Chem.MolFromSmiles(
     "C[C@H](CCC(=O)[O-])[C@H]1CC[C@@H]2[C@@]1(CC[C@H]3[C@H]2CC[C@H]4[C@@]3(CC[C@H](C4)O)C)C"
 )
 
 
 def parse_args():
+    """Parses CLI arguments for the qfix backfill batch."""
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--ids", nargs="+", required=True, help="Sequence ID numbers, e.g. 3069 3070")
@@ -74,6 +71,18 @@ def parse_args():
 
 
 def reparameterize_one(seq_id):
+    """Applies the qfix bond-order fix and re-runs parameterize/solvate/export.
+
+    Uses the module-level `args.seq_type` to resolve the sequence's
+    directory (see parse_args).
+
+    Args:
+        seq_id (str): Sequence ID number (e.g. "3069").
+
+    Raises:
+        FileNotFoundError: The sequence directory or a required input file
+            (fixed protein PDB, ligand PDB) doesn't exist.
+    """
     folder_name, suffix = SEQ_TYPE_INFO[args.seq_type]
     seq_dir = os.path.join(ONEDRIVE_BASE, folder_name, f"{PREFIX}_{seq_id}_{suffix}")
     if not os.path.isdir(seq_dir):
@@ -159,11 +168,12 @@ def reparameterize_one(seq_id):
         molecules.append(counterion)
         number_of_copies.append(n_counterions)
 
-    # docked_intrcg.topology is an InterchangeTopology (this openff-interchange
-    # version deliberately stores no positions there -- use Interchange.positions
-    # instead, per its own NoPositionsError message). pack_box's solute needs an
-    # actual positioned Topology, so build one directly from the two Molecules
-    # (each already carries the correct docked conformer from its own file).
+    # docked_intrcg.topology is an InterchangeTopology, which this
+    # openff-interchange version deliberately stores no positions on (use
+    # Interchange.positions instead, per its own NoPositionsError message).
+    # pack_box's solute needs an actual positioned Topology, so build one
+    # directly from the two Molecules, each already carrying the correct
+    # docked conformer from its own file.
     docked_topology = Topology.from_molecules([protein, ligand])
     packed_topology = pack_box(
         solute=docked_topology,

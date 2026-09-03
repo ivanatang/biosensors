@@ -1,17 +1,12 @@
 #!/usr/bin/env python
-"""
-five_residue_highlight.py
+"""Renders seq10_binder with 5 pocket residues each in a distinct color.
 
-Render a single publication-quality figure of the seq10_binder medoid
-structure (PYR1+LCA biosensor) with 5 specific pocket residues each
-highlighted in its own distinct colorblind-safe color, for a research talk
-figure.
-
-This is a SINGLE structure / SINGLE camera render (not a multi-panel
-comparison like medoid_comparison.py in this same directory). The 5
-residues below are individual positions of interest, NOT loop ranges like
-the gate (resi 84-90) / latch (resi 114-118) featured in other scripts in
-pymol_renders/ -- do not confuse these with that unrelated figure.
+Single publication-quality figure of the seq10_binder medoid structure
+(PYR1+LCA biosensor), for a research talk. Single structure, single camera
+(not a multi-panel comparison like medoid_comparison.py in this directory).
+The 5 residues below are individual positions of interest, not loop ranges
+like the gate (resi 84-90) / latch (resi 114-118) in other pymol_renders/
+scripts -- don't confuse these with that unrelated figure.
 
 Run non-interactively with the local PyMOL build:
 
@@ -21,32 +16,29 @@ Produces one ray-traced PNG in pymol_renders/output/:
 
     seq10_binder_5residue_highlight.png
 
-Each of the 5 residues is shown as a colored cartoon segment (so it reads
-even from an angle where the sidechain points away from camera) PLUS
-sticks for the full residue (backbone + sidechain, not just the sidechain)
-in that same color, so the sidechain identity/orientation is also visible.
-The rest of the protein is a neutral gray cartoon, and the ligand (chain B,
-resn LIG) is always shown in full as yellow-carbon sticks.
+Each residue is shown as a colored cartoon segment (reads even when the
+sidechain points away from camera) plus sticks for the full residue
+(backbone + sidechain, not just sidechain) in the same color. The rest of
+the protein is neutral gray cartoon; the ligand (chain B, resn LIG) is
+always shown in full as yellow-carbon sticks. Background is plain white
+(cmd.bg_color("white")) -- this project moved away from tinted backgrounds
+in an earlier iteration; keep it plain white.
 
-Background is plain white (cmd.bg_color("white")) -- this project moved
-away from tinted backgrounds in an earlier iteration; keep it plain white.
+Camera: one view, oriented and zoomed on the union of all 5 residues' atoms
+plus the full ligand (cmd.orient then cmd.zoom with generous buffer), so
+nothing is cropped. Deliberately wider than the tight gate/latch close-ups
+elsewhere in pymol_renders/, since these 5 residues are spread across
+different parts of the pocket (some near the ligand's steroid core, some
+near its tail/carboxylate end).
 
-CAMERA: single view, oriented and zoomed on the union of all 5 highlighted
-residues' atoms plus the full ligand (cmd.orient then cmd.zoom with
-generous buffer), so nothing is cropped. This is deliberately a WIDER view
-than the tight gate/latch close-ups elsewhere in pymol_renders/, since
-these 5 residues are spread across different parts of the pocket (some
-nearer the ligand's steroid core, some nearer its tail/carboxylate end,
-per prior analysis in this project).
+No in-scene labels: this script only renders the colored structure.
+Residue labels (e.g. "Phe61") are added afterward by a separate
+pixel-space post-processing script (PIL-based), consistent with this
+project's decision to abandon in-scene PyMOL labels (see
+medoid_comparison.py docstring for why) in favor of post-processing that
+can actually be previewed/verified.
 
-NO IN-SCENE LABELS: this script only renders the colored structure. Residue
-labels (e.g. "Phe61") are added afterward by a separate pixel-space
-post-processing script (PIL-based), consistent with this project's prior
-decision to abandon in-scene PyMOL labels (see medoid_comparison.py
-docstring for why) in favor of post-processing that can actually be
-previewed/verified.
-
-Re-running on a different structure/residue set: edit PDB_PATH and
+To re-run on a different structure/residue set, edit PDB_PATH and
 RESIDUES below.
 """
 
@@ -82,8 +74,7 @@ RESIDUES = [
     {"resi": 81, "hex": "#009E73"},   # bluish green
     {"resi": 116, "hex": "#B2182B"},  # strong crimson/red (was vermillion #D55E00,
                                        # too close in hue to resi 61's orange at
-                                       # ray-traced stick scale -- see coordinator
-                                       # feedback)
+                                       # ray-traced stick scale)
     {"resi": 164, "hex": "#CC79A7"},  # reddish purple
 ]
 
@@ -99,6 +90,14 @@ ZOOM_BUFFER = 6.0  # padding (Angstrom) around the framed selection
 # Small color helper (pure python, no numpy dependency)
 # --------------------------------------------------------------------------
 def hex_to_rgb01(hex_code):
+    """Converts a "#RRGGBB" hex color to a 0-1 RGB tuple for PyMOL.
+
+    Args:
+        hex_code (str): Hex color, with or without leading "#".
+
+    Returns:
+        tuple[float, float, float]: (r, g, b), each in [0, 1].
+    """
     hex_code = hex_code.lstrip("#")
     return tuple(int(hex_code[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
 
@@ -107,6 +106,7 @@ def hex_to_rgb01(hex_code):
 # Scene construction
 # --------------------------------------------------------------------------
 def setup_global_render_settings():
+    """Resets the PyMOL session and applies the global render/style settings."""
     cmd.reinitialize()
     cmd.bg_color("white")
     cmd.set("ray_trace_mode", 0)
@@ -123,10 +123,14 @@ def setup_global_render_settings():
 
 
 def load_and_style():
-    """Load the medoid structure, strip water/ions/hydrogens, and build the
-    base protein cartoon + ligand sticks styling. Returns the list of
-    per-residue selection names created for the 5 highlighted residues
-    (used later to build the camera framing selection).
+    """Loads the medoid structure and builds the base cartoon/sticks styling.
+
+    Strips water/ions/hydrogens, then styles the protein cartoon, ligand
+    sticks, and the 5 highlighted residues.
+
+    Returns:
+        list[str]: PyMOL selection names for the 5 highlighted residues,
+        used later to build the camera framing selection.
     """
     cmd.load(PDB_PATH, OBJ_NAME)
     cmd.remove(f"{OBJ_NAME} and solvent")
@@ -178,10 +182,13 @@ def load_and_style():
 
 
 def frame_camera(residue_sel_names):
-    """Single camera: orient + zoom on the union of all 5 highlighted
-    residues' atoms plus the full ligand, with generous padding, so
-    nothing is cropped even though these 5 residues are spread across
-    different parts of the pocket.
+    """Orients and zooms the single camera on the 5 residues plus ligand.
+
+    Uses generous padding so nothing is cropped, since the 5 residues are
+    spread across different parts of the pocket.
+
+    Args:
+        residue_sel_names (list[str]): Selection names from load_and_style.
     """
     zoom_sel = " or ".join(residue_sel_names) + f" or {OBJ_NAME}_ligand"
     cmd.orient(zoom_sel)
@@ -189,6 +196,7 @@ def frame_camera(residue_sel_names):
 
 
 def render():
+    """Ray-traces the scene and writes OUT_PNG."""
     cmd.bg_color("white")
     cmd.ray(IMG_WIDTH, IMG_HEIGHT)
     cmd.png(OUT_PNG, dpi=PNG_DPI, ray=0)
@@ -196,6 +204,7 @@ def render():
 
 
 def main():
+    """Builds the scene, frames the camera, and renders the figure."""
     os.makedirs(OUT_DIR, exist_ok=True)
     setup_global_render_settings()
 

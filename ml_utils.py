@@ -49,9 +49,15 @@ SCORING = {
 
 
 def build_feature_group_cols():
-    """Same 8-family column layout as ML_classification.ipynb's
-    FEATURE_GROUP_COLS, valid for any duration since build_feat_table.py
-    reproduces this exact column naming for every window."""
+    """Builds the 8-family feature-group column layout.
+
+    Mirrors ML_classification.ipynb's FEATURE_GROUP_COLS. Valid for any
+    duration, since build_feat_table.py reproduces this exact column
+    naming for every window.
+
+    Returns:
+        dict: Maps group name to its list of column names.
+    """
     dw_cols = []
     for r in POCKET_RESIDUES:
         dw_cols += [f"D_{r}", f"W_{r}"]
@@ -85,7 +91,17 @@ def build_feature_group_cols():
 
 
 def load_feat_table(path, sheet_name):
-    """Load a self-contained feat_table_{N}ns.xlsx built by build_feat_table.py."""
+    """Loads a self-contained feat_table_{N}ns.xlsx built by build_feat_table.py.
+
+    Args:
+        path (str): Path to the .xlsx file.
+        sheet_name (str): Sheet to load.
+
+    Returns:
+        tuple: (df, feature_cols, feature_group_cols) — the loaded
+        DataFrame, the flat list of feature column names, and the
+        group -> columns mapping from build_feature_group_cols.
+    """
     df = pd.read_excel(path, sheet_name=sheet_name)
     feature_group_cols = build_feature_group_cols()
     feature_cols = [c for cols in feature_group_cols.values() for c in cols]
@@ -94,7 +110,16 @@ def load_feat_table(path, sheet_name):
 
 # ── GroupAwareSelector: fold-safe transformer (verbatim from cell 2) ─────────
 def _feature_score(x_col, y):
-    """|AUC - 0.5| of a single feature vs y; for >2 classes, best one-vs-rest AUC."""
+    """Scores one feature's separation of the target.
+
+    Args:
+        x_col: Feature values, one per sample.
+        y: Class labels, one per sample.
+
+    Returns:
+        float: |AUC - 0.5| for binary y; for >2 classes, the best
+        one-vs-rest |AUC - 0.5| across classes.
+    """
     classes = np.unique(y)
     if len(classes) <= 2:
         y_bin = (y == classes[-1]).astype(int)
@@ -111,11 +136,20 @@ def _feature_score(x_col, y):
 
 
 class GroupAwareSelector(BaseEstimator, TransformerMixin):
-    """
-    groups            : {group_name: [column indices into X]}
-    corr_prune_groups : group names to cluster-prune by |Spearman r| before budgeting
-    k_per_group       : {group_name: k or None} cap after pruning
-    corr_threshold    : |corr| above this -> same cluster (one representative kept)
+    """Feature selector that prunes and budgets columns within named groups.
+
+    Within each group, correlated features are first cluster-pruned to one
+    representative (by |Spearman r|), then capped to the top-k by
+    `_feature_score`. Fold-safe: `fit` only sees training-fold data.
+
+    Args:
+        groups (dict): Maps group name to a list of column indices into X.
+        corr_prune_groups (frozenset): Group names to cluster-prune by
+            |Spearman r| before budgeting (default: none).
+        k_per_group (dict | None): Maps group name to a cap (int) on
+            columns kept after pruning, or None for no cap.
+        corr_threshold (float): |corr| above this collapses two columns
+            into the same cluster, keeping one representative (default: 0.8).
     """
     def __init__(self, groups, corr_prune_groups=frozenset(), k_per_group=None,
                  corr_threshold=0.8):
@@ -125,6 +159,16 @@ class GroupAwareSelector(BaseEstimator, TransformerMixin):
         self.corr_threshold = corr_threshold
 
     def fit(self, X, y):
+        """Prunes and budgets each group's columns, storing the selection.
+
+        Args:
+            X: Feature matrix, shape (n_samples, n_features).
+            y: Target labels, shape (n_samples,).
+
+        Returns:
+            GroupAwareSelector: self, with `selected_indices_` and
+            `group_report_` set.
+        """
         X = np.asarray(X)
         y = np.asarray(y)
         selected = []
@@ -174,15 +218,40 @@ class GroupAwareSelector(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        """Selects the columns chosen by `fit`.
+
+        Args:
+            X: Feature matrix, shape (n_samples, n_features).
+
+        Returns:
+            numpy.ndarray: X restricted to `selected_indices_`.
+        """
         return np.asarray(X)[:, self.selected_indices_]
 
 
 def grouped_permutation_test(estimator, X, y, groups, cv, scoring="balanced_accuracy",
                               n_permutations=100, random_state=None):
-    """Shuffles y completely freely each permutation (not just within-group,
-    which would be close to a no-op given how many singleton sequence-
+    """Runs a group-safe permutation test for a CV score.
+
+    Shuffles y completely freely each permutation, not just within-group
+    (which would be close to a no-op given how many singleton sequence-
     similarity groups exist), while still using `groups` for fold-safe CV
-    splitting on every permuted run."""
+    splitting on every permuted run.
+
+    Args:
+        estimator: Unfitted sklearn-compatible estimator/pipeline.
+        X: Feature matrix.
+        y: Target labels.
+        groups: Group labels for fold-safe splitting (see `cv`).
+        cv: A CV splitter compatible with `groups` (e.g. StratifiedGroupKFold).
+        scoring (str): sklearn scoring name (default: "balanced_accuracy").
+        n_permutations (int): Number of label permutations (default: 100).
+        random_state: Seed for the permutation RNG.
+
+    Returns:
+        tuple: (observed, perm_scores, pval) — the true mean CV score, the
+        array of permuted mean CV scores, and the permutation p-value.
+    """
     rng = np.random.default_rng(random_state)
 
     observed = cross_validate(estimator, X, y, cv=cv, groups=groups,
@@ -199,6 +268,17 @@ def grouped_permutation_test(estimator, X, y, groups, cv, scoring="balanced_accu
 
 
 def make_pipeline(feature_group_cols, feature_cols):
+    """Builds the scale -> GroupAwareSelector -> RandomForest pipeline.
+
+    Args:
+        feature_group_cols (dict): Maps group name to its column names
+            (see build_feature_group_cols).
+        feature_cols (list[str]): Flat, ordered list of all feature
+            columns; used to translate `feature_group_cols` into indices.
+
+    Returns:
+        sklearn.pipeline.Pipeline: Unfitted pipeline.
+    """
     col_index = {c: i for i, c in enumerate(feature_cols)}
     feature_groups = {g: [col_index[c] for c in cols] for g, cols in feature_group_cols.items()}
     return Pipeline([
@@ -211,8 +291,23 @@ def make_pipeline(feature_group_cols, feature_cols):
 
 
 def run_cv(df, feature_cols, feature_group_cols, n_splits=N_SPLITS, random_state=RANDOM_STATE):
-    """Runs the same StratifiedGroupKFold CV as ML_classification.ipynb cell 5
-    and returns (metrics_df, cv_results, seq_groups)."""
+    """Runs the same StratifiedGroupKFold CV as ML_classification.ipynb cell 5.
+
+    Args:
+        df: DataFrame with `feature_cols`, a "Label" column, and a
+            "Sequence" column.
+        feature_cols (list[str]): Feature columns to use.
+        feature_group_cols (dict): Group -> columns mapping (see
+            build_feature_group_cols), used to build the pipeline's
+            GroupAwareSelector.
+        n_splits (int): Number of CV folds (default: N_SPLITS).
+        random_state (int): CV shuffle seed (default: RANDOM_STATE).
+
+    Returns:
+        tuple: (metrics_df, cv_results, seq_groups) — a summary DataFrame
+        (mean/SD per metric), the raw cross_validate output filtered to
+        test scores, and the sequence-similarity group labels used for CV.
+    """
     X = df[feature_cols].values
     y = df["Label"].values
     sequences = df["Sequence"].astype(str).str.strip().tolist()

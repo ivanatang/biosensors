@@ -1,19 +1,19 @@
 #!/usr/bin/env python
-"""
-consensus_pocket_medoid.py — identify the most structurally central consensus binder.
+"""Identifies the most structurally central consensus-binder sequence.
 
-For each consensus-binder sequence, reads the pre-existing medoid_PL.pdb from its
-run directory. Computes pairwise pocket-Calpha RMSD across all sequences and selects
-the structural medoid: the sequence with minimum mean RMSD to all others.
+For each consensus-binder sequence, reads the pre-existing medoid_PL.pdb
+from its run directory, computes pairwise pocket-Calpha RMSD across all
+sequences, and selects the structural medoid: the sequence with minimum
+mean RMSD to all others.
 
 Outputs:
-  pairwise_pocket_ca_rmsd.csv  — full N×N RMSD matrix
-  medoid_ranking.csv           — sequences ranked by mean RMSD to others
-  pairwise_rmsd_heatmap.png    — visual heatmap of the matrix
-  reference_structure.pdb      — the chosen medoid's medoid_PL.pdb, copied here
+    pairwise_pocket_ca_rmsd.csv: full N x N RMSD matrix.
+    medoid_ranking.csv: sequences ranked by mean RMSD to others.
+    pairwise_rmsd_heatmap.png: heatmap of the matrix.
+    reference_structure.pdb: the chosen medoid's medoid_PL.pdb, copied here.
 
 Usage:
-  python consensus_pocket_medoid.py config.yaml
+    python consensus_pocket_medoid.py config.yaml
 """
 import os, sys, shutil
 import numpy as np
@@ -24,16 +24,42 @@ from MDAnalysis.analysis.rms import rmsd
 
 # ── Config helpers ─────────────────────────────────────────────────────────────
 def load_cfg(path):
+    """Loads the YAML config.
+
+    Args:
+        path (str): Path to the config YAML.
+
+    Returns:
+        dict: Parsed config.
+    """
     with open(path) as f:
         return yaml.safe_load(f)
 
 def resolve_paths(cfg):
+    """Extracts the base/run/type-subdir path pieces from the config.
+
+    Args:
+        cfg (dict): Parsed config (see load_cfg).
+
+    Returns:
+        tuple[str, str, dict]: (base, runrel, type_subdir).
+    """
     base   = os.path.expandvars(cfg["paths"]["base"])
     runrel = cfg["paths"]["runrel"]
     tsub   = cfg["paths"]["type_subdir"]
     return base, runrel, tsub
 
 def rundir_for(cfg, seq_id, seq_type):
+    """Resolves a sequence's run directory, honoring config path overrides.
+
+    Args:
+        cfg (dict): Parsed config (see load_cfg).
+        seq_id (str): Sequence ID.
+        seq_type (str): Sequence type key into `paths.type_subdir`.
+
+    Returns:
+        str: Absolute path to the sequence's run directory.
+    """
     base, runrel, tsub = resolve_paths(cfg)
     overrides = cfg["paths"].get("overrides", {})
     if seq_id in overrides:
@@ -41,7 +67,16 @@ def rundir_for(cfg, seq_id, seq_type):
     return os.path.join(base, tsub[seq_type], seq_id, runrel)
 
 def consensus_binders(cfg):
-    """Return list of consensus-binder folder names (binder + full motif)."""
+    """Finds Binder-group sequences matching the configured motif exactly.
+
+    Args:
+        cfg (dict): Parsed config (see load_cfg); reads `medoid.binder_motif`
+            (1-indexed position -> expected residue) and `paths.feat_table`.
+
+    Returns:
+        list[str]: Sequence names (excluding any containing "open") whose
+        Binder-group sequence matches every motif position.
+    """
     base = os.path.expandvars(cfg["paths"]["base"])
     feat = cfg["paths"].get("feat_table", os.path.join(base, "feat_table.xlsx"))
     motif = {int(k): v for k, v in cfg["medoid"]["binder_motif"].items()}
@@ -64,6 +99,20 @@ def consensus_binders(cfg):
 
 # ── Cross-sequence pocket medoid ───────────────────────────────────────────────
 def find_group_pocket_medoid(cfg):
+    """Finds the consensus binder with minimum mean pocket-CA RMSD to the rest.
+
+    Loads each consensus binder's medoid_PL.pdb, computes the pairwise
+    pocket-Calpha RMSD matrix (optimal superposition), writes the matrix,
+    ranking, heatmap, and chosen medoid's PDB to `medoid.aggregate_outdir`,
+    and (if `medoid.metrics_csv` is configured) prints the medoid's
+    percentile on each numeric column as a sanity check.
+
+    Args:
+        cfg (dict): Parsed config (see load_cfg).
+
+    Returns:
+        str: seq_id of the group pocket medoid.
+    """
     base   = os.path.expandvars(cfg["paths"]["base"])
     mcfg   = cfg["medoid"]
     ca_sel = f"name CA and resid {mcfg['pocket_resids']}"

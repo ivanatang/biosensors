@@ -84,6 +84,16 @@ SPATIAL_COLS_PREFIX = "pocket_water_density_"
 
 # ── Stats helpers (mirrors core_vs_tail_regions.py) ─────────────────────────
 def cohens_d(a, b):
+    """Computes Cohen's d effect size between two samples.
+
+    Args:
+        a: First sample (array-like).
+        b: Second sample (array-like).
+
+    Returns:
+        float: Standardized mean difference (a - b), pooled SD. 0.0 if
+        pooled variance is non-positive.
+    """
     na, nb = len(a), len(b)
     pooled_var = ((na - 1) * a.var(ddof=1) + (nb - 1) * b.var(ddof=1)) / (na + nb - 2)
     if pooled_var <= 0:
@@ -92,12 +102,30 @@ def cohens_d(a, b):
 
 
 def rank_auc(a, b):
+    """Computes the AUC of using the feature value to separate two groups.
+
+    Args:
+        a: Sample treated as the positive class (label 1).
+        b: Sample treated as the negative class (label 0).
+
+    Returns:
+        float: ROC-AUC. 0.5 means no separation, >0.5 means `a` tends
+        higher, <0.5 means `b` tends higher.
+    """
     y = np.r_[np.ones(len(a)), np.zeros(len(b))]
     scores = np.r_[a, b]
     return roc_auc_score(y, scores)
 
 
 def bh_fdr(pvals):
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -111,6 +139,20 @@ def bh_fdr(pvals):
 
 
 def compare_groups(df, col, group_a, group_b, min_n=5):
+    """Runs a Mann-Whitney U test between two groups for one column.
+
+    Args:
+        df: DataFrame containing `col` and a "Group" column.
+        col (str): Name of the column to compare.
+        group_a: "Group" value for the first group.
+        group_b: "Group" value for the second group.
+        min_n (int): Minimum non-NaN samples required per group; returns
+            None below this (default: 5).
+
+    Returns:
+        dict | None: n, mean, Cohen's d, rank-AUC, and p-value for each
+        group, or None if either group has fewer than `min_n` samples.
+    """
     a = df.loc[df["Group"] == group_a, col].dropna().values
     b = df.loc[df["Group"] == group_b, col].dropna().values
     if len(a) < min_n or len(b) < min_n:
@@ -122,6 +164,17 @@ def compare_groups(df, col, group_a, group_b, min_n=5):
 
 
 def box_jitter(ax, df, col, groups, rng=None):
+    """Draws a box-and-jitter plot for one column, one box per group.
+
+    Args:
+        ax: Matplotlib Axes to draw on.
+        df: DataFrame containing `col` and a "Group" column.
+        col (str): Column to plot.
+        groups (list[str]): "Group" values to plot, in order, each colored
+            via GROUP_COLOR.
+        rng: numpy Generator for jitter; a fixed-seed default is used if
+            None.
+    """
     rng = rng or np.random.default_rng(42)
     xpos = 0
     for group in groups:
@@ -142,6 +195,16 @@ def box_jitter(ax, df, col, groups, rng=None):
 
 # ── Loading ───────────────────────────────────────────────────────────────
 def load_seq_type_map(seq_list_path):
+    """Loads seq_id -> seq_type from a tab-separated seq_ids file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file (columns:
+            seq_id, seq_type, ...). Blank lines and lines starting with
+            "#" are skipped.
+
+    Returns:
+        dict: Maps seq_id to seq_type ("Unknown" if the column is missing).
+    """
     mapping = {}
     with open(seq_list_path) as f:
         for line in f:
@@ -154,6 +217,16 @@ def load_seq_type_map(seq_list_path):
 
 
 def load_optional(path, label):
+    """Loads a CSV if the path is given and exists, else logs and returns None.
+
+    Args:
+        path (str | None): CSV path.
+        label (str): Description used in the printed status message.
+
+    Returns:
+        pandas.DataFrame | None: The loaded table, or None if `path` is
+        falsy or doesn't exist.
+    """
     if path and os.path.exists(path):
         df = pd.read_csv(path)
         print(f"Loaded {label}: {path}  ({len(df)} rows)")
@@ -163,8 +236,18 @@ def load_optional(path, label):
 
 
 def mean_w_score(dw_df):
-    """Mean water-mediated-contact (W) score across all residue columns, one
-    value per sequence -- the existing R-score signal to correlate against."""
+    """Computes each sequence's mean water-mediated-contact (W) score.
+
+    The existing R-score signal to correlate the water-density metrics
+    against, averaged across all residue columns.
+
+    Args:
+        dw_df: DataFrame with per-residue "W_{resSeq}" columns and a
+            "seq_id" column.
+
+    Returns:
+        pandas.DataFrame: Columns "seq_id" and "mean_W_score".
+    """
     w_cols = [c for c in dw_df.columns if c.startswith("W_")]
     out = dw_df[["seq_id"]].copy()
     out["mean_W_score"] = dw_df[w_cols].mean(axis=1)
@@ -172,11 +255,21 @@ def mean_w_score(dw_df):
 
 
 def gate_columns(prefix, df):
+    """Lists a DataFrame's columns starting with a given prefix.
+
+    Args:
+        prefix (str): Column-name prefix to match.
+        df: DataFrame to search.
+
+    Returns:
+        list[str]: Matching column names.
+    """
     return [c for c in df.columns if c.startswith(prefix)]
 
 
 # ── Main ─────────────────────────────────────────────────────────────────
 def main():
+    """Runs the water-density correlation check and significance gate end to end."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--hydration-csv", default="water_spatial/water_density_feats_ligand.csv",

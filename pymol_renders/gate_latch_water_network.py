@@ -1,42 +1,40 @@
 #!/usr/bin/env python
-"""
-gate_latch_water_network.py
+"""Renders one real MD frame showing a gate-latch-ligand bridging water.
 
-Render a single publication-quality figure of ONE real MD frame
-(pair_3085_binder) showing a single bridging water molecule simultaneously
-in contact with the gate loop (resi 84-90), the latch loop (resi 114-118),
-and the ligand's carboxylate/core oxygen, for a research talk figure.
+Publication-quality figure of one real MD frame (pair_3085_binder) showing
+a single bridging water molecule simultaneously in contact with the gate
+loop (resi 84-90), the latch loop (resi 114-118), and the ligand's
+carboxylate/core oxygen, for a research talk figure.
 
 Mechanistic story being illustrated: this repo's water-mediated contact
 analysis (water_analysis/gate_latch_water_bridge.py) found that a single
-water molecule bridging gate + latch + ligand simultaneously occurs
-significantly more often in true binders than in false positives. This
-script renders one concrete, real example frame of that geometry (not a
-synthetic/idealized pose) extracted from an actual trajectory, with the
-network made explicit via dashed distance lines from the bridging water to
-(a) the nearest gate heavy atom, (b) the nearest latch heavy atom, and (c)
-the specific bridging ligand oxygen -- all three determined by selection
-query at render time, NOT assumed in advance (see find_nearest_landmark_atom
-below; the actual closest atoms are printed to stdout when this script
-runs).
+water bridging gate + latch + ligand simultaneously occurs significantly
+more often in true binders than false positives. This script renders one
+concrete, real example frame of that geometry (not synthetic/idealized),
+extracted from an actual trajectory, with the network made explicit via
+dashed distance lines from the bridging water to (a) the nearest gate
+heavy atom, (b) the nearest latch heavy atom, and (c) the specific
+bridging ligand oxygen -- all three determined by selection query at
+render time, not assumed in advance (see find_nearest_landmark_atom; the
+actual closest atoms are printed to stdout when this script runs).
 
 Input is a standalone single-frame PDB with protein + ligand + exactly one
-water, ALL in chain A (components are distinguished by resn/resi, not by
-chain -- do not add chain-based selections for ligand/water). The current
-input (v4, see PDB_PATH below) is a re-extraction that fixes a periodic-
-boundary "molecule not whole" issue in the protein chain that an earlier
-v3 version had (v3 only had the water's position PBC-fixed, not the
-protein, which produced spurious long "bonds" between sequence-adjacent
-atoms wrapped to different periodic images -- fixed via mdtraj's
-image_molecules(make_whole=True), see PDB_PATH comment below). Topology/
-atom order is unchanged across v3->v4, only coordinates were re-imaged.
+water, all in chain A (components are distinguished by resn/resi, not
+chain -- don't add chain-based selections for ligand/water). The current
+input (v4, see PDB_PATH below) re-extracts a fix for a periodic-boundary
+"molecule not whole" issue in the protein chain that an earlier v3 version
+had (v3 only had the water's position PBC-fixed, not the protein, which
+produced spurious long "bonds" between sequence-adjacent atoms wrapped to
+different periodic images -- fixed via mdtraj's
+image_molecules(make_whole=True), see the PDB_PATH comment below).
+Topology/atom order is unchanged v3->v4; only coordinates were re-imaged.
 
 The ligand (resn LIG, resi 182) has generic atom names (all "C"/"O", not
 unique per atom), so the specific bridging ligand oxygen is selected by
 PDB atom serial number (`id 2873`), not by name. This is verified at
 runtime (see verify_bridge_oxygen) before any styling happens; the script
-aborts with a clear error rather than guessing if that atom turns out not
-to be a single LIG oxygen.
+aborts with a clear error rather than guessing if that atom isn't a single
+LIG oxygen.
 
 Run non-interactively with the local PyMOL build:
 
@@ -46,68 +44,60 @@ Produces one ray-traced PNG in pymol_renders/output/:
 
     pair_3085_binder_water_network.png
 
-Background is plain white (cmd.bg_color("white")), consistent with this
-project's current convention (see five_residue_highlight.py /
-medoid_comparison.py in this same directory).
+Background is plain white (cmd.bg_color("white")), per this project's
+convention (see five_residue_highlight.py / medoid_comparison.py).
 
 Gate (orange, #FE6100) and latch (purple, #785EF0) use this repo's
 standard landmark colors (see CLAUDE.md "Key domain conventions" and
-medoid_comparison.py). The ligand is shown as full yellow-carbon sticks
-(util.cbay) including the bridging oxygen (id 2873), which keeps its
-default canonical oxygen color (red) rather than a custom highlight --
-an earlier pink override was tried and found confusing, reverted. It's
-still identifiable as "the ligand atom doing the interacting" by being
-rendered as an enlarged sphere, distinguishing it by size/position
-rather than an unusual color. The bridging water (resn HOH, resi 2269)
-is rendered
-as an enlarged red/white ball-and-stick (radii bumped up further after an
+medoid_comparison.py). The ligand is full yellow-carbon sticks (util.cbay)
+including the bridging oxygen (id 2873), which keeps its default canonical
+oxygen color (red) rather than a custom highlight (an earlier pink
+override read as confusing, reverted); it's still identifiable as "the
+interacting atom" by being rendered as an enlarged sphere, distinguished
+by size/position rather than color. The bridging water (resn HOH, resi
+2269) is an enlarged red/white ball-and-stick (radii bumped up after an
 earlier render showed it partly lost against nearby side-chain sticks) so
-it cannot be mistaken for background noise (there is no other water in
-this file to confuse it with, since only this one bridging water was
-extracted into the PDB).
+it can't be mistaken for background noise (there's no other water in this
+file, since only this one bridging water was extracted into the PDB).
 
-OCCLUSION: the base protein cartoon (protein_sel, which includes gate/
-latch since they're part of the backbone) is rendered at
-cartoon_transparency 0.5 -- the same fix used in five_residue_highlight.py
-for a buried-residue occlusion problem -- so cartoon/sticks in front of
-the water and its dashed network lines don't block them; gate/latch
-cartoon is then explicitly reset to fully opaque (0.0) so the translucency
-fix doesn't wash out those landmark colors.
+Occlusion: the base protein cartoon (protein_sel, which includes gate/
+latch since they're part of the backbone) renders at cartoon_transparency
+0.5 -- the same fix as five_residue_highlight.py's buried-residue problem
+-- so cartoon/sticks in front of the water and its dashed network lines
+don't block them; gate/latch cartoon is then reset to fully opaque (0.0)
+so the translucency fix doesn't wash out those landmark colors.
 
-NETWORK LINES: dashed cmd.distance lines are drawn from the bridging
-water's oxygen to the nearest gate heavy atom, nearest latch heavy atom,
-and the bridging ligand oxygen -- this is what makes the figure read as
-"a network," not three separately-colored blobs near each other. The
-nearest gate/latch atom is found by a within-3.5-A polar-atom (O/N)
-query, widened stepwise (6.0 A polar, then any heavy atom) only if that
-query comes up empty; whichever tier actually matched is printed. Per
-this project's established convention (see medoid_comparison.py docstring
-for why in-scene text labels were abandoned in favor of pixel-space
-post-processing), the numeric distance VALUE labels PyMOL would normally
-draw on each dashed line are hidden here -- they added visual clutter at
-this close zoom without adding information beyond what's already printed
-to stdout -- but the dashed lines themselves are kept, since those are
-what convey the network geometry in-scene.
+Network lines: dashed cmd.distance lines run from the bridging water's
+oxygen to the nearest gate heavy atom, nearest latch heavy atom, and the
+bridging ligand oxygen -- this is what makes the figure read as "a
+network," not three separately-colored blobs. The nearest gate/latch atom
+is found by a within-3.5-A polar-atom (O/N) query, widened stepwise (6.0 A
+polar, then any heavy atom) only if that query comes up empty; whichever
+tier matched is printed. Per this project's convention (see
+medoid_comparison.py docstring for why in-scene text labels were
+abandoned in favor of pixel-space post-processing), the numeric distance
+value labels PyMOL would normally draw on each dashed line are hidden --
+they clutter this close a zoom without adding info beyond what's already
+printed to stdout -- but the dashed lines stay, since those convey the
+network geometry in-scene.
 
-CAMERA: single close-up view, oriented (cmd.orient) and zoomed (cmd.zoom,
-buffer=ZOOM_BUFFER) tightly on the union of the gate selection, latch
-selection, the bridging ligand oxygen, and the bridging water -- same
-"orient on the landmark union, no explicit up/down logic" pattern as
-gate_latch_movie.py's set_fixed_camera(). Because a plain cmd.orient() is
-not guaranteed to put gate/latch at the top of frame for every structure,
-FLIP_VERTICAL (near the top of this file, default False) is a one-constant
-toggle that calls cmd.turn("x", 180) right after orient/zoom if the
-rendered image comes out upside-down/backwards; this is deliberately not
-solved analytically here, just left as a manual toggle to check against
-the actual render.
+Camera: single close-up view, oriented (cmd.orient) and zoomed (cmd.zoom,
+buffer=ZOOM_BUFFER) tightly on the union of gate, latch, the bridging
+ligand oxygen, and the bridging water -- same "orient on the landmark
+union, no explicit up/down logic" pattern as gate_latch_movie.py's
+set_fixed_camera(). Since plain cmd.orient() isn't guaranteed to put
+gate/latch at the top of frame, FLIP_VERTICAL (near the top of this file)
+is a one-constant toggle that calls cmd.turn("x", 180) right after
+orient/zoom if the render comes out upside-down/backwards -- deliberately
+left as a manual toggle to check against the actual render, not solved
+analytically.
 
-NO IN-SCENE TEXT LABELS ("Gate"/"Latch"/etc): this script only renders
-the colored/connected structure. Region text labels are added afterward
-by a separate pixel-space PIL post-processing script, consistent with
-this project's established pattern (see five_residue_highlight.py /
-medoid_comparison.py docstrings).
+No in-scene text labels ("Gate"/"Latch"/etc): this script only renders the
+colored/connected structure. Region text labels are added afterward by a
+separate pixel-space PIL post-processing script, per this project's
+pattern (see five_residue_highlight.py / medoid_comparison.py docstrings).
 
-Re-running on a different frame/water: edit PDB_PATH, BRIDGE_LIG_ATOM_ID,
+To re-run on a different frame/water, edit PDB_PATH, BRIDGE_LIG_ATOM_ID,
 and WATER_RESI below.
 """
 
@@ -126,13 +116,13 @@ PDB_PATH = os.path.join(
     "pymol_renders/scratch_traj/pair_3085_binder_bridge_frame_v4.pdb",
 )
 # v4 fixes a periodic-boundary "molecule not whole" issue in the PROTEIN
-# chain (the earlier v3 file only had the water's position fixed; PyMOL was
-# drawing spurious long "bonds" between sequence-adjacent atoms that had
-# wrapped to different periodic images). v4 was re-extracted with mdtraj's
+# chain (the earlier v3 file only had the water's position fixed; PyMOL
+# drew spurious long "bonds" between sequence-adjacent atoms wrapped to
+# different periodic images). v4 was re-extracted with mdtraj's
 # image_molecules(make_whole=True), verified 0 CA-CA gaps > 10 A, and the
 # water-ligand bridge distance re-confirmed at 3.45 A. Topology/atom order
 # (and therefore PDB serial numbers / BRIDGE_LIG_ATOM_ID / WATER_RESI below)
-# is UNCHANGED from v3 -- only coordinates were re-imaged.
+# is unchanged from v3 -- only coordinates were re-imaged.
 OUT_PNG = os.path.join(OUT_DIR, "pair_3085_binder_water_network.png")
 
 OBJ_NAME = "pair_3085_bridge"
@@ -170,13 +160,13 @@ PNG_DPI = 300
 # Camera framing knobs
 ZOOM_BUFFER = 4.0  # padding (Angstrom) around the framed network selection
 
-# cmd.orient() on the gate+latch+ligand+water union is not guaranteed to put
-# gate/latch at the top of frame for every structure (it happened to come
-# out that way for gate_latch_movie.py's pair_3101_binder selection, with no
-# explicit "flip to top" logic). If the coordinator finds this frame's
-# orientation upside-down/backwards after rendering, flip this to True to
-# rotate the camera 180 degrees about x right after orient/zoom -- this is a
-# one-constant toggle, not something to try to solve analytically here.
+# cmd.orient() on the gate+latch+ligand+water union is not guaranteed to
+# put gate/latch at the top of frame for every structure (it happened to
+# for gate_latch_movie.py's pair_3101_binder selection, with no explicit
+# "flip to top" logic). If this frame's orientation renders
+# upside-down/backwards, set this to True to rotate the camera 180 degrees
+# about x right after orient/zoom -- a one-constant toggle, not solved
+# analytically.
 FLIP_VERTICAL = True
 
 # Extra rotation around the vertical (screen Y) axis, applied after the
@@ -192,11 +182,20 @@ TURN_Y_DEG = -25
 # Small color / geometry helpers (pure python, no numpy dependency)
 # --------------------------------------------------------------------------
 def hex_to_rgb01(hex_code):
+    """Converts a "#RRGGBB" hex color to a 0-1 RGB tuple for PyMOL.
+
+    Args:
+        hex_code (str): Hex color, with or without leading "#".
+
+    Returns:
+        tuple[float, float, float]: (r, g, b), each in [0, 1].
+    """
     hex_code = hex_code.lstrip("#")
     return tuple(int(hex_code[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
 
 
 def _dist(a, b):
+    """Returns the Euclidean distance between two 3-coordinates."""
     return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
 
 
@@ -204,6 +203,7 @@ def _dist(a, b):
 # Scene construction
 # --------------------------------------------------------------------------
 def setup_global_render_settings():
+    """Resets the PyMOL session and applies the global render/style settings."""
     cmd.reinitialize()
     cmd.bg_color("white")
     cmd.set("ray_trace_mode", 0)
@@ -220,10 +220,11 @@ def setup_global_render_settings():
 
 
 def load_structure():
-    """Load the single-frame PDB (protein + ligand + one water, all in
-    chain A). Strip hydrogens from the protein and ligand (they clutter a
-    close-up stick render), but explicitly KEEP the water's hydrogens --
-    the spec calls for the bridging water's O and both H's to be visible.
+    """Loads the single-frame PDB and defines the protein/gate/latch/etc selections.
+
+    Strips hydrogens from the protein and ligand (they clutter a close-up
+    stick render), but keeps the water's hydrogens -- the bridging water's
+    O and both H's need to be visible.
     """
     cmd.load(PDB_PATH, OBJ_NAME)
     cmd.remove(f"{OBJ_NAME} and hydro and not resn {WATER_RESN}")
@@ -252,9 +253,11 @@ def load_structure():
 
 
 def verify_bridge_oxygen():
-    """Per the task spec: verify `id {BRIDGE_LIG_ATOM_ID}` selects exactly
-    one atom, and that it is an oxygen belonging to resn LIG, BEFORE doing
-    any styling. Aborts loudly (does not guess) if either check fails.
+    """Verifies `id {BRIDGE_LIG_ATOM_ID}` is a single LIG oxygen, before styling.
+
+    Raises:
+        SystemExit: The id selects other than exactly one atom, or that
+            atom isn't an oxygen belonging to resn LIG.
     """
     sel = f"{OBJ_NAME}_bridge_o"
     n = cmd.count_atoms(sel)
@@ -280,8 +283,7 @@ def verify_bridge_oxygen():
 
 
 def verify_water():
-    """Sanity-check the bridging water resolves to exactly one O + two H
-    (three atoms total), per the task spec."""
+    """Checks the bridging water resolves to exactly one O + two H, printing a warning if not."""
     n_total = cmd.count_atoms(f"{OBJ_NAME}_water")
     n_o = cmd.count_atoms(f"{OBJ_NAME}_water and elem O")
     n_h = cmd.count_atoms(f"{OBJ_NAME}_water and elem H")
@@ -298,8 +300,10 @@ def verify_water():
 
 
 def style_scene():
-    """Base protein cartoon (neutral gray) + gate/latch highlight (cartoon
-    + full-residue sticks) + ligand sticks with the bridging oxygen
+    """Styles the protein cartoon, gate/latch, ligand, and bridging water.
+
+    Base protein cartoon (neutral gray) + gate/latch highlight (cartoon +
+    full-residue sticks) + ligand sticks with the bridging oxygen
     distinguished + the bridging water as an enlarged ball-and-stick.
     """
     protein_sel = f"{OBJ_NAME}_protein"
@@ -311,12 +315,11 @@ def style_scene():
 
     cmd.hide("everything", OBJ_NAME)
 
-    # base protein cartoon, neutral gray, nothing else highlighted.
+    # Base protein cartoon, neutral gray, nothing else highlighted.
     # Semi-transparent (same fix as five_residue_highlight.py's buried-
     # residue problem): at this tight a zoom, cartoon/sticks in front of the
-    # water and its dashed distance lines were occluding the network in an
-    # earlier render, so let whatever's behind them show through instead of
-    # blocking them.
+    # water and its dashed distance lines occluded the network in an
+    # earlier render.
     cmd.show("cartoon", protein_sel)
     cmd.color(PROTEIN_GRAY, protein_sel)
     cmd.set("cartoon_transparency", 0.5, protein_sel)
@@ -376,12 +379,24 @@ def style_scene():
 # Network geometry: find nearest gate/latch atom, draw dashed distances
 # --------------------------------------------------------------------------
 def find_nearest_landmark_atom(region_sel, region_label, water_o_coord):
-    """Find the landmark (gate or latch) atom nearest the bridging water's
-    oxygen, WITHOUT assuming which one it is in advance. Tries, in order:
-      1. polar heavy atoms (O/N) within POLAR_CUTOFF_A of the water O
-      2. polar heavy atoms (O/N) within the widened POLAR_CUTOFF_WIDENED_A
-      3. any heavy (non-H) atom in the region, regardless of distance
-    and uses the first non-empty tier. Returns (atom, distance, tier_note).
+    """Finds the landmark (gate or latch) atom nearest the bridging water's oxygen.
+
+    Doesn't assume which atom it is in advance. Tries, in order: (1) polar
+    heavy atoms (O/N) within POLAR_CUTOFF_A of the water O, (2) polar heavy
+    atoms (O/N) within the widened POLAR_CUTOFF_WIDENED_A, (3) any heavy
+    (non-H) atom in the region regardless of distance -- uses the first
+    non-empty tier.
+
+    Args:
+        region_sel (str): PyMOL selection for the gate or latch region.
+        region_label (str): "gate" or "latch", used in print statements.
+        water_o_coord (list[float]): [x, y, z] of the bridging water's oxygen.
+
+    Returns:
+        tuple: (atom, distance) for the nearest matching atom.
+
+    Raises:
+        SystemExit: `region_sel` contains no atoms at all.
     """
     tiers = [
         (
@@ -425,6 +440,12 @@ def find_nearest_landmark_atom(region_sel, region_label, water_o_coord):
 
 
 def draw_network_distances():
+    """Draws dashed distance lines from the bridging water to gate/latch/ligand.
+
+    Returns:
+        tuple: (gate_atom, latch_atom) chempy Atom objects, for use by
+        place_position_markers.
+    """
     water_o_sel = f"{OBJ_NAME}_water_o"
     water_o_coord = cmd.get_model(water_o_sel).atom[0].coord
 
@@ -454,14 +475,14 @@ def draw_network_distances():
         f"{OBJ_NAME}_dist_latch",
         f"{OBJ_NAME}_dist_ligand",
     ):
-        # keep the dashed lines (they convey the network geometry) but hide
-        # the numeric value labels -- clutters this close a zoom without
-        # adding info beyond what's printed to stdout above; see module
-        # docstring for the project's general in-scene-label convention.
+        # Keep the dashed lines (they convey the network geometry) but hide
+        # the numeric value labels -- clutter at this close a zoom without
+        # adding info beyond what's printed to stdout above (see module
+        # docstring for the project's in-scene-label convention).
         # dash_radius/dash_gap tightened (was width-only at 4/0.3) after an
-        # earlier render showed the lines blending in against nearby
-        # side-chain sticks -- thicker, more continuous dashes read more
-        # clearly as "connections" at this zoom.
+        # earlier render showed the lines blending into nearby side-chain
+        # sticks -- thicker, more continuous dashes read more clearly as
+        # "connections" at this zoom.
         cmd.hide("labels", dist_obj)
         cmd.color("gray20", dist_obj)
         cmd.set("dash_width", 5, dist_obj)
@@ -473,14 +494,20 @@ def draw_network_distances():
 
 
 def place_position_markers(gate_atom, latch_atom):
-    """Place small, uniquely-colored pseudoatom markers at the exact
-    contact-residue atom positions found by find_nearest_landmark_atom.
-    These are only used to locate where to put text labels in a separate
-    pixel-space post-processing pass (same HSV-color-detection technique
-    as add_water_network_labels.py) -- they are rendered once for that
-    purpose, then hidden before the real output PNG is rendered, so no
-    dot/marker symbol appears in the final image, per this project's
-    established "text-only, no pointer symbols" labeling convention.
+    """Places cyan marker pseudoatoms at the found contact-residue positions.
+
+    Used only to locate where to put text labels in a separate pixel-space
+    post-processing pass (same HSV-color-detection technique as
+    add_water_network_labels.py): rendered once for that purpose, then
+    hidden before the real output PNG is rendered, so no dot/marker symbol
+    appears in the final image, per this project's "text-only, no pointer
+    symbols" labeling convention.
+
+    Args:
+        gate_atom: chempy Atom nearest the water on the gate, from
+            draw_network_distances.
+        latch_atom: chempy Atom nearest the water on the latch, from
+            draw_network_distances.
     """
     cmd.pseudoatom("gate_contact_marker", pos=list(gate_atom.coord))
     cmd.pseudoatom("latch_contact_marker", pos=list(latch_atom.coord))
@@ -494,8 +521,9 @@ def place_position_markers(gate_atom, latch_atom):
 # Camera + render
 # --------------------------------------------------------------------------
 def frame_camera():
-    """Tight close-up: orient + zoom on the union of gate, latch, the
-    bridging ligand oxygen, and the bridging water, with modest padding.
+    """Orients and zooms tightly on gate, latch, ligand oxygen, and water.
+
+    Applies the FLIP_VERTICAL / TURN_Y_DEG manual toggles afterward if set.
     """
     network_sel = (
         f"{OBJ_NAME}_gate or {OBJ_NAME}_latch or {OBJ_NAME}_bridge_o "
@@ -515,18 +543,20 @@ MARKER_PNG = os.path.join(OUT_DIR, "pair_3085_binder_water_network_MARKERS_tmp.p
 
 
 def render():
+    """Renders two passes: a marker pass (for the labeling script) and the real output.
+
+    Both passes are explicitly re-ray-traced at the same size. ray=0 in
+    cmd.png() just dumps whatever is in the current offscreen buffer, and
+    that buffer is invalidated by any scene change (e.g. the hide() below)
+    -- skipping the second cmd.ray() silently falls back to the small
+    default OpenGL viewport instead of IMG_WIDTH x IMG_HEIGHT. This bit us
+    once (marker pass came out 1800x1400 but the real pass came out
+    640x480, breaking the marker-to-real pixel coordinate mapping the
+    labeling script depends on).
+    """
     cmd.bg_color("white")
 
     # Pass 1: markers visible, for the labeling script to locate by color.
-    # Explicit ray() immediately before each png() -- ray=0 in cmd.png()
-    # just dumps whatever is in the current offscreen buffer, and that
-    # buffer is invalidated by any scene change (e.g. the hide() below),
-    # silently falling back to the small default OpenGL viewport size
-    # instead of IMG_WIDTH x IMG_HEIGHT if you don't re-ray before the
-    # second png() call. Bit us once (marker pass came out 1800x1400 but
-    # the real pass came out 640x480, breaking the marker-to-real pixel
-    # coordinate mapping the labeling script depends on) -- both passes
-    # must be explicitly (re-)ray-traced at the same size.
     cmd.ray(IMG_WIDTH, IMG_HEIGHT)
     cmd.png(MARKER_PNG, dpi=PNG_DPI, ray=0)
     print(f"[gate_latch_water_network] wrote marker-position pass {MARKER_PNG}")
@@ -539,6 +569,7 @@ def render():
 
 
 def main():
+    """Runs the full pipeline: load, verify, style, network lines, camera, render."""
     os.makedirs(OUT_DIR, exist_ok=True)
     setup_global_render_settings()
 

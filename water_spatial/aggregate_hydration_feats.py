@@ -1,18 +1,18 @@
-"""
-aggregate_hydration_feats.py
+"""Aggregates per-frame hydration counts into per-sequence summary features.
 
 Reads each sequence's {seq_id}_hydration_{region}_{TAG}.csv (produced by
 hydration_calc.py, one row per frame: time_ns plus one hydration_count_*
-column per cutoff radius) and computes per-sequence summary features for
-EVERY hydration_count_* column present, mirroring pkt_vol/extract_pkt_feats.py's
-early/late/drift/slope column family for consistency with the rest of the
-feature table.
+column per cutoff radius) and computes summary features for every
+hydration_count_* column present, mirroring
+pkt_vol/extract_pkt_feats.py's early/late/drift/slope column family for
+consistency with the rest of the feature table.
 
 Early/late windows are fractional (first/last 20% of frames, matching
-extract_pkt_feats.py) rather than a fixed-ns window, since sequences can vary
-in how many frames they actually cover after striding. Because hydration_calc.py
-records real simulation time (unlike mdpocket's descriptors.txt), both a
-fractional-position slope and an absolute-ns slope are emitted.
+extract_pkt_feats.py) rather than a fixed-ns window, since sequences can
+vary in how many frames they cover after striding. Because
+hydration_calc.py records real simulation time (unlike mdpocket's
+descriptors.txt), both a fractional-position slope and an absolute-ns
+slope are emitted.
 
 Output: water_density_feats.csv
 
@@ -52,9 +52,17 @@ MD_GROUP_SUFFIX = {
 
 
 def load_source_ids(guide_path, source):
-    """seq_ids from md_candidate_guide.csv where source == `source` (e.g.
-    ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed)."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: seq_ids (pair_id + mapped md_group suffix) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["seq_id"] = matched.apply(
@@ -64,10 +72,24 @@ def load_source_ids(guide_path, source):
 
 
 def extract_features(df, window_frac):
-    """Compute summary statistics for EVERY hydration_count_* column present
-    (one per cutoff radius written by hydration_calc.py), including
-    early-vs-late trajectory comparison (fractional window, since frame
-    counts can vary across sequences after striding)."""
+    """Computes summary statistics for every hydration_count_* column.
+
+    One column per cutoff radius written by hydration_calc.py. Includes
+    an early-vs-late trajectory comparison over a fractional window (since
+    frame counts can vary across sequences after striding).
+
+    Args:
+        df: Per-frame hydration DataFrame (time_ns plus hydration_count_*
+            columns; see hydration_calc.py).
+        window_frac (float): Fraction of frames counted as "early"/"late"
+            for the drift comparison (e.g. 0.2 for the first/last 20%).
+
+    Returns:
+        tuple[dict, list[str]]: (features, count_cols) -- summary features
+        (mean/std/min/max, early/late means, drift, fractional and
+        per-ns slope, per hydration_count_* column, plus n_frames) and
+        the list of hydration_count_* column names found.
+    """
     t = df["time_ns"].values
     n = len(t)
     pct = int(round(window_frac * 100))
@@ -100,6 +122,7 @@ def extract_features(df, window_frac):
 
 
 def main():
+    """Aggregates hydration CSVs across a seq list into one feature table."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list", nargs="?",

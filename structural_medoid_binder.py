@@ -27,16 +27,42 @@ from MDAnalysis.analysis.rms import rmsd
 
 # ── Config / classification helpers ───────────────────────────────────────────
 def load_cfg(path):
+    """Loads the YAML config file.
+
+    Args:
+        path (str): Path to the config YAML.
+
+    Returns:
+        dict: Parsed config.
+    """
     with open(path) as f:
         return yaml.safe_load(f)
 
 def resolve_paths(cfg):
+    """Expands the config's base path variables.
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg).
+
+    Returns:
+        tuple[str, str, dict]: (base, runrel, type_subdir).
+    """
     base   = os.path.expandvars(cfg["paths"]["base"])
     runrel = cfg["paths"]["runrel"]
     tsub   = cfg["paths"]["type_subdir"]
     return base, runrel, tsub
 
 def rundir_for(cfg, seq_id, seq_type):
+    """Resolves one sequence's production run directory.
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg).
+        seq_id (str): Sequence ID.
+        seq_type (str): Key into cfg["paths"]["type_subdir"].
+
+    Returns:
+        str: Run directory path, or the config's per-seq_id override if set.
+    """
     base, runrel, tsub = resolve_paths(cfg)
     overrides = cfg["paths"].get("overrides", {})
     if seq_id in overrides:
@@ -44,7 +70,16 @@ def rundir_for(cfg, seq_id, seq_type):
     return os.path.join(base, tsub[seq_type], seq_id, runrel)
 
 def consensus_binders(cfg):
-    """Return list of consensus-binder folder names (binder + full motif)."""
+    """Finds consensus-binder sequences (Binder group + full pocket motif).
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg); reads cfg["medoid"]["binder_motif"]
+            and cfg["paths"]["feat_table"].
+
+    Returns:
+        list[str]: Folder names of consensus binders, excluding "open"
+        conformer variants.
+    """
     base = os.path.expandvars(cfg["paths"]["base"])
     feat = cfg["paths"].get("feat_table", os.path.join(base, "feat_table.xlsx"))
     motif = {int(k): v for k, v in cfg["medoid"]["binder_motif"].items()}
@@ -68,6 +103,22 @@ def consensus_binders(cfg):
 
 # ── Stage 1: per-sequence representative frame ────────────────────────────────
 def stage1_one(cfg, seq_id, seq_type="binder"):
+    """Writes one sequence's medoid frame (closest to the windowed average).
+
+    Aligns the equilibration-trimmed, strided trajectory on pocket
+    C-alpha, then picks the frame with minimum RMSD to the average
+    aligned structure.
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg).
+        seq_id (str): Sequence ID.
+        seq_type (str): Key into cfg["paths"]["type_subdir"] (default:
+            "binder").
+
+    Returns:
+        str | None: Path to the written medoid PDB, or None if the medoid
+        already exists or the trajectory files are missing.
+    """
     base, runrel, tsub = resolve_paths(cfg)
     mcfg   = cfg["medoid"]
     rundir = rundir_for(cfg, seq_id, seq_type)
@@ -110,6 +161,11 @@ def stage1_one(cfg, seq_id, seq_type="binder"):
     return out_pdb
 
 def stage1_all(cfg):
+    """Runs stage1_one for every consensus binder, logging any failures.
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg).
+    """
     for seq_id in consensus_binders(cfg):
         try:
             stage1_one(cfg, seq_id, "binder")
@@ -118,6 +174,24 @@ def stage1_all(cfg):
 
 # ── Stage 2: cross-sequence structural medoid ─────────────────────────────────
 def stage2(cfg):
+    """Finds the structural medoid across all consensus-binder medoid PDBs.
+
+    Computes pairwise pocket-C-alpha RMSD (optimal superposition) between
+    every consensus binder's Stage 1 medoid, picks the sequence with
+    minimum mean RMSD to all others, and saves the RMSD matrix, ranking,
+    a heatmap, and the chosen reference structure.
+
+    Args:
+        cfg (dict): Loaded config (see load_cfg).
+
+    Returns:
+        str | None: The structural medoid's seq_id, or None if fewer than
+        2 medoid PDBs are available.
+
+    Raises:
+        ValueError: Pocket-C-alpha atom counts differ across sequences
+            (pocket_resids mismatch).
+    """
     base   = os.path.expandvars(cfg["paths"]["base"])
     mcfg   = cfg["medoid"]
     ca_sel = f"name CA and resid {mcfg['pocket_resids']}"
@@ -213,6 +287,7 @@ def stage2(cfg):
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 def main():
+    """Dispatches to stage1/stage1_all/stage2 per the `mode` CLI argument."""
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
     ap.add_argument("mode", choices=["stage1", "stage1_all", "stage2", "all"])

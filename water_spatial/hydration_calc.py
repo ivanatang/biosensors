@@ -1,56 +1,51 @@
 #!/usr/bin/env python3
-"""
-Computes per-frame water-oxygen counts within several first-hydration-shell
-distances of a reference atom set, for a single sequence.
+"""Computes per-frame water-oxygen counts within hydration-shell distances.
 
-Reference region: `--reference-region ligand` (default) uses LCA's own heavy
-atoms; `--reference-region pocket_residues` uses the 27 consensus
-pocket-lining protein residues from Leonard et al. 2024 (`POCKET_RESIDS`,
-kept in sync with the same list in compute_Rg_sasa.sh). Both are genuine
-water-density measurements -- raw water-oxygen counts near real atoms, never
-counting positions inside the reference atoms themselves, so there's no
-atom-occlusion confound the way there is for a flat geometric sphere average
-(see water_spatial/extract_water_spatial_feats.py's pocket_density()). Since
-the reference atom set is the same molecule/residues in every sequence, raw
-counts across sequences are density-comparable (same effective denominator).
+For a single sequence, counts water oxygens within several first-hydration-
+shell distances of a reference atom set.
 
-Rationale
----------
-LCA is strongly hydrophobic. If binders settle the ligand into the pocket in
-a way that excludes water (the classic hydrophobic-effect driving force for
-binding), their hydration-shell counts should trend lower than nonbinders',
-whose pockets may stay more solvent-exposed. Complements R_score_calc.py's
-per-residue water-mediated-CONTACT score (which only counts water bridging a
-specific residue-ligand contact) with a bulk measure of how much water sits
-near the reference region overall, whether or not it's bridging any
-particular contact.
+`--reference-region ligand` (default) uses LCA's own heavy atoms;
+`--reference-region pocket_residues` uses the 27 consensus pocket-lining
+protein residues from Leonard et al. 2024 (`POCKET_RESIDS`, kept in sync
+with the same list in compute_Rg_sasa.sh). Both are genuine water-density
+measurements: raw water-oxygen counts near real atoms, never counting
+positions inside the reference atoms themselves, so there's no
+atom-occlusion confound the way there is for a flat geometric sphere
+average (see water_spatial/extract_water_spatial_feats.py's
+pocket_density()). Since the reference atom set is the same molecule/
+residues in every sequence, raw counts are density-comparable across
+sequences (same effective denominator), so no normalization is applied.
+
+Rationale: LCA is strongly hydrophobic. If binders settle the ligand into
+the pocket in a way that excludes water (the classic hydrophobic-effect
+driving force for binding), their hydration-shell counts should trend
+lower than nonbinders', whose pockets may stay more solvent-exposed. This
+complements R_score_calc.py's per-residue water-mediated-contact score
+(which only counts water bridging a specific residue-ligand contact) with
+a bulk measure of how much water sits near the reference region overall.
 
 Cutoffs: multiple radii computed in one pass (default 3/4/5/6/8 A) from a
-single per-frame minimum-distance array -- 3.5 A is the standard
+single per-frame minimum-distance array. 3.5 A is the standard
 first-hydration-shell O...O radius; the wider cutoffs give a coarse shell
-profile. No normalization is applied: the reference region is the same
-across all sequences (same ligand, or the same pocket-residue set), so raw
-per-frame counts are already comparable across sequences.
+profile.
 
-Distances use `mdtraj.compute_distances(..., periodic=True)`, which applies
-the minimum-image convention correctly for triclinic boxes (this system uses
-a rhombic dodecahedral box) -- a prior version of this script used a raw
-`np.linalg.norm` on absolute coordinates with no periodic correction, which
-could silently undercount hydration for waters/ligand near a periodic
-boundary. To keep memory bounded, distances are computed one reference atom
-at a time (looping over the reference set, which is small: ~27 ligand heavy
-atoms or ~150-200 pocket-residue heavy atoms) rather than building the full
-water x reference-atom pairs array up front, which would be tens of GB at
-full trajectory length -- same class of memory blowup fixed in
+Distances use `mdtraj.compute_distances(..., periodic=True)`, which
+applies the minimum-image convention correctly for this system's
+triclinic (rhombic dodecahedral) box; a prior version used raw
+`np.linalg.norm` on absolute coordinates with no periodic correction,
+which could silently undercount hydration for waters/ligand near a
+periodic boundary. To keep memory bounded, distances are computed one
+reference atom at a time (the reference set is small: ~27 ligand heavy
+atoms or ~150-200 pocket-residue heavy atoms) rather than building the
+full water x reference-atom pairs array up front, which would be tens of
+GB at full trajectory length -- the same class of memory blowup fixed in
 extract_water_spatial_feats.py's pocket_density() earlier this project.
 
-Output
-------
-  {out_dir}/{seq_id}_hydration_{region}_{TAG}.csv
-    columns: time_ns, hydration_count_{region}_{cutoff}A (one per cutoff)
+Output:
+    {out_dir}/{seq_id}_hydration_{region}_{TAG}.csv: columns time_ns,
+        hydration_count_{region}_{cutoff}A (one per cutoff).
 
-Usage
------
+Usage:
     conda activate biosensors
     python hydration_calc.py --seq_id pair_3059_binder --seq_type binders
     python hydration_calc.py --seq_id pair_3059_binder --seq_type binders \

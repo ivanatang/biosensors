@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""
-compare_qfix_vs_standard.py
+"""Paired comparison of qfix pilot sequences against their standard values.
 
-Paired comparison of the 6 qfix pilot sequences' feature values (bond-order-
-fixed reparameterization) against their original (standard) values in
-feat_table_500ns.xlsx, per feature column. Since this is the SAME 6
+Compares the 6 qfix pilot sequences' feature values (bond-order-fixed
+reparameterization) against their original (standard) values in
+feat_table_500ns.xlsx, per feature column. Since this is the same 6
 sequences before/after (not two independent groups), this uses a paired
 Wilcoxon signed-rank test rather than the Mann-Whitney/Cohen's d/rank-AUC
 convention used elsewhere in this repo for independent Binder-vs-False
-Positive comparisons (see agg_gate_latch_water_bridge.py etc.) -- that
-convention doesn't apply to n=6 paired samples.
+Positive comparisons -- that convention doesn't apply to n=6 paired
+samples.
 
 With n=6 pairs, the Wilcoxon test has limited power (the smallest possible
-two-sided p-value is 1/32 = 0.03125), so this is exploratory: it tells you
+two-sided p-value is 1/32 = 0.03125), so this is exploratory: it shows
 which features moved the most and in which direction, not a definitive
 significance claim.
 
@@ -28,6 +27,14 @@ from model_swap_eval import load_baseline_df, TARGET_SEQ_IDS
 
 
 def bh_fdr(pvals):
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -41,6 +48,7 @@ def bh_fdr(pvals):
 
 
 def main():
+    """Runs the paired qfix-vs-standard feature comparison and writes CSVs."""
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--qfix_table", default="qfix_pilot_feat_table.csv")
@@ -55,10 +63,10 @@ def main():
     if missing:
         raise ValueError(f"{args.qfix_table} is missing sequences: {missing}")
 
-    # Use the SAME fully-merged baseline df model_swap_eval.py trains on --
+    # Use the same fully-merged baseline df model_swap_eval.py trains on:
     # feat_table_500ns.xlsx alone only carries the dw_pocket/contact_type/
-    # rmsf columns; gate-latch RMSD, salt bridge, core/tail delta, hydration,
-    # and water bridge are merged in at runtime, same as the notebook does.
+    # rmsf columns, so gate-latch RMSD, salt bridge, core/tail delta,
+    # hydration, and water bridge still need merging in at runtime.
     std_full, feature_group_cols = load_baseline_df()
     std_full = std_full.set_index("name")
     feature_cols = [c for cols in feature_group_cols.values() for c in cols]

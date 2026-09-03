@@ -1,39 +1,32 @@
 #!/usr/bin/env python3
-"""
-H-bond threshold calibration — Figure S4 reproduction
-======================================================
-Reproduces the control-residue analysis from Leonard et al. (ACS Chem. Biol.
-2024) Supplementary Figure S4, used to validate and derive the thresholds:
+"""Calibrates H-bond strength/stability thresholds (Figure S4 reproduction).
 
-    "Strong" : mean H–acceptor distance < STRONG_MAX  Å
-    "Stable" : std  H–acceptor distance < STABLE_STD  Å
+Reproduces the control-residue analysis from Leonard et al. (ACS Chem. Biol.
+2024) Supplementary Figure S4, used to derive:
+
+    "Strong": mean H-acceptor distance < STRONG_MAX A.
+    "Stable": std H-acceptor distance < STABLE_STD A.
 
 For each dominant residue (R < -0.7 from water_hbond_stability.py), two
-control residues of the **same amino acid type** are identified:
+control residues of the same amino acid type are identified:
 
-  Solvent-exposed control
-    — Same AA type as reference residue
-    — High relative SASA (> SASA_EXPOSED_FRAC of the max observed for that type)
-    — Zero ligand contact occupancy (I == 0 in R-score table)
+    Solvent-exposed control: same AA type, high relative SASA (>
+        SASA_EXPOSED_FRAC of the max observed for that type), zero ligand
+        contact occupancy (I == 0 in the R-score table).
+    Pocket control: same AA type, located near the binding site (within
+        POCKET_RADIUS of the ligand centroid), very low ligand contact
+        occupancy (I < POCKET_I_MAX, i.e. <10%).
 
-  Pocket control
-    — Same AA type as reference residue
-    — Located near the binding site (within POCKET_RADIUS of ligand centroid)
-    — Very low ligand contact occupancy (I < POCKET_I_MAX, i.e. <10%)
-
-Water–H-acceptor distances are computed for each control residue across the
+Water-H-acceptor distances are computed for each control residue across the
 trajectory, then KDE curves are plotted per reference residue (mirroring
-Figure S4 panels).  Thresholds are derived from the combined distribution of
-all control bonds:
+the Figure S4 panels). Thresholds are the COVERAGE_PCT percentile of the
+combined per-residue means (STRONG_MAX) and std devs (STABLE_STD) across
+all control bonds.
 
-    STRONG_MAX = percentile at COVERAGE_PCT of combined per-residue means
-    STABLE_STD = percentile at COVERAGE_PCT of combined per-residue std devs
-
-Usage
------
-1. Run water_hbond_stability.py first to produce {seq_id}_R_scores.csv.
-2. Adjust CONFIG below (paths, seq_id, LIG_RESNAME).
-3. Run:  conda activate IS_env && python hbond_threshold_calibration.py
+Usage:
+    1. Run water_hbond_stability.py first to produce {seq_id}_R_scores.csv.
+    2. Adjust CONFIG below (paths, seq_id, LIG_RESNAME).
+    3. conda activate IS_env && python hbond_threshold_calibration.py
 """
 
 import os
@@ -101,9 +94,27 @@ CALIB_STRIDE = 10         # stride for SASA averaging
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 def heavy(indices, top):
+    """Filters atom indices down to heavy (non-hydrogen) atoms.
+
+    Args:
+        indices: Atom indices to filter.
+        top: mdtraj Topology to look up elements in.
+
+    Returns:
+        list[int]: Indices whose element isn't hydrogen.
+    """
     return [i for i in indices if top.atom(i).element.symbol != 'H']
 
 def acceptors(indices, top):
+    """Filters atom indices down to H-bond acceptor atoms (O or N).
+
+    Args:
+        indices: Atom indices to filter.
+        top: mdtraj Topology to look up elements in.
+
+    Returns:
+        list[int]: Indices whose element is O or N.
+    """
     return [i for i in indices if top.atom(i).element.symbol in ('O', 'N')]
 
 
@@ -200,7 +211,16 @@ lig_centroid = traj.xyz[:, lig_heavy, :].mean(axis=(0, 1))   # (3,) nm
 # 6. FIND CONTROL RESIDUES
 # ─────────────────────────────────────────────────────────────────────────────
 def residue_centroid(res, traj):
-    """Mean position of heavy atoms for this residue, averaged over frames."""
+    """Computes a residue's mean heavy-atom position, averaged over frames.
+
+    Args:
+        res: mdtraj Residue.
+        traj: mdtraj Trajectory.
+
+    Returns:
+        numpy.ndarray | None: (3,) centroid in nm, or None if the residue
+        has no heavy atoms.
+    """
     hv = heavy([a.index for a in res.atoms], top)
     if not hv:
         return None
@@ -210,15 +230,25 @@ def residue_centroid(res, traj):
 def find_controls(ref_resname, ref_res_idx, df_R,
                   prot_res, sasa_by_res_idx,
                   lig_centroid, traj):
-    """
-    For a given reference residue type, find:
-      exposed : same AA, high SASA, I == 0 (no ligand contact), not the ref
-      pocket  : same AA, near ligand centroid, I < POCKET_I_MAX, not the ref
+    """Finds solvent-exposed and pocket control residues for a reference type.
 
-    Returns
-    -------
-    dict with keys 'exposed' and 'pocket', each a list of residue objects
-    (may be empty if no suitable candidate found).
+    Exposed candidates are same-AA, high-SASA, zero ligand contact (I == 0);
+    pocket candidates are same-AA, near the ligand centroid, low contact
+    (I < POCKET_I_MAX). The reference residue itself is excluded from both.
+
+    Args:
+        ref_resname (str): Amino acid type to match (e.g. "TYR").
+        ref_res_idx (int): Topology index of the reference residue, excluded
+            from candidates.
+        df_R: R-score DataFrame with `res_index` and `I` columns.
+        prot_res: List of candidate mdtraj Residues.
+        sasa_by_res_idx (dict): Maps residue index to mean SASA (nm^2).
+        lig_centroid (numpy.ndarray): (3,) ligand centroid in nm.
+        traj: mdtraj Trajectory.
+
+    Returns:
+        dict: {'exposed': [...], 'pocket': [...]}, each up to 3 mdtraj
+        Residue objects (may be empty if no suitable candidate is found).
     """
     # Build lookup: res_index → I occupancy
     I_by_res = dict(zip(df_R['res_index'], df_R['I'].fillna(0.0)))
@@ -295,12 +325,23 @@ watO_xyz = traj.xyz[:, wat_O_idx, :]   # (F, W, 3)
 
 
 def ha_distances_for_residue(res, traj, wat_O_idx, watO_xyz, H_by_O, HEAVY_CUT):
-    """
-    For a single residue, collect H-acceptor distances for all frames where
-    any water is within HEAVY_CUT of the residue.  This captures typical
-    water-protein H-bonds at that residue, independent of ligand.
+    """Collects H-acceptor distances for one residue across the trajectory.
 
-    Returns np.ndarray of distances in Å.
+    For each frame where any water is within HEAVY_CUT of the residue,
+    records the minimum H-acceptor distance. Captures typical water-protein
+    H-bonds at that residue, independent of the ligand.
+
+    Args:
+        res: mdtraj Residue to compute distances for.
+        traj: mdtraj Trajectory.
+        wat_O_idx (numpy.ndarray): Water oxygen atom indices.
+        watO_xyz (numpy.ndarray): (F, W, 3) water oxygen coordinates.
+        H_by_O (dict): Maps water oxygen index to its (H1, H2) index pair.
+        HEAVY_CUT (float): Heavy-atom contact distance cutoff, in nm.
+
+    Returns:
+        numpy.ndarray: Per-frame minimum H-acceptor distances, in Angstroms
+        (only frames with a nearby water are included).
     """
     rh_idx = prot_heavy_by_res.get(res.index, np.array([], dtype=int))
     ra_idx = prot_acc_by_res.get(res.index,   np.array([], dtype=int))

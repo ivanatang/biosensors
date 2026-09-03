@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-"""
-salt_bridge_analysis.py
-Usage: python salt_bridge_analysis.py <config.yaml> <seq_id> <seq_type>
-           [--start-ns START] [--end-ns END]
+"""Scans basic-residue sidechains for salt-bridge contact with the ligand
+carboxylate.
 
 Scans all basic (chargeable) residue sidechains for proximity to the LCA
-carboxylate, with no assumption about which position participates.
-Outputs per-residue occupancy across the analysis window, plus distance
-time series for the top-N most-contacted residues.
+carboxylate, with no assumption about which position participates. Outputs
+per-residue occupancy across the analysis window, plus distance time
+series for the top-N most-contacted residues.
+
+Usage:
+    python salt_bridge_analysis.py <config.yaml> <seq_id> <seq_type>
+        [--start-ns START] [--end-ns END]
 """
 import os
 import sys
@@ -64,13 +66,25 @@ lig = u.select_atoms(f"resname {lig_resname}")
 
 
 def find_carboxylate(atomgroup):
-    """Locate a deprotonated carboxylate, -C(=O)[O-], by structural
-    signature: a carbon bonded to exactly two oxygens that each have no
-    other bonds (no H -- distinguishes a deprotonated carboxylate/O- from
-    a protonated -COOH or a plain hydroxyl -OH, and the "bonded to C, not
-    S" check excludes e.g. a sulfate ester's terminal oxygens), with
-    near-equal, strongly negative partial charges (resonance-delocalized
-    between the two oxygens).
+    """Locates a deprotonated carboxylate group by structural signature.
+
+    Looks for -C(=O)[O-]: a carbon bonded to exactly two oxygens that each
+    have no other bonds (no H, which distinguishes a deprotonated
+    carboxylate/O- from a protonated -COOH or a plain hydroxyl -OH; the
+    "bonded to C, not S" check excludes e.g. a sulfate ester's terminal
+    oxygens), with near-equal, strongly negative partial charges
+    (resonance-delocalized between the two oxygens).
+
+    Args:
+        atomgroup (MDAnalysis.AtomGroup): Ligand atoms to search.
+
+    Returns:
+        MDAnalysis.AtomGroup: The two carboxylate oxygen atoms.
+
+    Raises:
+        ValueError: Not exactly one carbon with two terminal oxygens was
+            found, or the candidate oxygens' charges don't look like a
+            resonance-delocalized carboxylate.
     """
     candidates = {}  # carbon atom index -> list of its terminal O atoms
     for atom in atomgroup:

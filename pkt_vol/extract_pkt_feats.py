@@ -53,6 +53,15 @@ GROUP_COLORS = {
 }
 
 def get_dir_type(seq_type):
+    """Maps a seq_type label to its data subdirectory.
+
+    Args:
+        seq_type (str): One of "Binder", "False Positive", "Low
+            Confidence", "Fail Geometry".
+
+    Returns:
+        str: Subdirectory name, or `seq_type` unchanged if unrecognized.
+    """
     mapping = {
         "Binder":         "binders",
         "False Positive": "nonbinders",
@@ -74,9 +83,17 @@ MD_GROUP_SUFFIX = {
 
 
 def load_source_ids(guide_path, source):
-    """seq_ids from md_candidate_guide.csv where source == `source` (e.g.
-    ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed)."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: seq_ids (pair_id + mapped md_group suffix) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["seq_id"] = matched.apply(
@@ -86,19 +103,41 @@ def load_source_ids(guide_path, source):
 
 
 def load_descriptors(desc_path):
-    """Load mdpocket descriptors file and return DataFrame."""
+    """Loads an mdpocket descriptors file.
+
+    Args:
+        desc_path (str): Path to a whitespace-delimited descriptors.txt.
+
+    Returns:
+        pandas.DataFrame: Parsed descriptor table.
+    """
     df = pd.read_csv(desc_path, sep=r'\s+')
     return df
 
 
 def extract_features(df, threshold, window_frac):
-    """Compute summary statistics from per-frame pocket volume column,
-    including early-vs-late trajectory comparison. Early/late windows are
-    defined by fractional position within THIS sequence's own frame count
-    (first/last window_frac of frames), not absolute time -- descriptors.txt
-    has no time column, and sequences vary widely in how many frames they
-    actually cover (see n_frames), so a fixed-ns window (as used for gate/
-    latch RMSD) would be undefined for short trajectories."""
+    """Computes summary pocket-volume features, including an early-vs-late
+    trajectory drift comparison.
+
+    Early/late windows are defined by fractional position within this
+    sequence's own frame count (first/last `window_frac` of frames), not
+    absolute time: descriptors.txt has no time column, and sequences vary
+    widely in how many frames they actually cover (see n_frames), so a
+    fixed-ns window (as used for gate/latch RMSD) would be undefined for
+    short trajectories.
+
+    Args:
+        df (pandas.DataFrame): Descriptor table with a "pock_volume" column
+            (see load_descriptors).
+        threshold (float): Volume threshold (A^3) below which a frame
+            counts as "closed".
+        window_frac (float): Fraction of frames counted as "early"/"late"
+            (e.g. 0.2 for first/last 20%).
+
+    Returns:
+        dict: Pocket-volume summary stats (mean/std/min/max, closed_frac,
+        early/late means and closed_frac, drift, slope, n_frames).
+    """
     vol = df["pock_volume"].values
     n   = len(vol)
     pct = int(round(window_frac * 100))
@@ -131,6 +170,7 @@ def extract_features(df, threshold, window_frac):
 
 
 def main():
+    """Extracts pocket-volume features for every sequence in a seq list."""
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("seq_list",   nargs="?",

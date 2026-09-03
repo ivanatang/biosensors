@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
-"""
-model_swap_eval.py
+"""Evaluates the effect of swapping in bond-order-fixed (qfix) feature values.
 
-Evaluates whether replacing the 6 qfix pilot sequences' (bind_022/019/020_
-binder, nonb_006/008/009_nb) feature values with their bond-order-fixed
-reparameterization changes model performance, versus the current baseline
-(original parameterization, exactly as ML_classification.ipynb trains on
-today).
+Compares model performance with the 6 qfix pilot sequences' feature values
+(bind_022/019/020_binder, nonb_006/008/009_nb) replaced by their
+bond-order-fixed reparameterization, against the current baseline (original
+parameterization, exactly as ML_classification.ipynb trains on today).
 
-Both the baseline and the qfix-swapped run use IDENTICAL StratifiedGroupKFold
-splits (same y and seq_groups -- the label and the amino-acid sequence for
-these 6 rows are unaffected by the ligand reparameterization, only their MD-
-derived feature values change), so this is a paired before/after comparison
-on the exact same folds, not two independently-resampled runs.
+Both runs use identical StratifiedGroupKFold splits: the label and
+amino-acid sequence for these 6 rows are unaffected by the ligand
+reparameterization, only their MD-derived feature values change, so this is
+a paired before/after comparison on the exact same folds, not two
+independently-resampled runs.
 
 Mirrors ML_classification.ipynb's feature-merge (cell 1), GroupAwareSelector
-(cell 2), and CV pipeline (cell 5) exactly -- see that notebook for the
+(cell 2), and CV pipeline (cell 5) exactly; see that notebook for the
 rationale behind each feature family / hyperparameter choice.
 
 Usage:
@@ -61,6 +59,19 @@ RANDOM_STATE = 42
 
 # ── GroupAwareSelector -- verbatim copy of ML_classification.ipynb cell 2 ────
 def _feature_score(x_col, y):
+    """Scores one feature's separation of the target.
+
+    See ml_utils.py's `_feature_score` (verbatim copy, kept for this
+    script's independence from that module).
+
+    Args:
+        x_col: Feature values, one per sample.
+        y: Class labels, one per sample.
+
+    Returns:
+        float: |AUC - 0.5| for binary y; for >2 classes, the best
+        one-vs-rest |AUC - 0.5| across classes.
+    """
     classes = np.unique(y)
     if len(classes) <= 2:
         y_bin = (y == classes[-1]).astype(int)
@@ -77,6 +88,20 @@ def _feature_score(x_col, y):
 
 
 class GroupAwareSelector(BaseEstimator, TransformerMixin):
+    """Feature selector that prunes and budgets columns within named groups.
+
+    See ml_utils.py's `GroupAwareSelector` (verbatim copy, kept for this
+    script's independence from that module).
+
+    Args:
+        groups (dict): Maps group name to a list of column indices into X.
+        corr_prune_groups (frozenset): Group names to cluster-prune by
+            |Spearman r| before budgeting (default: none).
+        k_per_group (dict | None): Maps group name to a cap (int) on
+            columns kept after pruning, or None for no cap.
+        corr_threshold (float): |corr| above this collapses two columns
+            into the same cluster, keeping one representative (default: 0.8).
+    """
     def __init__(self, groups, corr_prune_groups=frozenset(), k_per_group=None,
                  corr_threshold=0.8):
         self.groups = groups
@@ -138,8 +163,15 @@ class GroupAwareSelector(BaseEstimator, TransformerMixin):
 
 
 def load_baseline_df():
-    """Reproduces ML_classification.ipynb cell 1's merged df exactly
-    (SEQ_SOURCE='all'), reading the same repo-relative paths it does."""
+    """Reproduces ML_classification.ipynb cell 1's merged feature table.
+
+    Reads the same repo-relative paths cell 1 does, with SEQ_SOURCE
+    controlling whether the cohort is filtered to "ngs_observed" or "all".
+
+    Returns:
+        tuple: (df, feature_group_cols) — the merged DataFrame and the
+        group -> columns mapping used to build the CV pipeline.
+    """
     df = pd.read_excel("feat_table_500ns.xlsx", sheet_name="all_feats_500ns")
     df = df[~df["name"].isin(FLIPPED_LIGAND_NAMES)].reset_index(drop=True)
     n_base = len(df)
@@ -218,6 +250,7 @@ def load_baseline_df():
 
 
 def main():
+    """Runs the paired baseline-vs-qfix-swapped CV comparison end to end."""
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--qfix_table", default="qfix_pilot_feat_table.csv")
@@ -252,11 +285,11 @@ def main():
         df_qfix.loc[row_idx, feature_cols] = qfix.loc[seq_id, feature_cols].values
     X_qfix = df_qfix[feature_cols].values
 
-    # np.isclose(..., equal_nan=True) rather than a plain != comparison --
-    # several baseline rows have NaN in the gate_latch_rmsd columns (that
-    # source CSV doesn't cover the full cohort), and NaN != NaN is always
-    # True, which would otherwise flag every NaN-containing row as "changed"
-    # even though the swap never touched it.
+    # np.isclose(..., equal_nan=True) rather than != : several baseline rows
+    # have NaN in the gate_latch_rmsd columns (that source CSV doesn't cover
+    # the full cohort), and NaN != NaN is always True, which would flag
+    # every NaN-containing row as "changed" even though the swap never
+    # touched it.
     n_changed = (~np.isclose(X_base.astype(float), X_qfix.astype(float),
                               equal_nan=True)).any(axis=1).sum()
     print(f"Rows with changed features in the qfix-swapped table: {n_changed} "
@@ -279,10 +312,10 @@ def main():
         "recall":            make_scorer(recall_score,    zero_division=0),
     }
 
-    # Fold assignment depends only on y/groups (both identical between the
-    # two runs, unaffected by the ligand reparameterization), not on X's
-    # values -- so both cv.split() calls below yield IDENTICAL folds, making
-    # this a paired before/after comparison rather than two independent runs.
+    # Fold assignment depends only on y/groups (identical between the two
+    # runs, unaffected by the ligand reparameterization), not on X's values,
+    # so both cross_validate calls below use identical folds -- a paired
+    # before/after comparison, not two independent runs.
     print(f"\nRunning baseline CV ({N_SPLITS}-fold grouped stratified)...")
     res_base = cross_validate(pipe, X_base, y, cv=cv, groups=seq_groups, scoring=scoring)
 

@@ -1,37 +1,27 @@
-"""
-core_vs_tail_regions.py — Is there a distinguishable difference
-between Binder and nonbinder sequences when looking at only the LCA
-ligand's core (steroid ring system) or tail (C20-C24 carboxylate chain)?
+"""Tests whether Binder vs nonbinder separation differs between the LCA
+ligand's core (steroid ring system) and tail (C20-C24 carboxylate chain).
 
-Primary comparison: Binder vs False Positive. Both went through the same
-computational pipeline; the only difference is the wet-lab outcome, which
-makes this the most direct "binder vs nonbinder" contrast available. Low
-Confidence and Fail Geometry sequences are shown in the plots for context
-(their pocket/geometry didn't pass QC in the first place, which is a
-different kind of exclusion, and there are only ~9-10 of each) but are not
-part of the headline significance test.
+Primary comparison is Binder vs False Positive: both went through the same
+computational pipeline, so the wet-lab outcome is the only difference,
+making this the most direct binder-vs-nonbinder contrast available. Low
+Confidence and Fail Geometry sequences appear in the plots for context only
+(their pocket/geometry failed QC before this comparison even applies, and
+there are only ~9-10 of each); they are not part of the headline test.
 
-Core and tail are analyzed COMPLETELY SEPARATELY — every plot and stats
-table answers "is there a Binder vs False Positive difference in THIS
-region alone?" with no cross-region encoding (no side-by-side panels, no
-shared color axis). The two regions are never compared to each other here;
-if you want that, see compare_ligand_regions.py instead. The only place
-core and tail appear together is the final printed/saved verdict table,
-which is plain text/CSV (region, n significant, top hit), not a chart.
+Core and tail are analyzed completely separately: every plot and stats
+table answers "is there a Binder vs False Positive difference in this
+region alone?" with no cross-region encoding (no shared panels or color
+axis). The two regions are never compared to each other here; for that,
+see compare_ligand_regions.py. They only appear together in the final
+verdict table (region, n significant, top hit), which is plain text/CSV.
 
-For both the contact-type features and the per-residue R-scores, this
-script, per region:
-  1. Tests Binder vs False Positive (Mann-Whitney U) for every feature /
-     residue, with a Cohen's d effect size and a rank-AUC (0.5 = no
-     separation, 1.0 = perfect separation, <0.5 = False Positive has the
-     higher value) alongside the p-value.
-  2. Applies a Benjamini-Hochberg FDR correction (this matters — many
-     residues get tested, so a handful of uncorrected "hits" is expected
-     by chance alone; the q-value column tells you which survive that).
-  3. Plots: one figure with every contact feature (Binder vs the other
-     3 groups, headline test vs False Positive), one significance plot
-     across all residues, and one figure with the top-hit residues —
-     all scoped to that region only.
+For both contact-type features and per-residue R-scores, per region, this
+script: (1) runs Mann-Whitney U for every feature/residue with a Cohen's d
+effect size and rank-AUC alongside the p-value, (2) applies a
+Benjamini-Hochberg FDR correction, since testing many residues makes a
+handful of uncorrected "hits" expected by chance, and (3) plots a
+per-feature panel, a significance plot across all residues, and a
+top-hit-residues panel, each scoped to that region only.
 
 Inputs (produced by aggregate_r_scores.py / agg_contact_feats.py with
 --ligand-region core|tail):
@@ -75,6 +65,16 @@ CONTACT_FEATURES = ["mean_frac_hydrophobic", "mean_n_total", "mean_n_hydrophobic
 
 # ── Stats helpers ─────────────────────────────────────────────────────────────
 def cohens_d(a, b):
+    """Computes Cohen's d effect size between two samples.
+
+    Args:
+        a: First sample (array-like).
+        b: Second sample (array-like).
+
+    Returns:
+        float: Standardized mean difference (a - b), pooled SD. 0.0 if
+        pooled variance is non-positive.
+    """
     na, nb = len(a), len(b)
     pooled_var = ((na - 1) * a.var(ddof=1) + (nb - 1) * b.var(ddof=1)) / (na + nb - 2)
     if pooled_var <= 0:
@@ -83,15 +83,30 @@ def cohens_d(a, b):
 
 
 def rank_auc(a, b):
-    """AUC of using the feature value to separate group a (label 1) from
-    group b (label 0). 0.5 = no separation; >0.5 = a tends higher."""
+    """Computes the AUC of using the feature value to separate two groups.
+
+    Args:
+        a: Sample treated as the positive class (label 1).
+        b: Sample treated as the negative class (label 0).
+
+    Returns:
+        float: ROC-AUC. 0.5 means no separation, >0.5 means `a` tends
+        higher, <0.5 means `b` tends higher.
+    """
     y = np.r_[np.ones(len(a)), np.zeros(len(b))]
     scores = np.r_[a, b]
     return roc_auc_score(y, scores)
 
 
 def bh_fdr(pvals):
-    """Benjamini-Hochberg FDR-adjusted q-values."""
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -105,6 +120,20 @@ def bh_fdr(pvals):
 
 
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
+    """Runs a Mann-Whitney U test between two groups for one column.
+
+    Args:
+        df: DataFrame containing `col` and a `seq_type` column.
+        col: Name of the column to compare.
+        group_a: `seq_type` value for the first group (default: GROUP_A).
+        group_b: `seq_type` value for the second group (default: GROUP_B).
+        min_n (int): Minimum non-NaN samples required per group; returns
+            None below this (default: 5).
+
+    Returns:
+        dict | None: n, mean, Cohen's d, rank-AUC, and p-value for each
+        group, or None if either group has fewer than `min_n` samples.
+    """
     a = df.loc[df["seq_type"] == group_a, col].dropna().values
     b = df.loc[df["seq_type"] == group_b, col].dropna().values
     if len(a) < min_n or len(b) < min_n:
@@ -116,6 +145,16 @@ def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
 
 # ── Loading ───────────────────────────────────────────────────────────────────
 def load_seq_type_map(seq_list_path):
+    """Loads seq_id -> seq_type from a tab-separated seq_ids file.
+
+    Args:
+        seq_list_path (str): Path to a seq_ids.txt-style file (columns:
+            seq_id, seq_type, ...). Blank lines and lines starting with
+            "#" are skipped.
+
+    Returns:
+        dict: Maps seq_id to seq_type ("Unknown" if the column is missing).
+    """
     mapping = {}
     with open(seq_list_path) as f:
         for line in f:
@@ -128,6 +167,17 @@ def load_seq_type_map(seq_list_path):
 
 
 def load_r_scores(r_scores_dir, tag):
+    """Loads per-region R-score CSVs written by aggregate_r_scores.py.
+
+    Args:
+        r_scores_dir (str): Directory containing
+            r_scores_all_sequences_{tag}_{region}.csv files.
+        tag (str): Run tag (e.g. "40_500ns").
+
+    Returns:
+        dict: Maps region ("core"/"tail") to its DataFrame. Missing files
+        are skipped with a printed warning.
+    """
     out = {}
     for region in REGIONS:
         path = os.path.join(r_scores_dir, f"r_scores_all_sequences_{tag}_{region}.csv")
@@ -139,7 +189,48 @@ def load_r_scores(r_scores_dir, tag):
     return out
 
 
+def load_dw_scores(dw_dir, tag):
+    """Loads per-region D/W occupancy CSVs written by aggregate_r_scores.py.
+
+    D and W are the two terms R = (D - W) * I is built from, kept here
+    unmerged so they can be screened without R's ambiguity (R = 0 both
+    when D and W are balanced and when neither ever contacts the ligand).
+
+    Args:
+        dw_dir (str): Directory containing
+            dw_scores_all_sequences_{tag}_{region}.csv files (same run as
+            load_r_scores).
+        tag (str): Run tag (e.g. "40_500ns").
+
+    Returns:
+        dict: Maps region ("core"/"tail") to its DataFrame. Missing files
+        are skipped with a printed warning.
+    """
+    out = {}
+    for region in REGIONS:
+        path = os.path.join(dw_dir, f"dw_scores_all_sequences_{tag}_{region}.csv")
+        if os.path.exists(path):
+            out[region] = pd.read_csv(path)
+            print(f"Loaded {region} D/W scores: {path}  ({len(out[region])} sequences)")
+        else:
+            print(f"  MISSING: {path}")
+    return out
+
+
 def load_contact_features(contact_dir, tag, seq_type_map):
+    """Loads per-region contact-feature CSVs written by agg_contact_feats.py.
+
+    Args:
+        contact_dir (str): Directory containing
+            contact_features_all_{tag}_{region}.csv files.
+        tag (str): Run tag (e.g. "40_500ns").
+        seq_type_map (dict): seq_id -> seq_type, used to add a `seq_type`
+            column (see load_seq_type_map).
+
+    Returns:
+        dict: Maps region ("core"/"tail") to its DataFrame. Missing files
+        are skipped with a printed warning.
+    """
     out = {}
     for region in REGIONS:
         path = os.path.join(contact_dir, f"contact_features_all_{tag}_{region}.csv")
@@ -154,8 +245,8 @@ def load_contact_features(contact_dir, tag, seq_type_map):
 
 
 # md_candidate_guide.csv's md_group values use different suffixes than the
-# seq_id naming convention (pair_XXXX_binder / _nb / _low_pkt / _fail_gate)
-# used everywhere else in the repo.
+# seq_id naming convention (pair_XXXX_binder/_nb/_low_pkt/_fail_gate) used
+# elsewhere in the repo.
 MD_GROUP_SUFFIX = {
     "binder": "binder",
     "non_binder": "nb",
@@ -165,9 +256,17 @@ MD_GROUP_SUFFIX = {
 
 
 def load_source_ids(guide_path, source):
-    """seq_ids from md_candidate_guide.csv where source == `source` (e.g.
-    ngs_observed = sequencing-confirmed via Y2H/FACS sort-seq, vs.
-    designed_assumed)."""
+    """Loads seq_ids from md_candidate_guide.csv matching one source value.
+
+    Args:
+        guide_path (str): Path to md_candidate_guide.csv.
+        source (str): Value to match in the `source` column (e.g.
+            "ngs_observed" for sequencing-confirmed via Y2H/FACS sort-seq,
+            vs. "designed_assumed").
+
+    Returns:
+        set: seq_ids (pair_id + mapped md_group suffix) matching `source`.
+    """
     guide = pd.read_csv(guide_path)
     matched = guide[guide["source"] == source].copy()
     matched["seq_id"] = matched.apply(
@@ -177,6 +276,18 @@ def load_source_ids(guide_path, source):
 
 
 def filter_to_source(data, source_ids, source, label):
+    """Filters each region's DataFrame to a set of seq_ids, in place.
+
+    Args:
+        data (dict): Maps region to DataFrame (as returned by the load_*
+            functions above). Modified and returned.
+        source_ids (set): seq_ids to keep (see load_source_ids).
+        source (str): Source name, used only in the printed summary.
+        label (str): Data-kind label, used only in the printed summary.
+
+    Returns:
+        dict: `data`, with each region's DataFrame filtered to `source_ids`.
+    """
     for region, df in data.items():
         before = len(df)
         data[region] = df[df["seq_id"].isin(source_ids)].reset_index(drop=True)
@@ -185,13 +296,66 @@ def filter_to_source(data, source_ids, source, label):
     return data
 
 
-def resid_columns(df):
-    return sorted((c for c in df.columns if c.startswith("R_")),
+def resid_columns(df, prefix="R"):
+    """Lists a DataFrame's per-residue columns, sorted by resSeq.
+
+    Args:
+        df: DataFrame with columns named "{prefix}_{resSeq}".
+        prefix (str): Column-name prefix to match (default: "R").
+
+    Returns:
+        list[str]: Matching column names, sorted numerically by resSeq.
+    """
+    return sorted((c for c in df.columns if c.startswith(f"{prefix}_")),
                   key=lambda c: int(c.split("_")[1]))
+
+
+def contactable_residues(df, prefix="R", min_n=5):
+    """Finds residues with enough real ligand contact to be worth testing.
+
+    R is NaN, and so silently dropped by compare_groups, exactly when a
+    sequence never contacted that residue (D+W = 0). D and W instead record
+    genuine zero occupancy in that case, so without this restriction a D/W
+    screen would test all ~181 topology residues, including ones that never
+    come near the ligand. This reproduces the same pocket restriction R
+    gets for free from its NaN handling, so D/W are screened over the same
+    residue population R was.
+
+    Args:
+        df: DataFrame with per-residue columns (see resid_columns).
+        prefix (str): Column-name prefix identifying the metric (default:
+            "R").
+        min_n (int): Minimum Binder and False Positive sequences with a
+            non-NaN score required to keep a residue (default: 5).
+
+    Returns:
+        list[int]: resSeq values for residues meeting the min_n threshold
+        in both groups, sorted ascending.
+    """
+    keep = []
+    for c in resid_columns(df, prefix):
+        if compare_groups(df, c, min_n=min_n) is not None:
+            keep.append(int(c.split("_")[1]))
+    return sorted(keep)
 
 
 # ── Box + jitter helper (matches the repo's plot_Rg_sasa.py style) ─────────────
 def box_jitter(ax, df, col, groups, xpos_start=0, rng=None):
+    """Draws a box-and-jitter plot for one column, one box per group.
+
+    Args:
+        ax: Matplotlib Axes to draw on.
+        df: DataFrame containing `col` and a `seq_type` column.
+        col (str): Column to plot.
+        groups (list[str]): `seq_type` values to plot, in order, each
+            colored via GROUP_COLOR.
+        xpos_start (int): Starting x position (default: 0).
+        rng: numpy Generator for jitter; a fixed-seed default is used if
+            None.
+
+    Returns:
+        int: Next unused x position (xpos_start + len(groups)).
+    """
     rng = rng or np.random.default_rng(42)
     xpos = xpos_start
     for group in groups:
@@ -213,9 +377,22 @@ def box_jitter(ax, df, col, groups, xpos_start=0, rng=None):
 
 # ── Contact-type features: Binder vs False Positive, ONE region at a time ─────
 def contact_feature_region_analysis(df, region, out_dir):
-    """Self-contained answer to: within `region` ALONE, does Binder differ
-    from False Positive in contact-type composition? Nothing in this
-    function's output references the other region — that's the point."""
+    """Tests Binder vs False Positive contact-type composition, one region.
+
+    Self-contained: nothing in this function's output references the other
+    region, by design (see module docstring).
+
+    Args:
+        df: Contact-feature DataFrame for `region` (see
+            load_contact_features).
+        region (str): Region label, used in filenames/titles ("core" or
+            "tail").
+        out_dir (str): Directory to write the stats CSV and figure to.
+
+    Returns:
+        dict | None: Summary (region, n tested/significant, top feature)
+        for the verdict table, or None if there wasn't enough data.
+    """
     rows = []
     for feature in CONTACT_FEATURES:
         if feature not in df.columns:
@@ -270,29 +447,64 @@ def contact_feature_region_analysis(df, region, out_dir):
                 top_feature=top["feature"], top_feature_p=top["p"], top_feature_d=top["cohens_d"])
 
 
-# ── R-scores: Binder vs False Positive, per residue, ONE region at a time ─────
-def r_score_region_analysis(df, region, out_dir, top_n=6):
-    """Self-contained answer to: within `region` ALONE, which residues (if
-    any) show a Binder vs False Positive R-score difference?"""
+# ── Per-residue screens (R, D, or W): Binder vs False Positive, ONE region
+# at a time ────────────────────────────────────────────────────────────────
+def score_region_analysis(df, region, out_dir, prefix, label, top_n=6, restrict_to_resids=None):
+    """Tests Binder vs False Positive per-residue scores, one region.
+
+    Self-contained: nothing in this function's output references the other
+    region, by design (see module docstring). Generalizes the original
+    R-score-only screen so D and W (the two terms R = (D - W) * I is built
+    from) can be screened the same way, without R's ambiguity where R = 0
+    means either balanced direct/water-mediated contact or no contact at
+    all. Each metric gets its own FDR family: all residues tested for
+    *this* metric in *this* region, so D and W significance never inherits
+    from R's or each other's p-values.
+
+    Args:
+        df: Score DataFrame with per-residue columns for `region` (see
+            load_r_scores / load_dw_scores).
+        region (str): Region label, used in filenames/titles ("core" or
+            "tail").
+        out_dir (str): Directory to write the stats CSV and figures to.
+        prefix (str): Column-name prefix selecting the metric ("R", "D",
+            or "W").
+        label (str): Metric label used in titles/print statements (e.g.
+            "R-score").
+        top_n (int): Number of top-hit residues to plot individually
+            (default: 6).
+        restrict_to_resids (list[int] | None): If given, only test these
+            resSeq values (used to screen D/W over the same pocket
+            residues R was screened over; see contactable_residues).
+
+    Returns:
+        dict | None: Summary (region, metric, n tested/significant, top
+        residue) for the verdict table, or None if there wasn't enough
+        data.
+    """
+    stem = f"{prefix.lower()}_score"
+    cols = resid_columns(df, prefix)
+    if restrict_to_resids is not None:
+        cols = [c for c in cols if int(c.split("_")[1]) in restrict_to_resids]
     rows = []
-    for c in resid_columns(df):
+    for c in cols:
         res = compare_groups(df, c)
         if res is None:
             continue
         rows.append(dict(resSeq=int(c.split("_")[1]), **res))
     if not rows:
-        print(f"\n[R-score - {region}] Not enough Binder/False Positive data — skipping.")
+        print(f"\n[{label} - {region}] Not enough Binder/False Positive data — skipping.")
         return None
     stats_df = pd.DataFrame(rows)
     stats_df["q"] = bh_fdr(stats_df["p"].values)
-    stats_path = os.path.join(out_dir, f"r_score_{region}_binder_vs_fp_stats.csv")
+    stats_path = os.path.join(out_dir, f"{stem}_{region}_binder_vs_fp_stats.csv")
     stats_df.sort_values("p").to_csv(stats_path, index=False)
     print(f"\nSaved {stats_path}")
 
     n_tested = len(stats_df)
     n_sig_raw = int((stats_df["p"] < 0.05).sum())
     n_sig_fdr = int((stats_df["q"] < 0.05).sum())
-    print(f"[R-score - {region}] {n_tested} residues tested, {n_sig_raw} with p<0.05 "
+    print(f"[{label} - {region}] {n_tested} residues tested, {n_sig_raw} with p<0.05 "
           f"(uncorrected), {n_sig_fdr} with q<0.05 (FDR-corrected)")
 
     # ── Significance plot, this region only. Point color = which group is
@@ -312,7 +524,7 @@ def r_score_region_analysis(df, region, out_dir, top_n=6):
     ax.axhline(-np.log10(0.05), color="grey", linestyle="--", linewidth=1, label="p=0.05 (uncorrected)")
     ax.set_xlabel("Residue (resSeq)")
     ax.set_ylabel("-log10(p)")
-    ax.set_title(f"{region.upper()} REGION ONLY — per-residue R-score, {GROUP_A} vs {GROUP_B}\n"
+    ax.set_title(f"{region.upper()} REGION ONLY — per-residue {label}, {GROUP_A} vs {GROUP_B}\n"
                  f"{n_sig_fdr}/{n_tested} residues significant (FDR q<0.05); "
                  "open circle = FDR-significant")
     ax.grid(True, alpha=0.4)
@@ -321,14 +533,14 @@ def r_score_region_analysis(df, region, out_dir, top_n=6):
         mpatches.Patch(facecolor=GROUP_COLOR[GROUP_B], label=f"{GROUP_B} higher"),
     ]
     ax.legend(handles=legend_handles, fontsize=8)
-    path = os.path.join(out_dir, f"r_score_{region}_significance.png")
+    path = os.path.join(out_dir, f"{stem}_{region}_significance.png")
     fig.savefig(path)
     plt.close(fig)
     print(f"Saved {path}")
 
     # ── Top-hit residues, this region only, one panel per residue ──
     top_hits = stats_df.sort_values("p").head(top_n)["resSeq"].tolist()
-    print(f"[R-score - {region}] Top {len(top_hits)} residues by p-value: {top_hits}")
+    print(f"[{label} - {region}] Top {len(top_hits)} residues by p-value: {top_hits}")
     if top_hits:
         n = len(top_hits)
         ncols = min(3, n)
@@ -337,7 +549,7 @@ def r_score_region_analysis(df, region, out_dir, top_n=6):
                                   dpi=300, constrained_layout=True, squeeze=False)
         for i, resSeq in enumerate(top_hits):
             ax = axes[i // ncols][i % ncols]
-            col = f"R_{resSeq}"
+            col = f"{prefix}_{resSeq}"
             box_jitter(ax, df, col, GROUP_ORDER)
             ax.set_xticks(range(len(GROUP_ORDER)))
             ax.set_xticklabels(GROUP_ORDER, rotation=20, ha="right", fontsize=8)
@@ -348,19 +560,20 @@ def r_score_region_analysis(df, region, out_dir, top_n=6):
         for j in range(n, nrows * ncols):
             axes[j // ncols][j % ncols].axis("off")
         fig.suptitle(f"{region.upper()} REGION ONLY — top {n} residues, "
-                     f"R-score by group ({GROUP_A} vs {GROUP_B})", fontsize=13)
-        path = os.path.join(out_dir, f"r_score_{region}_top_residues.png")
+                     f"{label} by group ({GROUP_A} vs {GROUP_B})", fontsize=13)
+        path = os.path.join(out_dir, f"{stem}_{region}_top_residues.png")
         fig.savefig(path)
         plt.close(fig)
         print(f"Saved {path}")
 
     top = stats_df.sort_values("p").iloc[0]
-    return dict(region=region, n_residues_tested=n_tested, n_residues_significant=n_sig_fdr,
+    return dict(region=region, metric=label, n_residues_tested=n_tested, n_residues_significant=n_sig_fdr,
                 top_residue=int(top["resSeq"]), top_residue_p=top["p"], top_residue_d=top["cohens_d"])
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
+    """Runs the core-vs-tail Binder vs False Positive analysis end to end."""
     parser = argparse.ArgumentParser(description=__doc__,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--r-scores-dir", default="/projects/ivta1597/biosensors/water_analysis/agg_out")
@@ -386,12 +599,13 @@ def main():
     print("Loading data (core/tail only)")
     print("=" * 70)
     r_data = load_r_scores(args.r_scores_dir, args.tag)
+    dw_data = load_dw_scores(args.r_scores_dir, args.tag)
     contact_data = load_contact_features(args.contact_dir, args.tag, seq_type_map)
 
-    if not r_data and not contact_data:
+    if not r_data and not dw_data and not contact_data:
         raise FileNotFoundError(
-            "No core/tail R-score or contact-feature CSVs found. Check "
-            "--r-scores-dir / --contact-dir / --tag."
+            "No core/tail R-score, D/W-score, or contact-feature CSVs found. "
+            "Check --r-scores-dir / --contact-dir / --tag."
         )
 
     if args.structure_source != "all":
@@ -399,9 +613,10 @@ def main():
         print(f"\nRestricting to source == {args.structure_source}: "
               f"{len(source_ids)} in {args.structure_guide}")
         r_data = filter_to_source(r_data, source_ids, args.structure_source, "R-scores")
+        dw_data = filter_to_source(dw_data, source_ids, args.structure_source, "D/W-scores")
         contact_data = filter_to_source(contact_data, source_ids, args.structure_source, "Contact feats")
 
-    contact_summaries, r_summaries = [], []
+    contact_summaries, r_summaries, d_summaries, w_summaries = [], [], [], []
     for region in REGIONS:
         if region in contact_data:
             print("\n" + "=" * 70)
@@ -411,14 +626,44 @@ def main():
             if s:
                 contact_summaries.append(s)
 
+    pocket_residues = {}
     for region in REGIONS:
         if region in r_data:
             print("\n" + "=" * 70)
             print(f"R-SCORE — {region.upper()} region only: {GROUP_A} vs {GROUP_B}, per residue")
             print("=" * 70)
-            s = r_score_region_analysis(r_data[region], region, args.out_dir, top_n=args.top_n)
+            s = score_region_analysis(r_data[region], region, args.out_dir, "R", "R-score", top_n=args.top_n)
             if s:
                 r_summaries.append(s)
+            pocket_residues[region] = contactable_residues(r_data[region], "R")
+            print(f"[pocket residues - {region}] {len(pocket_residues[region])} residues "
+                  f"actually contact the ligand (>=5 Binder and >=5 FP sequences each); "
+                  "D/W below are restricted to this same set.")
+
+    # D and W are screened across the same pocket residues R was (see
+    # contactable_residues), each with its own FDR family. This replaces an
+    # earlier ad-hoc check that reused only the 5 residues R had already
+    # flagged (optimistic FDR correction across just those 10 tests); this
+    # screens the full pocket from scratch per metric, so a residue where D
+    # and W cancel out in R but is real in D or W alone can still surface.
+    for region in REGIONS:
+        if region in dw_data:
+            restrict = pocket_residues.get(region)
+            print("\n" + "=" * 70)
+            print(f"D OCCUPANCY — {region.upper()} region only: {GROUP_A} vs {GROUP_B}, per residue")
+            print("=" * 70)
+            s = score_region_analysis(dw_data[region], region, args.out_dir, "D", "D occupancy",
+                                       top_n=args.top_n, restrict_to_resids=restrict)
+            if s:
+                d_summaries.append(s)
+
+            print("\n" + "=" * 70)
+            print(f"W OCCUPANCY — {region.upper()} region only: {GROUP_A} vs {GROUP_B}, per residue")
+            print("=" * 70)
+            s = score_region_analysis(dw_data[region], region, args.out_dir, "W", "W occupancy",
+                                       top_n=args.top_n, restrict_to_resids=restrict)
+            if s:
+                w_summaries.append(s)
 
     # ── Verdict: a plain table, not a chart — each region's result stands on
     # its own above; this just puts the headline numbers side by side ──
@@ -435,6 +680,16 @@ def main():
         rdf.to_csv(os.path.join(args.out_dir, "verdict_r_scores.csv"), index=False)
         print("\nPer-residue R-scores:")
         print(rdf.to_string(index=False))
+    if d_summaries:
+        ddf = pd.DataFrame(d_summaries)
+        ddf.to_csv(os.path.join(args.out_dir, "verdict_d_scores.csv"), index=False)
+        print("\nPer-residue D occupancy:")
+        print(ddf.to_string(index=False))
+    if w_summaries:
+        wdf = pd.DataFrame(w_summaries)
+        wdf.to_csv(os.path.join(args.out_dir, "verdict_w_scores.csv"), index=False)
+        print("\nPer-residue W occupancy:")
+        print(wdf.to_string(index=False))
 
     print("\nDone. All outputs written to:", args.out_dir)
 

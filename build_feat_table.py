@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""
-build_feat_table.py
+"""Assembles a self-contained feat_table_{N}ns.xlsx feature table.
 
-Assembles a self-contained feat_table_{N}ns.xlsx from the same per-sequence
-feature-family CSVs that ML_classification.ipynb's first cell merges into
-feat_table_500ns.xlsx at runtime -- but pointed at a requested analysis
-window's outputs, and written to one fully-merged sheet (all_feats_{N}ns)
-rather than requiring the same runtime merge every time the table is used.
+Builds from the same per-sequence feature-family CSVs that
+ML_classification.ipynb's first cell merges into feat_table_500ns.xlsx at
+runtime, but pointed at a requested analysis window's outputs, and written
+to one fully-merged sheet (all_feats_{N}ns) rather than requiring the same
+runtime merge every time the table is used.
 
-Row/label anchor (name, ID, Group, Label, Binder_score, Sequence) is always
-read from feat_table_500ns.xlsx's all_feats_500ns sheet and never re-derived,
-so the 100ns/250ns/500ns tables stay row-for-row comparable. For --end-ns 500,
-dw_pocket/contact_type/rmsf are reused directly from that same anchor sheet
-(they're already pre-baked into it); for any other window they are computed
-fresh from window-tagged CSVs, since no pre-built base sheet exists for
-windows other than 500ns.
+The row/label anchor (name, ID, Group, Label, Binder_score, Sequence) is
+always read from feat_table_500ns.xlsx's all_feats_500ns sheet and never
+re-derived, so the 100ns/250ns/500ns tables stay row-for-row comparable.
+For --end-ns 500, dw_pocket/contact_type/rmsf are reused directly from that
+anchor sheet (already pre-baked in); for any other window they're computed
+fresh from window-tagged CSVs, since no pre-built base sheet exists outside
+500ns.
 
 Usage:
     python build_feat_table.py --end-ns 250 --out feat_table_250ns.xlsx
@@ -24,8 +23,8 @@ Usage:
 Expects the same repo-relative input layout as ML_classification.ipynb's
 first cell (analysis/, water_analysis/, water_analysis/agg_out/,
 water_spatial/, salt_bridge/, LIG_contacts/), with each family's per-window
-outputs already generated and, where they were computed on Alpine, synced
-back into the local repo checkout.
+outputs already generated and, where computed on Alpine, synced back into
+the local repo checkout.
 """
 import os
 import argparse
@@ -53,6 +52,12 @@ MD_GROUP_SUFFIX = {
 
 
 def parse_args():
+    """Parses CLI args for the analysis window and output path.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (end_ns, out, sheet_name,
+        other_start_ns, water_bridge_start_ns).
+    """
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--end-ns", type=float, required=True,
@@ -70,6 +75,16 @@ def parse_args():
 
 
 def report(df, cols, n_base, label, fillna=False):
+    """Prints a match-rate summary for one merged feature family, in place.
+
+    Args:
+        df: Merged feature table.
+        cols (list[str]): Columns belonging to this feature family.
+        n_base (int): Total row count, for the match-rate denominator.
+        label (str): Feature-family name for the printed line.
+        fillna (bool): If True, fill NaNs in `cols` with 0.0 (default:
+            False).
+    """
     matched = df[cols[0]].notna().sum()
     print(f"  + {label:<22}: {matched}/{n_base} matched")
     if fillna:
@@ -78,6 +93,7 @@ def report(df, cols, n_base, label, fillna=False):
 
 
 def main():
+    """Merges every feature family for one analysis window and writes the table."""
     args = parse_args()
     end_i      = int(args.end_ns)
     start_i    = int(args.other_start_ns)
@@ -133,13 +149,11 @@ def main():
         df = df.merge(ct, left_on="name", right_on="seq_id", how="left").drop(columns=["seq_id"])
         report(df, ct_type_cols, n_base, "contact_type")
 
-        # rmsf: single-residue + Ca region summary
-        # NOTE: rename Sequence (seq_id here) -> seq_id before merging -- the
-        # anchor df already has a "Sequence" column (the amino-acid sequence
-        # string, from ANCHOR_COLS), so merging in another "Sequence" column
-        # with a different meaning makes pandas suffix both as
-        # Sequence_x/Sequence_y, silently breaking the drop(columns=["Sequence"])
-        # below.
+        # rmsf: single-residue + Ca region summary. Rename Sequence -> seq_id
+        # before merging: the anchor df already has a "Sequence" column (the
+        # amino-acid sequence string, from ANCHOR_COLS), so merging in
+        # another "Sequence" column with a different meaning would make
+        # pandas suffix both as Sequence_x/Sequence_y instead.
         rmsf_single = pd.read_csv(f"analysis/rmsf_single_residues_per_seq_{end_i}ns.csv") \
             .rename(columns={"Sequence": "seq_id"})
         rmsf_ca     = pd.read_csv(f"analysis/rmsf_ca_per_seq_summary_{end_i}ns.csv") \

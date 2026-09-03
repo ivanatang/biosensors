@@ -1,44 +1,34 @@
 #!/usr/bin/env python3
-"""
-Computes the R-score for every protein residue relative to the ligand,
-following Leonard et al., ACS Chem. Biol. 2024, 19, 1757-1772.
+"""Computes the R-score for every protein residue relative to the ligand.
 
-What is computed
-----------------
-For each protein residue and each trajectory frame, two boolean contact
-types are recorded using a 4 Å heavy-atom distance threshold:
+Follows Leonard et al., ACS Chem. Biol. 2024, 19, 1757-1772.
 
-  Direct (D)        : any heavy atom on the residue is within 4 Å of any
-                      heavy atom on the ligand — the residue touches the
-                      ligand without an intervening water.
+For each protein residue and trajectory frame, two boolean contact types
+are recorded using a 4 A heavy-atom distance threshold:
 
-  Water-mediated (W): a water oxygen is simultaneously within 4 Å of the
-                      ligand AND within 4 Å of the residue — the water acts
-                      as a bridge between residue and ligand.
+    Direct (D): any heavy atom on the residue is within 4 A of any heavy
+        atom on the ligand (touches the ligand without an intervening
+        water).
+    Water-mediated (W): a water oxygen is simultaneously within 4 A of the
+        ligand and within 4 A of the residue (the water bridges residue
+        and ligand).
+    Total (I): union of D and W. Scales R toward zero for residues with
+        rare contact, avoiding false signal from noise.
 
-  Total (I)         : union of D and W — was either contact present?
-                      Scales R toward zero for residues with rare contact,
-                      avoiding false signal from noise.
-
-These per-frame booleans are averaged to scalar occupancies, then combined:
-
-  R = (D - W) * I          (Leonard et al., Methods)
-
-  R = +1 : purely direct contact
-  R =  0 : equal direct/water-mediated, or no contact at all
-  R = -1 : purely water-mediated contact
+These per-frame booleans are averaged to scalar occupancies, then combined
+as R = (D - W) * I (Leonard et al., Methods): R = +1 is purely direct
+contact, R = 0 is equal direct/water-mediated or no contact at all, and
+R = -1 is purely water-mediated contact.
 
 Residues with R < -0.7 are classified as having "dominant" water-mediated
-interactions (Figure 5A/B, Figure S3).  These are the inputs to Step 2
+interactions (Figure 5A/B, Figure S3); these feed Step 2
 (hbond_threshold_calibration.py).
 
-Output
-------
-  {out_dir}/{seq_id}_R_scores.csv   — full per-residue table
-  {out_dir}/{seq_id}_R_scores.png   — bar chart coloured by R-score
+Output:
+    {out_dir}/{seq_id}_R_scores.csv: full per-residue table.
+    {out_dir}/{seq_id}_R_scores.png: bar chart colored by R-score.
 
-Usage
------
+Usage:
     conda activate IS_env
     python compute_r_scores.py
 """
@@ -81,10 +71,10 @@ END_PS   = int(END_NS   * 1000)
 TAG      = f"{int(START_NS)}_{int(END_NS)}ns"   # e.g. "40_250ns", "40_500ns"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONFIG  ← edit these before running
+# CONFIG - edit these before running
 # ─────────────────────────────────────────────────────────────────────────────
-# Trajectory inputs are read from the PetaLibrary archive, not scratch —
-# scratch auto-deletes after 90 days and older runs' xtc/gro are already gone.
+# Trajectory inputs come from the PetaLibrary archive, not scratch: scratch
+# auto-deletes after 90 days and older runs' xtc/gro are already gone.
 input_base  = "/pl/active/shirts_archive/IvanaTang/biosensors"
 output_base = "/scratch/alpine/ivta1597/LCA_boltz_models"
 ext    = "HMR/dodecahedron"
@@ -94,8 +84,8 @@ traj_path = os.path.join(input_base, seq_type, seq_id, prod, "prod_md_500ns.xtc"
 top_path  = os.path.join(input_base, seq_type, seq_id, prod, "prod_md_500ns.gro")
 
 # Region suffix keeps core/tail runs from overwriting the whole-ligand
-# results; "whole" reproduces the original, unsuffixed path exactly. Same
-# idea for args.suffix ("" reproduces the original path exactly).
+# results; "whole" reproduces the original, unsuffixed path exactly (same
+# idea for args.suffix, where "" also reproduces the original path).
 REGION_TAG = "" if ligand_region == "whole" else f"_{ligand_region}"
 out_dir    = os.path.join(output_base, seq_type, seq_id, f"water_contacts_{TAG}{REGION_TAG}{args.suffix}")
 os.makedirs(out_dir, exist_ok=True)
@@ -104,30 +94,28 @@ LIG_RESNAME    = "LIG"
 WATER_RESNAMES = {"HOH", "WAT", "SOL"}
 ION_RESNAMES   = {"NA", "CL", "NA+", "CL-"}
 
-# Ligand heavy-atom split between the C20-C24 pentanoic-acid tail (side chain
-# off the steroid D-ring, terminating in the carboxylate) and everything
-# else (the fused 4-ring core, angular methyls, ring hydroxyls/sulfate).
+# Ligand heavy-atom split between the C20-C24 pentanoic-acid tail (side
+# chain off the steroid D-ring, ending in the carboxylate) and everything
+# else (fused 4-ring core, angular methyls, ring hydroxyls/sulfate).
 #
-# This is expressed as 0-indexed ORDINAL POSITIONS among the ligand's heavy
-# atoms in topology order, not atom names: the production .itp/.gro use
-# generic per-element names ("O", "O", "O", "C", "C", ...), not the unique
-# names ("O41", "C44", ...) from the standalone ligand_<seq_id>.pdb used to
-# derive this split, so name-based matching silently selects zero (or all)
-# atoms. Atom ORDER is preserved between the standalone PDB and the .gro for
-# a given sequence, but NOT across different Boltz-2 prediction batches --
-# the original 95-seq LCA cohort and the 4-sequence new-ligand test batch
-# use two different orderings for the same LCA molecule -- and CDCA/GLCA/
-# LCA3S are chemically different ligands entirely (extra ring hydroxyl,
-# glycine conjugate, and a sulfate ester in place of the free 3-OH,
-# respectively). Each pattern below was derived once from that ligand's own
-# standalone PDB (with CONECT records) by pruning degree-1 leaves to
-# isolate the fused steroid-ring "2-core", then taking the largest
-# connected component hanging off it as the tail -- the solvent-facing side
-# chain (C20-C24 + carboxylate for LCA/CDCA/LCA3S; for GLCA, extended
-# through the amide and glycine conjugate, since the whole appendage is the
-# analogous solvent-facing terminus once LCA's free acid becomes an amide).
-# get_tail_ordinals() below is checked at runtime so a future sequence that
-# breaks all known patterns fails loudly instead of silently mis-splitting.
+# Expressed as 0-indexed ORDINAL POSITIONS in topology order, not atom
+# names: the production .itp/.gro use generic per-element names ("O", "O",
+# "C", ...), not the unique names ("O41", "C44", ...) in the standalone
+# ligand_<seq_id>.pdb used to derive this split, so name-based matching
+# would silently select the wrong atoms. Atom order is preserved between a
+# sequence's standalone PDB and its .gro, but NOT across Boltz-2 prediction
+# batches (the original 95-seq LCA cohort and the 4-sequence new-ligand
+# test batch order the same LCA molecule differently), and CDCA/GLCA/LCA3S
+# are chemically distinct ligands (extra ring hydroxyl, glycine conjugate,
+# sulfate ester in place of the free 3-OH, respectively).
+#
+# Each pattern was derived once from that ligand's own standalone PDB (with
+# CONECT records): prune degree-1 leaves to isolate the fused steroid-ring
+# core, then take the largest connected component off it as the tail (the
+# solvent-facing side chain; for GLCA this extends through the amide and
+# glycine conjugate, the analogous terminus once LCA's free acid becomes an
+# amide). get_tail_ordinals() checks this at runtime so a sequence matching
+# no known pattern fails loudly instead of silently mis-splitting.
 LIGAND_PATTERNS = [
     # (label, expected_elements, tail_ordinals)
     ('LCA (original 95-seq cohort)',
@@ -149,6 +137,20 @@ LIGAND_PATTERNS = [
 
 
 def get_tail_ordinals(seq_id, got_elements):
+    """Looks up the tail-atom ordinal positions for a ligand's element order.
+
+    Args:
+        seq_id (str): Sequence ID, used only in the error message.
+        got_elements (list[str]): Heavy-atom element symbols for this
+            ligand, in topology order.
+
+    Returns:
+        set[int]: Ordinal positions (0-indexed) of the tail's heavy atoms.
+
+    Raises:
+        ValueError: `got_elements` doesn't match any pattern in
+            LIGAND_PATTERNS (a new ligand or a new Boltz-2 atom ordering).
+    """
     for label, expected, tail_ordinals in LIGAND_PATTERNS:
         if got_elements == expected:
             return tail_ordinals

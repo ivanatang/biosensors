@@ -1,12 +1,11 @@
-"""
-agg_gate_latch_water_bridge.py
----------------------------------
-Aggregates per-sequence gate-latch-ligand water bridge results (from
-gate_latch_water_bridge.py) and tests whether bridge occupancy differs
-Binder vs False Positive, following this repo's established
-significance-screening convention (Mann-Whitney U, Cohen's d, rank-AUC,
-BH-FDR across the tested features -- see agg_residue_atom_split.py /
-core_vs_tail_regions.py for the same pattern elsewhere in this repo).
+"""Aggregates and tests per-sequence gate-latch-ligand water bridge results.
+
+Combines the per-sequence CSVs from gate_latch_water_bridge.py and tests
+whether bridge occupancy differs Binder vs False Positive, following this
+repo's established significance-screening convention (Mann-Whitney U,
+Cohen's d, rank-AUC, BH-FDR across tested features; see
+agg_residue_atom_split.py / core_vs_tail_regions.py for the same pattern
+elsewhere in this repo).
 
 Usage:
     python agg_gate_latch_water_bridge.py
@@ -27,6 +26,16 @@ GROUP_A, GROUP_B = "Binder", "False Positive"
 
 
 def cohens_d(a, b):
+    """Computes Cohen's d effect size between two samples.
+
+    Args:
+        a: First sample (array-like).
+        b: Second sample (array-like).
+
+    Returns:
+        float: Standardized mean difference (a - b), pooled SD. 0.0 if
+        pooled variance is non-positive.
+    """
     na, nb = len(a), len(b)
     pooled_var = ((na - 1) * a.var(ddof=1) + (nb - 1) * b.var(ddof=1)) / (na + nb - 2)
     if pooled_var <= 0:
@@ -35,12 +44,30 @@ def cohens_d(a, b):
 
 
 def rank_auc(a, b):
+    """Computes the AUC of using the feature value to separate two groups.
+
+    Args:
+        a: Sample treated as the positive class (label 1).
+        b: Sample treated as the negative class (label 0).
+
+    Returns:
+        float: ROC-AUC. 0.5 means no separation, >0.5 means `a` tends
+        higher, <0.5 means `b` tends higher.
+    """
     y = np.r_[np.ones(len(a)), np.zeros(len(b))]
     scores = np.r_[a, b]
     return roc_auc_score(y, scores)
 
 
 def bh_fdr(pvals):
+    """Applies a Benjamini-Hochberg FDR correction to a set of p-values.
+
+    Args:
+        pvals: Array-like of raw p-values.
+
+    Returns:
+        numpy.ndarray: FDR-adjusted q-values, same order as `pvals`.
+    """
     pvals = np.asarray(pvals, dtype=float)
     n = len(pvals)
     order = np.argsort(pvals)
@@ -54,10 +81,17 @@ def bh_fdr(pvals):
 
 
 def load_seq_list(seq_list_path):
-    """
-    Returns a list of (seq_id, seq_type, custom_dir_or_None) tuples, mirroring
-    aggregate_r_scores.py's load_seq_list -- so the same seq_ids.txt-style
-    files (two or three tab-separated columns) work for both aggregators.
+    """Loads a seq_ids.txt-style file of seq_id/seq_type/custom_dir rows.
+
+    Mirrors aggregate_r_scores.py's load_seq_list so the same file (two or
+    three tab-separated columns) works for both aggregators.
+
+    Args:
+        seq_list_path (str): Path to the seq_ids.txt-style file. Blank
+            lines and lines starting with "#" are skipped.
+
+    Returns:
+        list[tuple]: (seq_id, seq_type, custom_dir_or_None) per row.
     """
     entries = []
     with open(seq_list_path) as f:
@@ -74,10 +108,24 @@ def load_seq_list(seq_list_path):
 
 
 def get_csv_path(seq_id, base, custom_dir, tag, region_tag, suffix):
-    """
-    Full path to a sequence's gate-latch-ligand water bridge summary CSV,
-    matching gate_latch_water_bridge.py's own output path exactly (the
-    filename has no suffix, only the containing directory does).
+    """Builds the path to a sequence's water-bridge summary CSV.
+
+    Matches gate_latch_water_bridge.py's own output path exactly (the
+    filename carries no suffix, only the containing directory does).
+
+    Args:
+        seq_id (str): Sequence ID, used to infer the subdirectory from its
+            naming suffix (_binder/_nb/_low_pkt/_fail_gate) when no custom
+            directory is given.
+        base (str): Root results directory.
+        custom_dir (str | None): Explicit base path override from
+            seq_ids.txt, used instead of `base`/inferred subdir if set.
+        tag (str): Run tag (e.g. "0_500ns").
+        region_tag (str): Ligand-region suffix ("" or "_core"/"_tail").
+        suffix (str): Run-directory/output suffix (e.g. "_qfix").
+
+    Returns:
+        str: Full path to the summary CSV.
     """
     dirname  = f"gate_latch_water_bridge_{tag}{region_tag}{suffix}"
     filename = f"{seq_id}_gate_latch_bridge_{tag}{region_tag}.csv"
@@ -103,6 +151,20 @@ def get_csv_path(seq_id, base, custom_dir, tag, region_tag, suffix):
 
 
 def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
+    """Runs a Mann-Whitney U test between two groups for one column.
+
+    Args:
+        df: DataFrame containing `col` and a `seq_type` column.
+        col (str): Name of the column to compare.
+        group_a: `seq_type` value for the first group (default: GROUP_A).
+        group_b: `seq_type` value for the second group (default: GROUP_B).
+        min_n (int): Minimum non-NaN samples required per group; returns
+            None below this (default: 5).
+
+    Returns:
+        dict | None: n, mean, Cohen's d, rank-AUC, and p-value for each
+        group, or None if either group has fewer than `min_n` samples.
+    """
     a = df.loc[df["seq_type"] == group_a, col].dropna().values
     b = df.loc[df["seq_type"] == group_b, col].dropna().values
     if len(a) < min_n or len(b) < min_n:
@@ -113,6 +175,7 @@ def compare_groups(df, col, group_a=GROUP_A, group_b=GROUP_B, min_n=5):
 
 
 def main():
+    """Aggregates water-bridge CSVs and runs the Binder vs FP significance test."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--seq_list', default="/projects/ivta1597/biosensors/seq_ids_orig.txt")
     parser.add_argument('--start-ns', type=float, default=0.0,
@@ -139,11 +202,10 @@ def main():
     print(f"Region      : {args.ligand_region}")
     print(f"Seq list    : {args.seq_list}")
 
-    # ── Build explicit per-sequence paths from seq_list (not a tree-wide glob) ──
-    # A glob over the whole results tree also picks up leftover output from
-    # any sequence that ever had this step run, including ones no longer in
-    # the current cohort (e.g. seq_ids_orig.txt's superseded 200-sequence
-    # list) -- explicit paths mean only what's actually in seq_list is read.
+    # Build explicit per-sequence paths from seq_list rather than globbing
+    # the results tree, which would also pick up leftover output from any
+    # sequence no longer in the current cohort (e.g. seq_ids_orig.txt's
+    # superseded 200-sequence list).
     seq_list = load_seq_list(args.seq_list)
 
     rows    = []
@@ -175,12 +237,11 @@ def main():
     combined.to_csv(combined_out, index=False)
     print(f"\nSaved combined table: {combined_out}  (shape={combined.shape})")
 
-    # ── Binder vs False Positive stats ────────────────────────────────────
-    # First five: occupancy/strength (as before, now periodic-boundary-
-    # corrected). Last five: dynamics -- prevalence and continuity aren't
-    # the same thing (occupancy can be high while still made of many short
-    # on/off runs), so both groups are tested rather than assuming the
-    # occupancy result speaks for the dynamics too.
+    # Binder vs False Positive stats. First five features are
+    # occupancy/strength (periodic-boundary-corrected); last five are
+    # dynamics. Occupancy can be high while still made of many short on/off
+    # runs, so both are tested rather than assuming occupancy speaks for
+    # dynamics too.
     features = ["gate_bridge_occupancy", "latch_bridge_occupancy",
                 "co_occurrence_occupancy", "triple_bridge_occupancy",
                 "mean_n_triple_bridge_waters",

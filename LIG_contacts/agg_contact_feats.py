@@ -1,9 +1,8 @@
-"""
-aggregate_contact_features.py
-------------------------------
-After all SLURM jobs finish, run this on the login node to collect
-per-sequence *_contact_summary_{TAG}.csv files into one table ready to
-merge with feat_table.xlsx.
+"""Collects per-sequence contact-summary CSVs into one merged feature table.
+
+Run on the login node after all SLURM jobs finish. Merges
+*_contact_summary_{TAG}.csv files into one table ready to merge with
+feat_table.xlsx.
 
 Usage:
     python aggregate_contact_features.py                  # full 40-500 ns

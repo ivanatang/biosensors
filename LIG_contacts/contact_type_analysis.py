@@ -1,19 +1,17 @@
-"""
-contact_type_analysis.py
-------------------------
-Compute protein–ligand contact type features (hydrophobic, polar, charged)
-for a single PYR1 sequence trajectory on Alpine HPC.
+"""Computes protein-ligand contact-type features for one PYR1 sequence.
 
-seq_id is always passed as a positional CLI argument — either directly
-for local testing, or by contact_type_worker.sh for SLURM array runs.
+Computes hydrophobic/polar/charged contact-type features for a single
+sequence trajectory on Alpine HPC. seq_id is always passed as a positional
+CLI argument, either directly for local testing or by
+contact_type_worker.sh for SLURM array runs.
 
 Usage:
     python contact_type_analysis.py <seq_id>
 
 Output:
-    <output_dir>/<seq_id>_contact_perframe.csv    — per-frame contact counts
-    <output_dir>/<seq_id>_residue_occupancy.csv   — per-residue occupancy
-    <output_dir>/<seq_id>_contact_summary.csv     — scalar features for feat_table
+    <output_dir>/<seq_id>_contact_perframe.csv: per-frame contact counts.
+    <output_dir>/<seq_id>_residue_occupancy.csv: per-residue occupancy.
+    <output_dir>/<seq_id>_contact_summary.csv: scalar features for feat_table.
 """
 
 import os
@@ -48,16 +46,25 @@ TYPE_SUBDIR = {
 }
 
 def get_type_subdir(seq_id):
-    """
-    Extract the type suffix from seq_id and return the corresponding
-    subdirectory. Checks two-token suffixes (low_pkt, fail_gate) before
-    single-token ones (binder, nb) to avoid partial matches.
+    """Maps a seq_id's naming suffix to its data subdirectory.
+
+    Checks two-token suffixes (low_pkt, fail_gate) before single-token ones
+    (binder, nb) to avoid partial matches.
 
     Examples:
-        pair_3059_binder    -> binders
-        pair_0777_nb        -> nonbinders
-        pair_0008_low_pkt   -> neg_low_pkt
+        pair_3059_binder -> binders
+        pair_0777_nb -> nonbinders
+        pair_0008_low_pkt -> neg_low_pkt
         pair_0715_fail_gate -> neg_fail_gate
+
+    Args:
+        seq_id (str): Sequence identifier.
+
+    Returns:
+        str: Subdirectory name (a value from TYPE_SUBDIR).
+
+    Raises:
+        ValueError: `seq_id` doesn't end with a recognized suffix.
     """
     tokens = seq_id.split("_")
 
@@ -78,11 +85,22 @@ def get_type_subdir(seq_id):
 
 
 def run_dir(seq_id, end_ns):
-    """Directory containing a sequence's medoid_PL.pdb / PL_only_*.xtc.
+    """Finds the directory containing a sequence's medoid_PL.pdb / xtc.
+
     Newer pipeline runs write these under runrel/{end_ns}ns/; older ones
-    write directly into runrel/. Prefer whichever location actually has
+    write directly into runrel/. Prefers whichever location actually has
     medoid_PL.pdb rather than guessing from seq_id (see the equivalent
-    rmsf_run_dir() in extract_rmsf_feats.py for why guessing is unreliable)."""
+    rmsf_run_dir() in extract_rmsf_feats.py for why guessing is unreliable).
+
+    Args:
+        seq_id (str): Sequence identifier.
+        end_ns (float): End of the analysis window in ns, used to build the
+            nested subdirectory name.
+
+    Returns:
+        str: Path to the run directory (nested if medoid_PL.pdb is there,
+        otherwise flat).
+    """
     flat_dir   = os.path.join(base, get_type_subdir(seq_id), seq_id, runrel)
     nested_dir = os.path.join(flat_dir, f"{int(end_ns)}ns")
     if os.path.exists(os.path.join(nested_dir, "medoid_PL.pdb")):
@@ -96,30 +114,28 @@ LIGAND_RESNAME  = "LIG"
 CUTOFF_NM       = 0.45     # 4.5 Å heavy-atom contact cutoff
 STRIDE          = 1        # set >1 only for quick debugging; use 1 for publication
 
-# Ligand heavy-atom split between the C20-C24 pentanoic-acid tail (side chain
-# off the steroid D-ring, terminating in the carboxylate) and everything
-# else (the fused 4-ring core, angular methyls, ring hydroxyls/sulfate).
+# Ligand heavy-atom split between the C20-C24 pentanoic-acid tail (side
+# chain off the steroid D-ring, ending in the carboxylate) and everything
+# else (fused 4-ring core, angular methyls, ring hydroxyls/sulfate).
 #
-# This is expressed as 0-indexed ORDINAL POSITIONS among the ligand's heavy
-# atoms in topology order, not atom names: the production .itp/.gro use
-# generic per-element names ("O", "O", "O", "C", "C", ...), not the unique
-# names ("O41", "C44", ...) from the standalone ligand_<seq_id>.pdb used to
-# derive this split, so name-based matching silently selects zero (or all)
-# atoms. Atom ORDER is preserved between the standalone PDB and the .gro for
-# a given sequence, but NOT across different Boltz-2 prediction batches --
-# the original 95-seq LCA cohort and the 4-sequence new-ligand test batch
-# use two different orderings for the same LCA molecule -- and CDCA/GLCA/
-# LCA3S are chemically different ligands entirely (extra ring hydroxyl,
-# glycine conjugate, and a sulfate ester in place of the free 3-OH,
-# respectively). Each pattern below was derived once from that ligand's own
-# standalone PDB (with CONECT records) by pruning degree-1 leaves to
-# isolate the fused steroid-ring "2-core", then taking the largest
-# connected component hanging off it as the tail -- the solvent-facing side
-# chain (C20-C24 + carboxylate for LCA/CDCA/LCA3S; for GLCA, extended
-# through the amide and glycine conjugate, since the whole appendage is the
-# analogous solvent-facing terminus once LCA's free acid becomes an amide).
-# get_tail_ordinals() below is checked at runtime so a future sequence that
-# breaks all known patterns fails loudly instead of silently mis-splitting.
+# Expressed as 0-indexed ORDINAL POSITIONS in topology order, not atom
+# names: the production .itp/.gro use generic per-element names ("O", "O",
+# "C", ...), not the unique names ("O41", "C44", ...) in the standalone
+# ligand_<seq_id>.pdb used to derive this split, so name-based matching
+# would silently select the wrong atoms. Atom order is preserved between a
+# sequence's standalone PDB and its .gro, but NOT across Boltz-2 prediction
+# batches (the original 95-seq LCA cohort and the 4-sequence new-ligand
+# test batch order the same LCA molecule differently), and CDCA/GLCA/LCA3S
+# are chemically distinct ligands (extra ring hydroxyl, glycine conjugate,
+# sulfate ester in place of the free 3-OH, respectively).
+#
+# Each pattern was derived once from that ligand's own standalone PDB (with
+# CONECT records): prune degree-1 leaves to isolate the fused steroid-ring
+# core, then take the largest connected component off it as the tail (the
+# solvent-facing side chain; for GLCA this extends through the amide and
+# glycine conjugate, the analogous terminus once LCA's free acid becomes an
+# amide). get_tail_ordinals() checks this at runtime so a sequence matching
+# no known pattern fails loudly instead of silently mis-splitting.
 LIGAND_PATTERNS = [
     # (label, expected_elements, tail_ordinals)
     ('LCA (original 95-seq cohort)',
@@ -141,6 +157,20 @@ LIGAND_PATTERNS = [
 
 
 def get_tail_ordinals(seq_id, got_elements):
+    """Looks up the tail-atom ordinal positions for a ligand's element order.
+
+    Args:
+        seq_id (str): Sequence ID, used only in the error message.
+        got_elements (list[str]): Heavy-atom element symbols for this
+            ligand, in topology order.
+
+    Returns:
+        set[int]: Ordinal positions (0-indexed) of the tail's heavy atoms.
+
+    Raises:
+        ValueError: `got_elements` doesn't match any pattern in
+            LIGAND_PATTERNS (a new ligand or a new Boltz-2 atom ordering).
+    """
     for label, expected, tail_ordinals in LIGAND_PATTERNS:
         if got_elements == expected:
             return tail_ordinals
@@ -161,6 +191,15 @@ POS_CHARGED = {"ARG", "LYS", "HIS"}
 NEG_CHARGED = {"ASP", "GLU"}
 
 def classify_residue(resname):
+    """Classifies a residue's side chain as hydrophobic, polar, or charged.
+
+    Args:
+        resname (str): Three-letter residue name.
+
+    Returns:
+        str: "hydrophobic", "polar", "pos_charged", "neg_charged", or
+        "other" if unrecognized.
+    """
     if resname in HYDROPHOBIC:  return "hydrophobic"
     if resname in POLAR:        return "polar"
     if resname in POS_CHARGED:  return "pos_charged"
@@ -172,6 +211,12 @@ def classify_residue(resname):
 # ARGUMENTS
 # ─────────────────────────────────────────────
 def parse_args():
+    """Parses CLI arguments for a single-sequence contact-type run.
+
+    Returns:
+        argparse.Namespace: Parsed arguments (seq_id, start_ns, end_ns,
+        ligand_region, suffix).
+    """
     parser = argparse.ArgumentParser(
         description="Compute protein–ligand contact type features for one sequence."
     )
@@ -196,6 +241,22 @@ def parse_args():
 # LOAD TRAJECTORY
 # ─────────────────────────────────────────────
 def load_trajectory(seq_id, start_ps, end_ps, end_ns):
+    """Loads and time-windows a sequence's medoid trajectory.
+
+    Args:
+        seq_id (str): Sequence identifier.
+        start_ps (int): Start of the analysis window in ps.
+        end_ps (int): End of the analysis window in ps.
+        end_ns (float): End of the analysis window in ns (used to locate
+            the run directory; see run_dir).
+
+    Returns:
+        mdtraj.Trajectory: Trajectory restricted to [start_ps, end_ps].
+
+    Raises:
+        FileNotFoundError: The expected topology or trajectory file is
+            missing.
+    """
     seq_dir  = run_dir(seq_id, end_ns)
     top_path = os.path.join(seq_dir, "medoid_PL.pdb")
     xtc_path = os.path.join(seq_dir, f"PL_only_40_{int(end_ns)}ns.xtc")
@@ -224,11 +285,24 @@ def load_trajectory(seq_id, start_ps, end_ps, end_ns):
 # CONTACT TYPE COMPUTATION
 # ─────────────────────────────────────────────
 def compute_contact_type_features(traj, seq_id, ligand_region="whole"):
-    """
-    For each protein residue within CUTOFF_NM of LCA (any frame),
-    compute per-frame binary contact and return:
-      - per_frame_df : (n_frames) counts of each contact type per frame
-      - residue_df   : (n_residues) occupancy per residue, for inspection
+    """Computes per-frame and per-residue ligand contact-type features.
+
+    For each protein residue, tests per-frame heavy-atom contact
+    (CUTOFF_NM) with the ligand and tallies it by residue chemistry class.
+
+    Args:
+        traj (mdtraj.Trajectory): Trajectory to analyze.
+        seq_id (str): Sequence identifier, used in error messages.
+        ligand_region (str): "whole", "core", or "tail" (default: "whole");
+            see get_tail_ordinals.
+
+    Returns:
+        tuple[pandas.DataFrame, pandas.DataFrame]: (per_frame_df, with one
+        row per frame and a column per contact-type count; residue_df, with
+        one row per residue and its contact occupancy).
+
+    Raises:
+        ValueError: No atoms found with residue name LIGAND_RESNAME.
     """
     top = traj.topology
 
@@ -326,9 +400,16 @@ def compute_contact_type_features(traj, seq_id, ligand_region="whole"):
 # SUMMARISE → SCALAR FEATURES FOR feat_table
 # ─────────────────────────────────────────────
 def summarise_features(per_frame_df, seq_id):
-    """
-    Collapse per-frame arrays into scalar features.
-    Occupancy columns: fraction of frames with ≥1 contact of that type.
+    """Collapses per-frame contact-type arrays into scalar summary features.
+
+    Args:
+        per_frame_df (pandas.DataFrame): Per-frame contact counts (see
+            compute_contact_type_features).
+        seq_id (str): Sequence identifier, added as a column.
+
+    Returns:
+        pandas.DataFrame: One row, with mean/std of each column and, for
+        count columns, the fraction of frames with >=1 contact.
     """
     rows = {"seq_id": seq_id}
 
@@ -349,6 +430,13 @@ def summarise_features(per_frame_df, seq_id):
 # DIAGNOSTIC PRINT
 # ─────────────────────────────────────────────
 def print_diagnostics(per_frame_df, residue_df, seq_id):
+    """Prints a summary of contact-type means and top-occupancy residues.
+
+    Args:
+        per_frame_df (pandas.DataFrame): Per-frame contact counts.
+        residue_df (pandas.DataFrame): Per-residue occupancy.
+        seq_id (str): Sequence identifier, used in the printed header.
+    """
     print(f"\n── Contact summary for {seq_id} ─────────────────────────")
     print(f"  Frames analysed : {len(per_frame_df)}")
     print(f"  Mean total contacts     : {per_frame_df['n_total'].mean():.2f}")
@@ -372,6 +460,7 @@ def print_diagnostics(per_frame_df, residue_df, seq_id):
 # MAIN
 # ─────────────────────────────────────────────
 def main():
+    """Runs the contact-type analysis for one sequence end to end."""
     global runrel
 
     args     = parse_args()

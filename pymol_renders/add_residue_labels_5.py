@@ -1,12 +1,9 @@
 #!/usr/bin/env python
-"""
-add_residue_labels_5.py
-------------------------
-Generalized version of add_region_labels.py for an arbitrary set of
-single-residue color highlights (here: 5 residues on seq10_binder).
-Same method: find each residue's stick-color pixel cluster by HSV hue
-matching, then place a plain text label (no line/marker) in the nearest
-clear space, computed from the actual image, not assumed layout.
+"""Labels an arbitrary set of single-residue color highlights.
+
+Generalizes add_region_labels.py's method (HSV hue clustering + plain text
+labels placed in the nearest clear space, computed from the actual image)
+to an arbitrary set of residues, here 5 on seq10_binder.
 
 Usage:
     python add_residue_labels_5.py
@@ -19,8 +16,8 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), "output")
 IMAGE = "seq10_binder_5residue_highlight.png"
 
 RESIDUES = [
-    # (label, RGB) -- label is the amino acid identity actually present at
-    # this position in seq10_binder (confirmed against both the PDB and
+    # (label, RGB) -- label is the amino acid actually present at this
+    # position in seq10_binder (confirmed against both the PDB and
     # feat_table_500ns.xlsx's Sequence column, 1-indexed match)
     ("Phe61",  (230, 159, 0)),   # #E69F00 orange
     ("Ile62",  (86, 180, 233)),  # #56B4E9 sky blue
@@ -40,11 +37,33 @@ SAMPLE_MARGIN = 10
 
 
 def rgb_to_hue_deg(r, g, b):
+    """Converts 0-255 RGB to (hue in degrees, saturation, value).
+
+    Args:
+        r (int): Red channel, 0-255.
+        g (int): Green channel, 0-255.
+        b (int): Blue channel, 0-255.
+
+    Returns:
+        tuple[float, float, float]: (hue_deg, saturation, value), each in
+        their native HSV ranges (hue in [0, 360), sat/value in [0, 1]).
+    """
     h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
     return h * 360, s, v
 
 
 def find_cluster(img, target_rgb):
+    """Finds the pixel cluster matching a target hue.
+
+    Args:
+        img: PIL Image (RGB) to scan.
+        target_rgb (tuple[int, int, int]): RGB color to match by hue.
+
+    Returns:
+        dict | None: Bounding box, center, and pixel count (x_min, x_max,
+        y_min, y_max, x_center, y_center, n) of matching pixels, or None
+        if no pixels matched.
+    """
     target_hue, _, _ = rgb_to_hue_deg(*target_rgb)
     w, h = img.size
     px = img.load()
@@ -69,6 +88,7 @@ def find_cluster(img, target_rgb):
 
 
 def main():
+    """Labels all 5 residues in RESIDUES onto IMAGE, in place."""
     path = os.path.join(OUT_DIR, IMAGE)
     img = Image.open(path).convert("RGB")
     w, h = img.size
