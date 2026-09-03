@@ -45,10 +45,16 @@ while IFS=$'\t' read -r name prefix id dir_type; do
     # -X restricts to the main job record, excluding .batch/.extern substeps.
     # sort -n + tail -1 picks the most recent submission if there were retries.
     #
+    # -S is required: sacct's default start time is midnight of *today*, not
+    # "all history" -- without it, a job that finished on an earlier day is
+    # silently excluded regardless of name, which is what made every lookup
+    # come back empty even though the runs clearly completed on disk.
+    #
     # Search by "<prefix>_<id>_prod_qfix", not "prod_qfix_<name>" -- see the
     # header comment: prod_md_PYR1_LCA_qfix.sh renames the job mid-run, and
     # sacct only ever has the renamed JobName on record.
     jobid=$(sacct -u "$(whoami)" --name="${prefix}_${id}_prod_qfix" \
+                  -S 2025-01-01 \
                   --format=JobID,State --noheader --parsable2 -X 2>/dev/null \
             | awk -F'|' '{print $1}' | grep -E '^[0-9]+$' | sort -n | tail -1)
 
