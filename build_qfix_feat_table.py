@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Builds a schema-matched feature table for the 6 qfix pilot sequences.
+"""Builds a schema-matched feature table for all 95 qfix sequences.
 
-Covers bind_022/019/020_binder and nonb_006/008/009_nb, from their
-bond-order-fixed reparameterization: same feature columns as
-feat_table_500ns.xlsx, sourced from the _qfix-suffixed aggregated CSVs, for
-comparison against those same 6 sequences' original (standard) feature
-values and for a model-swap CV evaluation. Mirrors
-build_new_ligand_feat_table.py's logic, with different sequences and
-source paths.
+Covers the 6 qfix pilot sequences (bind_022/019/020_binder and
+nonb_006/008/009_nb) plus the 89 remaining ngs_observed sequences run
+through the same bond-order-fixed reparameterization: same feature columns
+as feat_table_500ns.xlsx, sourced from the _qfix-suffixed aggregated CSVs
+(which must themselves have been (re)built against seq_ids_qfix_all95.txt
+so they cover all 95 sequences, not just the original 6-sequence pilot).
+Mirrors build_new_ligand_feat_table.py's logic, with different sequences
+and source paths.
 
 Usage:
-    python build_qfix_feat_table.py --seq_list seq_ids_qfix_pilot.txt \
-        --out qfix_pilot_feat_table.csv
+    python build_qfix_feat_table.py --seq_list seq_ids_qfix_all95.txt \
+        --out qfix_500ns_feat_table.csv
 """
 import argparse
 import pandas as pd
@@ -23,16 +24,16 @@ WB_TAG = "0_500ns"
 
 
 def parse_args():
-    """Parses CLI args for the qfix pilot sequence list and output path.
+    """Parses CLI args for the qfix sequence list and output path.
 
     Returns:
         argparse.Namespace: Parsed arguments (seq_list, out).
     """
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--seq_list", default="seq_ids_qfix_pilot.txt",
-                    help="seq_ids.txt-style list of the qfix pilot sequences (default: %(default)s)")
-    p.add_argument("--out", default="qfix_pilot_feat_table.csv", help="Output .csv path")
+    p.add_argument("--seq_list", default="seq_ids_qfix_all95.txt",
+                    help="seq_ids.txt-style list of all 95 qfix sequences (default: %(default)s)")
+    p.add_argument("--out", default="qfix_500ns_feat_table.csv", help="Output .csv path")
     return p.parse_args()
 
 
@@ -50,7 +51,7 @@ def report(df, cols, n_base, label):
 
 
 def main():
-    """Builds the qfix pilot feature table and writes it to CSV."""
+    """Builds the all-95-sequence qfix feature table and writes it to CSV."""
     args = parse_args()
 
     rows = []
@@ -66,7 +67,7 @@ def main():
                           "Label": 1 if group_label == "Binder" else 0})
     df = pd.DataFrame(rows)
     n_base = len(df)
-    print(f"Qfix pilot cohort ({args.seq_list}): {n_base} sequences")
+    print(f"Qfix cohort ({args.seq_list}): {n_base} sequences")
 
     dw_cols = []
     for r in POCKET_RESIDUES:
@@ -76,7 +77,7 @@ def main():
                  "Gate (r84-90) mean (A)", "Gate (r84-90) SD (A)"]
 
     # ── dw_pocket: whole-ligand D/W panel ────────────────────────────────────
-    dw = pd.read_csv(f"water_analysis/results_qfix_pilot/dw_scores_all_sequences_{TAG}.csv")[["seq_id"] + dw_cols]
+    dw = pd.read_csv(f"water_analysis/results_qfix_all95/dw_scores_all_sequences_{TAG}.csv")[["seq_id"] + dw_cols]
     df = df.merge(dw, left_on="name", right_on="seq_id", how="left").drop(columns=["seq_id"])
     report(df, dw_cols, n_base, "dw_pocket")
 
@@ -107,14 +108,14 @@ def main():
 
     # ── Salt bridges ──────────────────────────────────────────────────────
     sb_cols = ["max_saltbridge_occupancy_pct", "n_saltbridges_gt50pct", "mean_top3_occupancy_pct"]
-    sb = pd.read_csv("salt_bridge/saltbridge_features_qfix_pilot.csv")[["seq_id"] + sb_cols]
+    sb = pd.read_csv("salt_bridge/saltbridge_features_qfix_all95.csv")[["seq_id"] + sb_cols]
     df = df.merge(sb, left_on="name", right_on="seq_id", how="left").drop(columns=["seq_id"])
     report(df, sb_cols, n_base, "salt bridges")
     df[sb_cols] = df[sb_cols].fillna(0.0)
 
     # ── Core vs. tail ligand-region D/W delta ────────────────────────────────
-    core = pd.read_csv(f"water_analysis/results_qfix_pilot/dw_scores_all_sequences_{TAG}_core.csv")
-    tail = pd.read_csv(f"water_analysis/results_qfix_pilot/dw_scores_all_sequences_{TAG}_tail.csv")
+    core = pd.read_csv(f"water_analysis/results_qfix_all95/dw_scores_all_sequences_{TAG}_core.csv")
+    tail = pd.read_csv(f"water_analysis/results_qfix_all95/dw_scores_all_sequences_{TAG}_tail.csv")
     dw_names = [f"D_{r}" for r in POCKET_RESIDUES] + [f"W_{r}" for r in POCKET_RESIDUES]
     core_sub = core[["seq_id"] + dw_names].rename(columns={c: f"{c}_core" for c in dw_names})
     tail_sub = tail[["seq_id"] + dw_names].rename(columns={c: f"{c}_tail" for c in dw_names})
@@ -135,7 +136,7 @@ def main():
                 "hydration_count_pocket_4A_early20_mean", "hydration_count_pocket_4A_late20_mean",
                 "hydration_count_pocket_4A_drift20", "hydration_count_pocket_4A_slope",
                 "hydration_count_pocket_4A_slope_per_ns"]
-    hyd = pd.read_csv("water_spatial/water_density_feats_pocket_qfix_pilot.csv")[["seq_id"] + hyd_cols]
+    hyd = pd.read_csv("water_spatial/water_density_feats_pocket_qfix_all95.csv")[["seq_id"] + hyd_cols]
     df = df.merge(hyd, left_on="name", right_on="seq_id", how="left").drop(columns=["seq_id"])
     report(df, hyd_cols, n_base, "pocket hydration (4A)")
 
