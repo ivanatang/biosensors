@@ -1,29 +1,35 @@
 #!/usr/bin/env python3
-"""Paired comparison of qfix pilot sequences against their standard values.
+"""Paired comparison of qfix sequences against their standard values.
 
-Compares the 6 qfix pilot sequences' feature values (bond-order-fixed
-reparameterization) against their original (standard) values in
-feat_table_500ns.xlsx, per feature column. Since this is the same 6
-sequences before/after (not two independent groups), this uses a paired
-Wilcoxon signed-rank test rather than the Mann-Whitney/Cohen's d/rank-AUC
-convention used elsewhere in this repo for independent Binder-vs-False
-Positive comparisons -- that convention doesn't apply to n=6 paired
-samples.
+Compares a set of target sequences' feature values (default: the 6 qfix
+pilot sequences; pass --target_seq_list for any other seq_ids.txt-style
+list, e.g. all 95 qfix sequences) after bond-order-fixed reparameterization
+against their original (standard) values in feat_table_500ns.xlsx, per
+feature column. Since this is the same sequences before/after (not two
+independent groups), this uses a paired Wilcoxon signed-rank test rather
+than the Mann-Whitney/Cohen's d/rank-AUC convention used elsewhere in this
+repo for independent Binder-vs-False Positive comparisons -- that
+convention doesn't apply to paired samples.
 
-With n=6 pairs, the Wilcoxon test has limited power (the smallest possible
-two-sided p-value is 1/32 = 0.03125), so this is exploratory: it shows
-which features moved the most and in which direction, not a definitive
-significance claim.
+With a small n, the Wilcoxon test has limited power (e.g. n=6 pairs caps
+the smallest possible two-sided p-value at 1/32 = 0.03125), so treat this
+as exploratory for small target lists: it shows which features moved the
+most and in which direction, not necessarily a definitive significance
+claim. With n=95 the test has considerably more power.
 
 Usage:
     python compare_qfix_vs_standard.py --qfix_table qfix_pilot_feat_table.csv
+    python compare_qfix_vs_standard.py --qfix_table qfix_500ns_feat_table.csv \
+        --target_seq_list seq_ids_qfix_all95.txt \
+        --out_long qfix_vs_standard_deltas_long_all95.csv \
+        --out_summary qfix_vs_standard_summary_all95.csv
 """
 import argparse
 import numpy as np
 import pandas as pd
 from scipy.stats import wilcoxon
 
-from model_swap_eval import load_baseline_df, TARGET_SEQ_IDS
+from model_swap_eval import load_baseline_df, load_target_seq_ids, DEFAULT_TARGET_SEQ_LIST
 
 
 def bh_fdr(pvals):
@@ -52,14 +58,19 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--qfix_table", default="qfix_pilot_feat_table.csv")
+    p.add_argument("--target_seq_list", default=DEFAULT_TARGET_SEQ_LIST,
+                    help="seq_ids.txt-style list of sequences being compared "
+                         "(default: %(default)s)")
     p.add_argument("--out_long", default="qfix_vs_standard_deltas_long.csv",
                     help="Per-sequence per-feature delta table")
     p.add_argument("--out_summary", default="qfix_vs_standard_summary.csv",
                     help="Per-feature paired-comparison summary")
     args = p.parse_args()
 
+    target_seq_ids = load_target_seq_ids(args.target_seq_list)
+
     qfix = pd.read_csv(args.qfix_table).set_index("name")
-    missing = set(TARGET_SEQ_IDS) - set(qfix.index)
+    missing = set(target_seq_ids) - set(qfix.index)
     if missing:
         raise ValueError(f"{args.qfix_table} is missing sequences: {missing}")
 
@@ -70,20 +81,20 @@ def main():
     std_full, feature_group_cols = load_baseline_df()
     std_full = std_full.set_index("name")
     feature_cols = [c for cols in feature_group_cols.values() for c in cols]
-    missing_std = set(TARGET_SEQ_IDS) - set(std_full.index)
+    missing_std = set(target_seq_ids) - set(std_full.index)
     if missing_std:
         raise ValueError(f"Baseline table is missing sequences: {missing_std}")
     missing_qfix_cols = set(feature_cols) - set(qfix.columns)
     if missing_qfix_cols:
         raise ValueError(f"{args.qfix_table} is missing feature columns: {missing_qfix_cols}")
-    print(f"Comparing {len(feature_cols)} feature columns across {len(TARGET_SEQ_IDS)} paired sequences")
+    print(f"Comparing {len(feature_cols)} feature columns across {len(target_seq_ids)} paired sequences")
 
-    std = std_full.loc[TARGET_SEQ_IDS, feature_cols]
-    qfx = qfix.loc[TARGET_SEQ_IDS, feature_cols]
+    std = std_full.loc[target_seq_ids, feature_cols]
+    qfx = qfix.loc[target_seq_ids, feature_cols]
 
     # ── Long-format per-sequence deltas ──────────────────────────────────────
     long_rows = []
-    for seq_id in TARGET_SEQ_IDS:
+    for seq_id in target_seq_ids:
         for col in feature_cols:
             s, q = std.loc[seq_id, col], qfx.loc[seq_id, col]
             long_rows.append({"seq_id": seq_id, "feature": col,

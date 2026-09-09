@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Evaluates the effect of swapping in bond-order-fixed (qfix) feature values.
 
-Compares model performance with the 6 qfix pilot sequences' feature values
-(bind_022/019/020_binder, nonb_006/008/009_nb) replaced by their
+Compares model performance with a set of target sequences' feature values
+(default: the 6 qfix pilot sequences; pass --target_seq_list for any other
+seq_ids.txt-style list, e.g. all 95 qfix sequences) replaced by their
 bond-order-fixed reparameterization, against the current baseline (original
 parameterization, exactly as ML_classification.ipynb trains on today).
 
 Both runs use identical StratifiedGroupKFold splits: the label and
-amino-acid sequence for these 6 rows are unaffected by the ligand
+amino-acid sequence for the target rows are unaffected by the ligand
 reparameterization, only their MD-derived feature values change, so this is
 a paired before/after comparison on the exact same folds, not two
 independently-resampled runs.
@@ -18,6 +19,8 @@ rationale behind each feature family / hyperparameter choice.
 
 Usage:
     python model_swap_eval.py --qfix_table qfix_pilot_feat_table.csv
+    python model_swap_eval.py --qfix_table qfix_500ns_feat_table.csv \
+        --target_seq_list seq_ids_qfix_all95.txt --out model_swap_eval_all95_results.csv
 """
 import argparse
 import numpy as np
@@ -50,11 +53,29 @@ MD_GROUP_SUFFIX = {
     "negative_fail_gate":  "_fail_gate",
 }
 
-TARGET_SEQ_IDS = ["bind_022_binder", "bind_019_binder", "bind_020_binder",
-                   "nonb_006_nb", "nonb_008_nb", "nonb_009_nb"]
+DEFAULT_TARGET_SEQ_LIST = "seq_ids_qfix_pilot.txt"
 
 N_SPLITS = 7
 RANDOM_STATE = 42
+
+
+def load_target_seq_ids(path):
+    """Reads sequence names from a seq_ids.txt-style list (first column).
+
+    Args:
+        path (str): Path to a tab-separated seq_ids.txt-style file.
+
+    Returns:
+        list[str]: Sequence names in file order, comments/blank lines skipped.
+    """
+    names = []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            names.append(line.split("\t")[0])
+    return names
 
 
 # ── GroupAwareSelector -- verbatim copy of ML_classification.ipynb cell 2 ────
@@ -254,9 +275,13 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--qfix_table", default="qfix_pilot_feat_table.csv")
+    p.add_argument("--target_seq_list", default=DEFAULT_TARGET_SEQ_LIST,
+                    help="seq_ids.txt-style list of sequences to swap qfix values in for "
+                         "(default: %(default)s)")
     p.add_argument("--out", default="model_swap_eval_results.csv")
     args = p.parse_args()
 
+    target_seq_ids = load_target_seq_ids(args.target_seq_list)
     df, feature_group_cols = load_baseline_df()
     feature_cols = [c for cols in feature_group_cols.values() for c in cols]
     col_index = {c: i for i, c in enumerate(feature_cols)}
@@ -264,7 +289,7 @@ def main():
     corr_prune_groups = {"dw_pocket", "water_bridge"}
     k_per_group = {"dw_pocket": 12, "core_tail_delta": 16}
 
-    missing_targets = set(TARGET_SEQ_IDS) - set(df["name"])
+    missing_targets = set(target_seq_ids) - set(df["name"])
     if missing_targets:
         raise ValueError(f"Target sequences not found in baseline cohort: {missing_targets}")
 
@@ -280,7 +305,7 @@ def main():
         raise ValueError(f"{args.qfix_table} is missing feature columns: {missing_qfix_cols}")
 
     df_qfix = df.copy()
-    for seq_id in TARGET_SEQ_IDS:
+    for seq_id in target_seq_ids:
         row_idx = df_qfix.index[df_qfix["name"] == seq_id]
         df_qfix.loc[row_idx, feature_cols] = qfix.loc[seq_id, feature_cols].values
     X_qfix = df_qfix[feature_cols].values
@@ -293,7 +318,7 @@ def main():
     n_changed = (~np.isclose(X_base.astype(float), X_qfix.astype(float),
                               equal_nan=True)).any(axis=1).sum()
     print(f"Rows with changed features in the qfix-swapped table: {n_changed} "
-          f"(expected {len(TARGET_SEQ_IDS)})")
+          f"(expected {len(target_seq_ids)})")
 
     cv = StratifiedGroupKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
     pipe = Pipeline([
