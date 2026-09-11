@@ -1,0 +1,3 @@
+region,metric,n_residues_tested,n_residues_significant,top_residue,top_residue_p,top_residue_d
+core,W occupancy,78,37,90,7.879030038183839e-10,-0.5177563478600722
+tail,W occupancy,66,22,92,6.597040320029281e-15,1.2194203331047166
