@@ -124,6 +124,8 @@ def main():
     ax1.bar(x, means, yerr=sds, capsize=5,
             color=plt.get_cmap("tab10")(np.linspace(0, 0.6, len(metric_names))),
             edgecolor="white")
+    for xi, m, s in zip(x, means, sds):
+        ax1.text(xi, m + s + 0.02, f"{m:.2f}", ha="center", va="bottom", fontsize=9)
     ax1.set_xticks(x)
     ax1.set_xticklabels(metric_names, rotation=20, ha="right", fontsize=9)
     ax1.set_ylabel("Score", fontsize=10)
