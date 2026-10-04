@@ -1,0 +1,228 @@
+lca3s_0004_nb	False Positive
+lcam_0004_binder	Binder
+lca3s_0015_nb	False Positive
+lcam_0015_nb	False Positive
+lcam_0020_nb	False Positive
+lca3s_0025_nb	False Positive
+lca3s_0031_nb	False Positive
+lcam_0048_nb	False Positive
+lcam_0057_nb	False Positive
+lcam_0058_nb	False Positive
+lca3s_0083_binder	Binder
+lcam_0083_binder	Binder
+lca3s_0084_binder	Binder
+lcam_0084_binder	Binder
+lca3s_0085_binder	Binder
+lcam_0085_binder	Binder
+lca3s_0086_nb	False Positive
+lcam_0086_binder	Binder
+lca3s_0091_nb	False Positive
+lca3s_0092_nb	False Positive
+lcam_0092_nb	False Positive
+lcam_0138_nb	False Positive
+lca3s_0151_nb	False Positive
+lca3s_0164_nb	False Positive
+lca3s_0174_nb	False Positive
+lca3s_0180_nb	False Positive
+lca3s_0194_nb	False Positive
+lcam_0194_nb	False Positive
+lcam_0201_binder	Binder
+lca3s_0210_nb	False Positive
+lca3s_0214_nb	False Positive
+lcam_0214_nb	False Positive
+lca3s_0219_nb	False Positive
+lca3s_0261_nb	False Positive
+lcam_0264_nb	False Positive
+lca3s_0265_binder	Binder
+lcam_0265_binder	Binder
+lca3s_0266_binder	Binder
+lcam_0266_binder	Binder
+lcam_0276_nb	False Positive
+lca3s_0301_nb	False Positive
+lcam_0301_nb	False Positive
+lcam_0325_binder	Binder
+lca3s_0333_nb	False Positive
+lcam_0352_nb	False Positive
+lcam_0400_nb	False Positive
+lca3s_0402_nb	False Positive
+lcam_0402_nb	False Positive
+lca3s_0404_nb	False Positive
+lca3s_0407_nb	False Positive
+lcam_0407_nb	False Positive
+lca3s_0411_nb	False Positive
+lcam_0418_nb	False Positive
+lcam_0423_nb	False Positive
+lcam_0445_nb	False Positive
+lcam_0450_nb	False Positive
+lca3s_0456_nb	False Positive
+lcam_0456_nb	False Positive
+lca3s_0475_nb	False Positive
+lcam_0529_nb	False Positive
+lca3s_0559_nb	False Positive
+lcam_0565_nb	False Positive
+lcam_0569_nb	False Positive
+lca3s_0571_nb	False Positive
+lcam_0571_nb	False Positive
+lcam_0585_nb	False Positive
+lca3s_0592_binder	Binder
+lcam_0592_binder	Binder
+lca3s_0593_binder	Binder
+lcam_0593_binder	Binder
+lca3s_0594_binder	Binder
+lcam_0594_binder	Binder
+lca3s_0595_nb	False Positive
+lcam_0595_binder	Binder
+lca3s_0598_nb	False Positive
+lca3s_0599_nb	False Positive
+lcam_0599_nb	False Positive
+lca3s_0605_nb	False Positive
+lcam_0605_nb	False Positive
+lcam_0608_nb	False Positive
+lca3s_0609_nb	False Positive
+lca3s_0613_nb	False Positive
+lca3s_0617_nb	False Positive
+lcam_0619_nb	False Positive
+lcam_0638_nb	False Positive
+lca3s_0639_nb	False Positive
+lcam_0639_nb	False Positive
+lca3s_0643_nb	False Positive
+lcam_0655_nb	False Positive
+lca3s_0656_nb	False Positive
+lca3s_0681_nb	False Positive
+lca3s_0697_nb	False Positive
+lcam_0697_nb	False Positive
+lca3s_0700_nb	False Positive
+lca3s_0715_nb	False Positive
+lca3s_0717_nb	False Positive
+lca3s_0739_binder	Binder
+lcam_0741_nb	False Positive
+lcam_0742_nb	False Positive
+lcam_0746_nb	False Positive
+lca3s_0755_nb	False Positive
+lca3s_0759_nb	False Positive
+lcam_0759_nb	False Positive
+lcam_0763_nb	False Positive
+lca3s_0774_nb	False Positive
+lcam_0774_nb	False Positive
+lca3s_0786_nb	False Positive
+lcam_0808_nb	False Positive
+lca3s_0810_nb	False Positive
+lca3s_0812_nb	False Positive
+lca3s_0830_nb	False Positive
+lca3s_0833_nb	False Positive
+lca3s_0837_nb	False Positive
+lca3s_0840_nb	False Positive
+lcam_0847_nb	False Positive
+lca3s_0870_nb	False Positive
+lcam_0877_nb	False Positive
+lca3s_0891_nb	False Positive
+lcam_0891_nb	False Positive
+lcam_0908_nb	False Positive
+lca3s_0971_nb	False Positive
+lcam_0971_nb	False Positive
+lcam_0973_binder	Binder
+lcam_0977_nb	False Positive
+lcam_0996_nb	False Positive
+lca3s_1000_nb	False Positive
+lcam_1009_nb	False Positive
+lca3s_1046_binder	Binder
+lcam_1046_binder	Binder
+lca3s_1047_binder	Binder
+lcam_1047_binder	Binder
+lca3s_1048_binder	Binder
+lcam_1048_binder	Binder
+lca3s_1080_nb	False Positive
+lcam_1080_nb	False Positive
+lca3s_1093_nb	False Positive
+lca3s_1097_nb	False Positive
+lcam_1097_nb	False Positive
+lca3s_1099_nb	False Positive
+lcam_1117_nb	False Positive
+lca3s_1136_nb	False Positive
+lca3s_1137_nb	False Positive
+lca3s_1163_nb	False Positive
+lca3s_1167_nb	False Positive
+lcam_1167_nb	False Positive
+lca3s_1172_nb	False Positive
+lca3s_1192_nb	False Positive
+lcam_1194_nb	False Positive
+lcam_1196_nb	False Positive
+lcam_1214_nb	False Positive
+lca3s_1227_nb	False Positive
+lcam_1227_nb	False Positive
+lcam_1251_binder	Binder
+lca3s_1254_binder	Binder
+lcam_1254_binder	Binder
+lca3s_1255_binder	Binder
+lcam_1255_nb	False Positive
+lca3s_1256_binder	Binder
+lcam_1256_binder	Binder
+lca3s_1264_nb	False Positive
+lcam_1264_nb	False Positive
+lca3s_1277_nb	False Positive
+lcam_1278_nb	False Positive
+lca3s_1288_nb	False Positive
+lcam_1288_nb	False Positive
+lca3s_1295_nb	False Positive
+lcam_1299_nb	False Positive
+lca3s_1300_nb	False Positive
+lca3s_1328_nb	False Positive
+lcam_1328_binder	Binder
+lca3s_1329_binder	Binder
+lcam_1329_binder	Binder
+lca3s_1330_binder	Binder
+lcam_1330_binder	Binder
+lca3s_1335_nb	False Positive
+lca3s_1337_nb	False Positive
+lcam_1344_nb	False Positive
+lca3s_1347_nb	False Positive
+lca3s_1349_nb	False Positive
+lcam_1349_nb	False Positive
+lca3s_1353_nb	False Positive
+lcam_1356_nb	False Positive
+lca3s_1375_binder	Binder
+lcam_1375_binder	Binder
+lca3s_1384_binder	Binder
+lcam_1384_binder	Binder
+lca3s_1386_binder	Binder
+lcam_1386_binder	Binder
+lca3s_1388_binder	Binder
+lcam_1388_binder	Binder
+lca3s_1391_nb	False Positive
+lcam_1391_binder	Binder
+lca3s_1392_nb	False Positive
+lcam_1392_binder	Binder
+lca3s_1397_nb	False Positive
+lca3s_1408_nb	False Positive
+lca3s_1426_nb	False Positive
+lca3s_1427_nb	False Positive
+lca3s_1431_nb	False Positive
+lca3s_1434_nb	False Positive
+lca3s_1441_nb	False Positive
+lca3s_1446_nb	False Positive
+lca3s_1455_nb	False Positive
+lca3s_1468_nb	False Positive
+lcam_1468_nb	False Positive
+lca3s_1475_nb	False Positive
+lca3s_1484_nb	False Positive
+lcam_1488_nb	False Positive
+lca3s_1490_nb	False Positive
+lcam_1491_nb	False Positive
+lcam_1493_nb	False Positive
+lca3s_1494_nb	False Positive
+lcam_1496_nb	False Positive
+lcam_1498_nb	False Positive
+lca3s_1500_nb	False Positive
+lcam_1500_nb	False Positive
+lcam_1508_nb	False Positive
+lcam_1512_nb	False Positive
+lcam_1514_nb	False Positive
+lcam_1526_nb	False Positive
+lcam_1554_nb	False Positive
+lcam_1569_nb	False Positive
+lcam_1596_nb	False Positive
+lcam_1655_nb	False Positive
+lca3s_G0_nb	False Positive
+lcam_G0_binder	Binder
+lca3s_seq26_binder	Binder
+lcam_seq26_binder	Binder
