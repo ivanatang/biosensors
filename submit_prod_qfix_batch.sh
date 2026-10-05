@@ -17,6 +17,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/seq_list_utils.sh"   # parse_seq_line: 4-column or 2-column (seq_ids_ba.txt) lists
 PROD_SCRIPT="${SCRIPT_DIR}/prod_md_PYR1_LCA_qfix.sh"
 LOG_DIR="${SCRIPT_DIR}/logs/prod_qfix"
 mkdir -p "$LOG_DIR"
@@ -33,8 +34,8 @@ FAILED_LIST="${SCRIPT_DIR}/submit_prod_qfix_batch_failed.txt"
 submitted=0
 failed=0
 
-while IFS=$'\t' read -r name prefix id dir_type; do
-    [[ -z "$name" || "$name" == \#* ]] && continue
+while IFS= read -r line || [[ -n "$line" ]]; do
+    parse_seq_line "$line" || continue
 
     sbatch_out=$(sbatch --job-name="prod_qfix_${name}" \
                         --output="${LOG_DIR}/output_${name}_%j.out" \

@@ -14,7 +14,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-EM_SCRIPT="${SCRIPT_DIR}/em_PYR1_LCA_qfix.sh"
+source "${SCRIPT_DIR}/seq_list_utils.sh"   # parse_seq_line: 4-column or 2-column (seq_ids_ba.txt) lists
+EM_SCRIPT="${EM_SCRIPT:-${SCRIPT_DIR}/em_PYR1_LCA_qfix.sh}"   # BA set: em_PYR1_BA.sh (restrained + unrestrained EM)
 EQ_SCRIPT="${SCRIPT_DIR}/equil_PYR1_LCA_qfix.sh"
 LOG_DIR="${SCRIPT_DIR}/logs/em_eq_qfix"
 mkdir -p "$LOG_DIR"
@@ -25,14 +26,15 @@ if [[ ! -f "$SEQ_LIST" ]]; then
     exit 1
 fi
 
-BASE="/scratch/alpine/ivta1597/LCA_boltz_models"
+BASE="${BASE:-/scratch/alpine/ivta1597/LCA_boltz_models}"
+export BASE   # sbatch exports the environment, so the MD scripts see the same BASE
 
 n_skipped_done=0
 n_eq_only=0
 n_em_and_eq=0
 
-while IFS=$'\t' read -r name prefix id dir_type; do
-    [[ -z "$name" || "$name" == \#* ]] && continue
+while IFS= read -r line || [[ -n "$line" ]]; do
+    parse_seq_line "$line" || continue
 
     case "$dir_type" in
         binders)       suffix="binder"    ;;

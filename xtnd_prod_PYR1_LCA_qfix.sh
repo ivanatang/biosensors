@@ -40,7 +40,7 @@ export LD_LIBRARY_PATH="/projects/ivta1597/software/anaconda/envs/biosensors/lib
 # Set some environment variables
 DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
-BASE=/scratch/alpine/ivta1597/LCA_boltz_models
+BASE=${BASE:-/scratch/alpine/ivta1597/LCA_boltz_models}   # override for other sets, e.g. BASE=.../BA_boltz_models
 
 # Get sequence value from command line
 ID=$1

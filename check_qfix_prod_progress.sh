@@ -17,8 +17,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/seq_list_utils.sh"   # parse_seq_line: 4-column or 2-column (seq_ids_ba.txt) lists
 SEQ_LIST="${1:-${SCRIPT_DIR}/seq_ids_qfix_remaining_89.txt}"
-BASE="/scratch/alpine/ivta1597/LCA_boltz_models"
+BASE="${BASE:-/scratch/alpine/ivta1597/LCA_boltz_models}"
 PROD_DIR="prod_md_0p9_cutoff_3dt_64x1_16PME_642dd_qfix"
 TARGET_PS=500000  # 500ns, in ps (log times are ps)
 
@@ -38,8 +39,8 @@ n_no_log=0
 printf "%-22s %-10s %-14s\n" "NAME" "STATUS" "LAST_TIME_NS"
 echo "------------------------------------------------------------"
 
-while IFS=$'\t' read -r name prefix id dir_type; do
-    [[ -z "$name" || "$name" == \#* ]] && continue
+while IFS= read -r line || [[ -n "$line" ]]; do
+    parse_seq_line "$line" || continue
     n_total=$((n_total + 1))
 
     case "$dir_type" in

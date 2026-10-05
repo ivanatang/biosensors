@@ -1,0 +1,29 @@
+title		    = Restrained minimization (heavy atoms held near the Boltz-2 pose)
+
+; Stage 1 of em_PYR1_BA.sh. Boltz-2 does not enforce intermolecular vdW, so
+; some poses have protein-ligand heavy-atom contacts down to ~2.2 A; this
+; stage relaxes hydrogens, solvent, and clashes while heavy atoms are held
+; (1000 kJ/mol/nm^2) so the ligand pose cannot drift before the unrestrained
+; stage 2 (em.mdp). The macro is EM_RESTRAIN, not POSRES*, because
+; equil_PYR1_LCA_qfix.sh decides whether to insert its own backbone POSRES
+; include by grepping the .top for "POSRES".
+define		    = -DEM_RESTRAIN
+
+integrator	    = steep
+emtol		    = 1000.0
+emstep         	    = 0.01
+nsteps		    = 50000
+
+; Same nonbonded settings as em.mdp
+nstlist		    = 1
+cutoff-scheme       = Verlet
+ns_type		    = grid
+rlist		    = 1.0
+coulombtype	    = PME
+rcoulomb	    = 1.2
+vdwtype             = cutoff
+vdw-modifier        = force-switch
+rvdw-switch         = 1.0
+rvdw		    = 1.2
+pbc                 = xyz
+DispCorr            = no

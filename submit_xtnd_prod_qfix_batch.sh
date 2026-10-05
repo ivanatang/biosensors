@@ -21,6 +21,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/seq_list_utils.sh"   # parse_seq_line: 4-column or 2-column (seq_ids_ba.txt) lists
 XTND_SCRIPT="${SCRIPT_DIR}/xtnd_prod_PYR1_LCA_qfix.sh"
 LOG_DIR="${SCRIPT_DIR}/logs/xtnd_prod_qfix"
 mkdir -p "$LOG_DIR"
@@ -37,8 +38,8 @@ NOT_FOUND_LIST="${SCRIPT_DIR}/submit_xtnd_prod_qfix_batch_no_job_found.txt"
 submitted=0
 not_found=0
 
-while IFS=$'\t' read -r name prefix id dir_type; do
-    [[ -z "$name" || "$name" == \#* ]] && continue
+while IFS= read -r line || [[ -n "$line" ]]; do
+    parse_seq_line "$line" || continue
 
     # sacct sees both still-running and already-finished (e.g. TIMEOUT) jobs
     # by name, unlike squeue which drops a job once it leaves the queue --
