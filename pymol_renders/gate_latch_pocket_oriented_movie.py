@@ -109,28 +109,26 @@ stay closed afterward, unlike the metric this project already uses
 elsewhere for "the gate closes" claims.
 
 v3 (current) switches to that already-established metric instead, per user
-request after being shown the v2 finding: this repo's gate_latch_timeseries.xvg
-files (one per sequence, e.g.
-binders/pair_3101_binder/prod_md_0p9_cutoff_3dt_64x1_16PME_642dd/gate_latch_timeseries.xvg)
-are GROMACS `gmx distance` output for an index group built by
-run_gate_latch.sh, which is literally: Ca of gate residue 88 ("P88") to Ca
-of latch residue 116 ("L116") -- see that script's `GATE_RES=88` /
-`LATCH_RES=116`. pair_3101_binder's own archived xvg shows exactly the
-clean closure this project's other docstrings describe: ~1.02 nm at t=0,
-dropping to a stable ~0.51-0.80 nm band by t=4ns and staying there through
-t=30ns. Recomputing the same Ca88-Ca116 distance directly on this script's
-own topology/trajectory (medoid_PL.pdb + the scratch .xtc, not the archived
-xvg file) reproduces the same shape (0.70 nm at t=0 -> a stable ~0.53-0.62 nm
-band from ~t=4ns on) though not the exact same absolute values as the
-archived xvg (likely a residue-numbering or full-system-vs-protein+ligand-
-only-topology offset between run_gate_latch.sh's GRO-based atom lookup and
-this trimmed medoid_PL.pdb) -- the movie computes and displays its own
-value fresh every frame (DIST_GATE_RESI="88", DIST_LATCH_RESI="116", both
-plain resi+name-CA selections, no atom-`id` hack needed here since Ca atoms
-have real, unique per-residue names unlike this trajectory's anonymized LIG
-atoms) rather than reading the xvg file, so what's drawn and what's printed
-always agree with each other even though the absolute number won't
-reproduce the archived file to the decimal.
+request after being shown the v2 finding: Ca of gate residue 88 ("P88") to
+Ca of latch residue 116, as built by run_gate_latch.sh (`GATE_RES=88` /
+`LATCH_RES=116`, index gate_latch116.ndx) and archived per sequence as
+gate_latch116_timeseries.xvg. Don't confuse it with gate_latch_timeseries.xvg
+(index gate_latch.ndx), an older Ca88-Ca117 measurement: for pair_3101 its
+atom pair is 1383/1835, and 1835 is Ca of LEU117 in prod_md_500ns.gro (the
+116 index is 1383/1811). An earlier version of this docstring mixed the two
+up and quoted the Ca117 file's ~1.02 nm at t=0.
+
+pair_3101_binder's archived gate_latch116_timeseries.xvg: mean 0.71 nm over
+t=0-0.5 ns, 0.59 nm over 2-4 ns, 0.55 nm (range 0.47-0.72) over 4-30 ns.
+The movie computes Ca88-Ca116 fresh every frame from its own topology/
+trajectory (DIST_GATE_RESI="88", DIST_LATCH_RESI="116", plain resi+name-CA
+selections; no atom-`id` hack needed since Ca atoms have real per-residue
+names, unlike this trajectory's anonymized LIG atoms) and gets the same
+values (0.70 nm at t=0 -> ~0.53-0.62 nm from ~4 ns on), so what's drawn and
+what's printed agree with the archived file. Note the change is small
+(~1.5 A), and the gate reopens to ~0.8-1.2 nm after ~30 ns (mean 0.81 nm
+over 30-60 ns), outside this movie's window; see
+gate_latch_closure_ghost_movie.py for windows with larger closures.
 
 The dashed line itself is recreated every frame (delete + cmd.distance(...,
 state=s) inside render_frames(), not created once with state=0) for the
