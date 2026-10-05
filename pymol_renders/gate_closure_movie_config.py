@@ -34,6 +34,7 @@ MOVIES = {
         partner_label="Cα116",
         trace_xvg=os.path.join(BINDERS, "pair_3088_binder", RUN_SUBDIR, "gate_latch116_timeseries.xvg"),
         ylim=(0.6, 1.8),
+        show_ghost=True,
         out_name="gate_latch_closure_ghost_pair3088_binder_440-460ns",
     ),
     # Ca88 -> ligand 3-OH oxygen: the gate closing onto the ligand itself.
@@ -54,7 +55,10 @@ MOVIES = {
         partner_label="LCA 3-OH O",
         trace_xvg=os.path.join(SCRATCH, "gate_closure_pair3087_108_128ns_ca88_lig3OH.xvg"),
         ylim=(0.4, 1.6),
-        out_name="gate_closure_ghost_pair3087_binder_108-128ns_ca88_lig3OH",
+        # Ghost dropped by request: overlaid on the live gate it read as a
+        # second, confusing loop rather than as a reference outline.
+        show_ghost=False,
+        out_name="gate_closure_pair3087_binder_108-128ns_ca88_lig3OH",
     ),
 }
 DEFAULT_MOVIE = "pair3087_lig3oh"

@@ -82,11 +82,14 @@ def load_xvg(path: str) -> tuple[np.ndarray, np.ndarray]:
     return data[:, 0] / 1000.0, data[:, 1]
 
 
-def read_ghost_time() -> float:
+def read_ghost_time() -> float | None:
     """Returns the ghost's sim time, written by the 3D script into FRAME3D_DIR.
 
-    Falls back to the first loaded state's time if the file is missing.
+    Returns None when the movie has no ghost (show_ghost False); falls back
+    to the first loaded state's time if the file is missing.
     """
+    if not MOVIE["show_ghost"]:
+        return None
     try:
         with open(os.path.join(FRAME3D_DIR, "ghost_time_ns.txt")) as f:
             return float(f.read())
@@ -94,13 +97,14 @@ def read_ghost_time() -> float:
         return MOVIE["open_ns"]
 
 
-def build_strip(t: np.ndarray, d: np.ndarray, ghost_ns: float):
+def build_strip(t: np.ndarray, d: np.ndarray, ghost_ns: float | None):
     """Draws the static trace strip and returns handles for the per-frame cursor.
 
     Args:
         t: Time (ns) within the movie window.
         d: Ca88-to-partner distance (nm) at each time.
-        ghost_ns: Time of the open-state ghost, marked with a dashed line.
+        ghost_ns: Time of the open-state ghost, marked with a dashed line and
+            a legend entry; None to omit both.
 
     Returns:
         (fig, cursor_line, cursor_dot, title) for update_cursor().
@@ -122,9 +126,10 @@ def build_strip(t: np.ndarray, d: np.ndarray, ghost_ns: float):
     handles = [
         Patch(color=GATE_COLOR, label="gate (84–90)"),
         Patch(color=LATCH_COLOR, label="latch (114–118)"),
-        Patch(color=GHOST_COLOR, label=f"open-state ghost ({ghost_ns:.1f} ns)"),
     ]
-    ax.axvline(ghost_ns, color=GHOST_COLOR, lw=1.0, ls="--")
+    if ghost_ns is not None:
+        handles.append(Patch(color=GHOST_COLOR, label=f"open-state ghost ({ghost_ns:.1f} ns)"))
+        ax.axvline(ghost_ns, color=GHOST_COLOR, lw=1.0, ls="--")
     ax.legend(handles=handles, loc="upper right", fontsize=5, frameon=False, handlelength=1.2)
 
     cursor_line = ax.axvline(T0_NS, color="0.2", lw=0.7)

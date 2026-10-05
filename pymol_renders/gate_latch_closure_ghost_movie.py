@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-"""Renders the 3D half of a gate-closure movie with a fixed "ghost" of the
-open-state gate and latch loops and a live gate-to-partner distance dash.
+"""Renders the 3D half of a gate-closure movie: a live gate-to-partner
+distance dash, plus (per movie, show_ghost) a fixed "ghost" of the
+open-state gate and latch loops.
 
 Which trajectory window and which distance are set in
 gate_closure_movie_config.py (GATE_MOVIE=<key>; see that file for each
@@ -37,7 +38,7 @@ orientation basis is computed from state 1, which here is the open state.
 
 Time and the ghost legend are drawn in the trace strip, not in-scene.
 
-Ghost: gate (84-90) and latch (114-118) from the window's most-open state
+Ghost (only when the movie's show_ghost is True): gate (84-90) and latch (114-118) from the window's most-open state
 (see pick_open_state()),
 copied after drift-fit + reorientation into a single-state object, drawn
 as an opaque light-gray tube (see GHOST_HEX for why not translucent). With
@@ -377,13 +378,14 @@ running time is drawn by gate_latch_trace_panel.py, not here.
 
 
 def main():
-    """Loads, fits, styles, orients, adds the ghost, and renders this chunk's frames."""
+    """Loads, fits, styles, orients, adds the ghost if enabled, and renders this chunk's frames."""
     n_states = setup_scene()
     rms = cmd.intra_fit("core_fit_sel", state=1)
     print(f"[gate_latch_closure_ghost_movie] intra_fit max RMSD to state 1 = {max(rms):.3f} A")
     style_scene()
     orient_gate_left_latch_right()
-    add_open_state_ghost(pick_open_state(n_states))
+    if MOVIE["show_ghost"]:
+        add_open_state_ghost(pick_open_state(n_states))
     cmd.frame(1)
     # Center on the two loops, not landmark_sel: the ligand's tail reaches
     # well below the pocket, so centering on gate+latch+ligand left the top
