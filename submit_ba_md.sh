@@ -14,6 +14,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export BASE=/scratch/alpine/ivta1597/BA_boltz_models
 export EM_SCRIPT="${SCRIPT_DIR}/em_PYR1_BA.sh"
 
+# sbatch's default (--export=ALL) copies the submitting shell's MODULEPATH
+# into the job. From a login-node shell that path lacks the compute-node
+# module trees, so the jobs' "module load gcc/openmpi/anaconda" fail
+# ("module(s) are unknown") and prod dies at "mpirun: command not found".
+# NONE starts each job from the compute-node default environment; BASE is
+# the one variable the MD scripts need from here. SBATCH_EXPORT is sbatch's
+# env-var form of --export, so the drivers' sbatch calls pick it up.
+export SBATCH_EXPORT="NONE,BASE=${BASE}"
+
 STAGE="$1"
 SEQ_LIST="${2:-${SCRIPT_DIR}/seq_ids_ba.txt}"
 
