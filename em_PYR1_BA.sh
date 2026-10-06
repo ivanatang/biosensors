@@ -40,6 +40,13 @@ module load openmpi
 module load anaconda
 module load gromacs
 
+conda activate biosensors
+
+# The /projects GROMACS 2025.3 build (first on PATH) needs the env's newer
+# libstdc++, not the HPC image's old /lib64/libstdc++.so.6 -- without this
+# gmx fails to start: "/lib64/libstdc++.so.6: version GLIBCXX_3.4.29 not found"
+export LD_LIBRARY_PATH="/projects/ivta1597/software/anaconda/envs/biosensors/lib:$LD_LIBRARY_PATH"
+
 DIR=/projects/ivta1597/biosensors
 MDP=$DIR/MDP
 BASE=${BASE:-/scratch/alpine/ivta1597/BA_boltz_models}
